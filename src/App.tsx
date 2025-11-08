@@ -1,15 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase } from 'lucide-react';
 import { Artist, ServicePlan, Contract, User, Review, Booking, Provider } from './types';
 import { mockArtists } from './data/mockData';
 import { mockReviews } from './data/mockReviews';
+import { useSupabase } from './utils/useSupabase';
 import { ArtistCard } from './components/ArtistCard';
 import { SearchFilters } from './components/SearchFilters';
 import { ArtistProfile } from './components/ArtistProfile';
 import { BookingDialog } from './components/BookingDialog';
 import { CompareView } from './components/CompareView';
-import { ArtistDashboard } from './components/ArtistDashboard';
-import { ProviderDashboard } from './components/ProviderDashboard';
+import { BusinessDashboard } from './components/BusinessDashboard';
+import { ClientDashboard } from './components/ClientDashboard';
 import { AuthDialog } from './components/AuthDialog';
 import { UserProfile } from './components/UserProfile';
 import { ReviewDialog } from './components/ReviewDialog';
@@ -19,11 +20,14 @@ import { Toaster } from './components/ui/sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './components/ui/dropdown-menu';
 import { toast } from 'sonner@2.0.3';
 
-type ViewMode = 'client' | 'artist' | 'provider';
+type ViewMode = 'client' | 'business';
 
 export default function App() {
+  // Supabase hook
+  const supabase = useSupabase();
+  
   const [viewMode, setViewMode] = useState<ViewMode>('client');
-  const [artists, setArtists] = useState<Artist[]>(mockArtists);
+  const [artists, setArtists] = useState<Artist[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [priceRange, setPriceRange] = useState([0, 500]);
@@ -39,21 +43,89 @@ export default function App() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   
   // User authentication and profile
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const currentUser = supabase.currentUser;
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
   
   // Reviews and bookings
-  const [reviews, setReviews] = useState<Review[]>(mockReviews);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [reviewBooking, setReviewBooking] = useState<Booking | null>(null);
   
   // Provider
   const [providers, setProviders] = useState<Provider[]>([]);
-  const currentProvider = currentUser?.isProvider 
-    ? providers.find(p => p.userId === currentUser.id) || null
-    : null;
+  const [currentProvider, setCurrentProvider] = useState<Provider | null>(null);
+
+  // Load initial data from Supabase
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // Load provider when user changes
+  useEffect(() => {
+    if (currentUser?.isProvider) {
+      loadCurrentProvider();
+    } else {
+      setCurrentProvider(null);
+    }
+  }, [currentUser]);
+
+  const loadData = async () => {
+    try {
+      // Load services (artists) - use mock data as fallback
+      const servicesData = await supabase.getServices();
+      if (servicesData && servicesData.length > 0) {
+        setArtists(servicesData);
+      } else {
+        // If no data in DB, use mock data
+        setArtists(mockArtists);
+      }
+
+      // Load contracts
+      const contractsData = await supabase.getContracts();
+      if (contractsData) {
+        setContracts(contractsData);
+      }
+
+      // Load reviews - use mock data as fallback
+      const reviewsData = await supabase.getReviews();
+      if (reviewsData && reviewsData.length > 0) {
+        setReviews(reviewsData);
+      } else {
+        setReviews(mockReviews);
+      }
+
+      // Load bookings
+      const bookingsData = await supabase.getBookings();
+      if (bookingsData) {
+        setBookings(bookingsData);
+      }
+
+      // Load providers
+      const providersData = await supabase.getProviders();
+      if (providersData) {
+        setProviders(providersData);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('Error al cargar datos. Usando datos de ejemplo.');
+      // Fallback to mock data
+      setArtists(mockArtists);
+      setReviews(mockReviews);
+    }
+  };
+
+  const loadCurrentProvider = async () => {
+    if (!currentUser) return;
+    
+    try {
+      const provider = await supabase.getProviderByUserId(currentUser.id);
+      setCurrentProvider(provider);
+    } catch (error) {
+      console.error('Error loading provider:', error);
+    }
+  };
 
   // Filter and sort artists
   const filteredArtists = useMemo(() => {
@@ -133,64 +205,164 @@ export default function App() {
     setCompareArtists(compareArtists.filter(a => a.id !== artistId));
   };
 
-  const handleContractCreated = (contract: Contract) => {
-    setContracts(prev => [...prev, contract]);
-  };
-
-  const handleLogin = (user: User) => {
-    setCurrentUser(user);
-    // If user is a provider, switch to provider view
-    if (user.isProvider) {
-      setViewMode('provider');
+  const handleContractCreated = async (contract: Contract) => {
+    try {
+      const createdContract = await supabase.createContract(contract);
+      setContracts(prev => [...prev, createdContract]);
+    } catch (error) {
+      console.error('Error creating contract:', error);
+      toast.error('Error al crear el contrato');
     }
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setViewMode('client');
-  };
-
-  const handleProviderCreate = (provider: Provider) => {
-    setProviders([...providers, provider]);
-  };
-
-  const handleServiceCreate = (service: Artist) => {
-    setArtists([...artists, service]);
-    
-    // Link service to provider
-    if (currentProvider) {
-      setProviders(providers.map(p => 
-        p.id === currentProvider.id 
-          ? { ...p, services: [...p.services, service.id] }
-          : p
-      ));
+  const handleSignUp = async (email: string, password: string, name: string, phone: string, isProvider: boolean) => {
+    try {
+      const result = await supabase.signUp(email, password, name, phone, isProvider);
+      
+      // If provider, create provider profile
+      if (isProvider && result.user) {
+        const provider = await supabase.createProvider({
+          businessName: name,
+          category: 'Musician',
+          description: ''
+        });
+        setProviders([...providers, provider]);
+        setCurrentProvider(provider);
+        setViewMode('business');
+        
+        // Update user to mark as provider
+        await supabase.updateUser(result.user.id, { isProvider: true, providerId: provider.id });
+      }
+    } catch (error) {
+      throw error;
     }
   };
 
-  const handleServiceUpdate = (updatedService: Artist) => {
-    setArtists(artists.map(s => s.id === updatedService.id ? updatedService : s));
+  const handleSignIn = async (email: string, password: string) => {
+    try {
+      await supabase.signIn(email, password);
+      
+      // If user is a provider, load provider data and switch to business view
+      if (supabase.currentUser?.isProvider) {
+        await loadCurrentProvider();
+        setViewMode('business');
+      }
+    } catch (error) {
+      throw error;
+    }
   };
 
-  const handleServiceDelete = (serviceId: string) => {
-    setArtists(artists.filter(s => s.id !== serviceId));
+  const handleLogout = async () => {
+    try {
+      await supabase.signOut();
+      setViewMode('client');
+      setCurrentProvider(null);
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast.error('Error al cerrar sesión');
+    }
   };
 
-  const handleReviewSubmit = (review: Review) => {
-    setReviews(prev => [...prev, review]);
-    
-    // Update booking to mark it as reviewed
-    setBookings(prev => 
-      prev.map(b => 
-        b.id === review.bookingId 
-          ? { ...b, reviewId: review.id }
-          : b
-      )
-    );
+  const handleProviderCreate = async (provider: Provider) => {
+    try {
+      const createdProvider = await supabase.createProvider(provider);
+      setProviders([...providers, createdProvider]);
+      setCurrentProvider(createdProvider);
+      
+      // Update current user to mark as provider
+      if (currentUser) {
+        await supabase.updateUser(currentUser.id, { isProvider: true, providerId: createdProvider.id });
+      }
+    } catch (error) {
+      console.error('Error creating provider:', error);
+      toast.error('Error al crear perfil de proveedor');
+    }
+  };
+
+  const handleServiceCreate = async (service: Artist) => {
+    try {
+      const createdService = await supabase.createService(service);
+      setArtists([...artists, createdService]);
+      
+      // Link service to provider
+      if (currentProvider) {
+        const updatedProvider = {
+          ...currentProvider,
+          services: [...currentProvider.services, createdService.id]
+        };
+        setCurrentProvider(updatedProvider);
+        setProviders(providers.map(p => 
+          p.id === currentProvider.id ? updatedProvider : p
+        ));
+      }
+    } catch (error) {
+      console.error('Error creating service:', error);
+      toast.error('Error al crear servicio');
+    }
+  };
+
+  const handleServiceUpdate = async (updatedService: Artist) => {
+    try {
+      const updated = await supabase.updateService(updatedService.id, updatedService);
+      setArtists(artists.map(s => s.id === updated.id ? updated : s));
+    } catch (error) {
+      console.error('Error updating service:', error);
+      toast.error('Error al actualizar servicio');
+    }
+  };
+
+  const handleServiceDelete = async (serviceId: string) => {
+    try {
+      await supabase.deleteService(serviceId);
+      setArtists(artists.filter(s => s.id !== serviceId));
+    } catch (error) {
+      console.error('Error deleting service:', error);
+      toast.error('Error al eliminar servicio');
+    }
+  };
+
+  const handleReviewSubmit = async (review: Review) => {
+    try {
+      const createdReview = await supabase.createReview(review);
+      setReviews(prev => [...prev, createdReview]);
+      
+      // Update booking to mark it as reviewed
+      setBookings(prev => 
+        prev.map(b => 
+          b.id === review.bookingId 
+            ? { ...b, reviewId: review.id }
+            : b
+        )
+      );
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      toast.error('Error al enviar reseña');
+    }
   };
 
   const openReviewDialog = (booking: Booking) => {
     setReviewBooking(booking);
     setShowReviewDialog(true);
+  };
+
+  const handleBookingCreate = async (booking: Booking) => {
+    try {
+      const createdBooking = await supabase.createBooking(booking);
+      setBookings(prev => [...prev, createdBooking]);
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      toast.error('Error al crear reserva');
+    }
+  };
+
+  const handleBookingUpdate = async (updatedBooking: Booking) => {
+    try {
+      const updated = await supabase.updateBooking(updatedBooking.id, updatedBooking);
+      setBookings(prev => prev.map(b => b.id === updated.id ? updated : b));
+    } catch (error) {
+      console.error('Error updating booking:', error);
+      toast.error('Error al actualizar reserva');
+    }
   };
 
   // Get user-specific data
@@ -205,11 +377,43 @@ export default function App() {
   const userReviews = currentUser
     ? reviews.filter(r => r.userId === currentUser.id)
     : [];
+  
+  // Debug logging for client view
+  if (currentUser && !currentUser.isProvider) {
+    console.log('Client View - Current User ID:', currentUser.id);
+    console.log('Client View - All Contracts:', contracts);
+    console.log('Client View - User Contracts:', userContracts);
+    console.log('Client View - All Bookings:', bookings);
+    console.log('Client View - User Bookings:', userBookings);
+  }
 
   // Get provider-specific data
-  const providerServices = currentProvider
-    ? artists.filter(a => currentProvider.services.includes(a.id))
+  // Filter services by userId to show all services created by this provider
+  const providerServices = currentProvider && currentUser
+    ? artists.filter(a => a.userId === currentUser.id)
     : [];
+  
+  // Debug logging
+  if (currentUser && currentUser.isProvider) {
+    console.log('Provider View - Current User ID:', currentUser.id);
+    console.log('Provider View - All Artists:', artists);
+    console.log('Provider View - Filtered Provider Services:', providerServices);
+  }
+
+  // Show loading screen while checking authentication
+  if (supabase.loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-gradient-to-br from-purple-600 to-blue-600 text-white p-4 rounded-full inline-block mb-4">
+            <Users className="w-12 h-12 animate-pulse" />
+          </div>
+          <h2>Famitos</h2>
+          <p className="text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -224,7 +428,7 @@ export default function App() {
                 <Users className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-sm">ArtistHub</h1>
+                <h1 className="text-sm">Famitos</h1>
                 <p className="text-xs text-gray-500">Encuentra y Contrata Artistas Talentosos</p>
               </div>
             </div>
@@ -240,20 +444,20 @@ export default function App() {
               </Button>
               {currentUser?.isProvider && (
                 <Button
-                  variant={viewMode === 'provider' ? 'default' : 'outline'}
-                  onClick={() => setViewMode('provider')}
+                  variant={viewMode === 'business' ? 'default' : 'outline'}
+                  onClick={() => setViewMode('business')}
                 >
                   <Briefcase className="w-4 h-4 mr-2" />
                   Mi Negocio
                 </Button>
               )}
-              {currentUser && (
+              {currentUser && !currentUser.isProvider && (
                 <Button
-                  variant={viewMode === 'artist' ? 'default' : 'outline'}
-                  onClick={() => setViewMode('artist')}
+                  variant={viewMode === 'business' ? 'default' : 'outline'}
+                  onClick={() => setViewMode('business')}
                 >
                   <LayoutDashboard className="w-4 h-4 mr-2" />
-                  Panel de Artista
+                  Mis Reservas
                 </Button>
               )}
               
@@ -272,7 +476,7 @@ export default function App() {
                       Mi Perfil
                     </DropdownMenuItem>
                     {currentUser.isProvider && (
-                      <DropdownMenuItem onClick={() => setViewMode('provider')}>
+                      <DropdownMenuItem onClick={() => setViewMode('business')}>
                         <Briefcase className="w-4 h-4 mr-2" />
                         Mi Negocio
                       </DropdownMenuItem>
@@ -319,9 +523,9 @@ export default function App() {
               </Button>
               {currentUser?.isProvider && (
                 <Button
-                  variant={viewMode === 'provider' ? 'default' : 'outline'}
+                  variant={viewMode === 'business' ? 'default' : 'outline'}
                   onClick={() => {
-                    setViewMode('provider');
+                    setViewMode('business');
                     setMobileMenuOpen(false);
                   }}
                   className="w-full"
@@ -330,17 +534,17 @@ export default function App() {
                   Mi Negocio
                 </Button>
               )}
-              {currentUser && (
+              {currentUser && !currentUser.isProvider && (
                 <Button
-                  variant={viewMode === 'artist' ? 'default' : 'outline'}
+                  variant={viewMode === 'business' ? 'default' : 'outline'}
                   onClick={() => {
-                    setViewMode('artist');
+                    setViewMode('business');
                     setMobileMenuOpen(false);
                   }}
                   className="w-full"
                 >
                   <LayoutDashboard className="w-4 h-4 mr-2" />
-                  Panel de Artista
+                  Mis Reservas
                 </Button>
               )}
               
@@ -388,21 +592,62 @@ export default function App() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {viewMode === 'provider' ? (
-          currentUser && (
-            <ProviderDashboard
+        {viewMode === 'business' ? (
+          currentUser && currentUser.isProvider ? (
+            <BusinessDashboard
               user={currentUser}
               provider={currentProvider}
               services={providerServices}
               contracts={contracts}
+              bookings={bookings}
               onServiceCreate={handleServiceCreate}
               onServiceUpdate={handleServiceUpdate}
               onServiceDelete={handleServiceDelete}
-              onContractUpdate={(updated) => {
-                setContracts(prev => prev.map(c => c.id === updated.id ? updated : c));
+              onContractUpdate={async (updated) => {
+                try {
+                  const updatedContract = await supabase.updateContract(updated.id, updated);
+                  setContracts(prev => prev.map(c => c.id === updatedContract.id ? updatedContract : c));
+                } catch (error) {
+                  console.error('Error updating contract:', error);
+                  toast.error('Error al actualizar contrato');
+                }
               }}
+              onBookingCreate={handleBookingCreate}
+              onBookingUpdate={handleBookingUpdate}
               onProviderCreate={handleProviderCreate}
             />
+          ) : (
+            currentUser && (
+              <ClientDashboard
+                contracts={contracts}
+                user={currentUser}
+                onReviewCreate={(contractId) => {
+                  const contract = contracts.find(c => c.id === contractId);
+                  if (contract) {
+                    const booking: Booking = {
+                      id: contract.bookingId,
+                      artistId: contract.artistId,
+                      artistName: contract.artistName,
+                      userId: currentUser.id,
+                      clientName: contract.clientName,
+                      clientEmail: currentUser.email,
+                      clientPhone: currentUser.phone || '',
+                      date: contract.terms.date,
+                      duration: contract.terms.duration,
+                      eventType: 'Servicio completado',
+                      location: contract.terms.location,
+                      specialRequests: '',
+                      totalPrice: contract.terms.price,
+                      status: 'completed',
+                      contractId: contract.id
+                    };
+                    setReviewBooking(booking);
+                    setShowReviewDialog(true);
+                  }
+                }}
+                reviews={reviews}
+              />
+            )
           )
         ) : viewMode === 'client' ? (
           <>
@@ -500,9 +745,53 @@ export default function App() {
             )}
           </>
         ) : (
-          <ArtistDashboard contracts={contracts} onContractUpdate={(updated) => {
-            setContracts(prev => prev.map(c => c.id === updated.id ? updated : c));
-          }} />
+          currentUser?.isProvider ? (
+            <ArtistDashboard 
+              contracts={contracts} 
+              onContractUpdate={async (updated) => {
+                try {
+                  const updatedContract = await supabase.updateContract(updated.id, updated);
+                  setContracts(prev => prev.map(c => c.id === updatedContract.id ? updatedContract : c));
+                } catch (error) {
+                  console.error('Error updating contract:', error);
+                  toast.error('Error al actualizar contrato');
+                }
+              }} 
+            />
+          ) : (
+            currentUser && (
+              <ClientDashboard
+                contracts={contracts}
+                user={currentUser}
+                onReviewCreate={(contractId) => {
+                  // Find the contract to get booking info
+                  const contract = contracts.find(c => c.id === contractId);
+                  if (contract) {
+                    const booking: Booking = {
+                      id: contract.bookingId,
+                      artistId: contract.artistId,
+                      artistName: contract.artistName,
+                      userId: currentUser.id,
+                      clientName: contract.clientName,
+                      clientEmail: currentUser.email,
+                      clientPhone: currentUser.phone || '',
+                      date: contract.terms.date,
+                      duration: contract.terms.duration,
+                      eventType: 'Servicio completado',
+                      location: contract.terms.location,
+                      specialRequests: '',
+                      totalPrice: contract.terms.price,
+                      status: 'completed',
+                      contractId: contract.id
+                    };
+                    setReviewBooking(booking);
+                    setShowReviewDialog(true);
+                  }
+                }}
+                reviews={reviews}
+              />
+            )
+          )
         )}
       </main>
 
@@ -540,7 +829,14 @@ export default function App() {
       <AuthDialog
         open={showAuthDialog}
         onClose={() => setShowAuthDialog(false)}
-        onLogin={handleLogin}
+        onLogin={(user, accessToken) => {
+          // User is already set by the hook
+          if (user.isProvider) {
+            setViewMode('provider');
+          }
+        }}
+        onSignUp={handleSignUp}
+        onSignIn={handleSignIn}
       />
 
       {currentUser && (

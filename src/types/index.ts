@@ -10,6 +10,7 @@ export interface ServicePlan {
 
 export interface Artist {
   id: string;
+  userId?: string; // ID of the user who created this service
   name: string;
   category: string;
   image: string;
@@ -53,17 +54,19 @@ export interface Contract {
   };
   clientSignature?: ContractSignature;
   artistSignature?: ContractSignature;
-  status: 'draft' | 'pending_client' | 'pending_artist' | 'signed' | 'cancelled';
+  status: 'draft' | 'pending_client' | 'pending_artist' | 'active' | 'completed' | 'cancelled';
 }
 
 export interface Booking {
   id: string;
   artistId: string;
+  artistName?: string;
   userId?: string; // User who made the booking
   clientName: string;
   clientEmail: string;
   clientPhone: string;
   date: string;
+  startTime?: string; // Hora de inicio (formato HH:mm)
   duration: number;
   eventType: string;
   location: string;

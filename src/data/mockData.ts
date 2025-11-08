@@ -15,7 +15,10 @@ export const mockArtists: Artist[] = [
     availability: ['Fines de semana', 'Noches'],
     portfolio: [
       'https://images.unsplash.com/photo-1729638276657-0a0978e66d38?w=400',
-      'https://images.unsplash.com/photo-1727831140213-18650ae7ef36?w=400'
+      'https://images.unsplash.com/photo-1727831140213-18650ae7ef36?w=400',
+      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400',
+      'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=400',
+      'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=400'
     ],
     verified: true,
     responseTime: '< 1 hour',
@@ -82,7 +85,10 @@ export const mockArtists: Artist[] = [
     specialties: ['Bodas', 'Eventos Corporativos', 'Fiestas en Casa', 'EDM'],
     availability: ['Fines de semana', 'Noches', 'Entre semana'],
     portfolio: [
-      'https://images.unsplash.com/photo-1618107095181-e3ba0f53ee59?w=400'
+      'https://images.unsplash.com/photo-1618107095181-e3ba0f53ee59?w=400',
+      'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400',
+      'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=400',
+      'https://images.unsplash.com/photo-1571266028243-d220c2f71d05?w=400'
     ],
     verified: true,
     responseTime: '< 2 horas',

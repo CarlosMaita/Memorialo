@@ -270,13 +270,16 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
                       </Badge>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                    <div className="grid grid-cols-3 gap-3 text-sm mb-3">
                       <div className="flex items-center gap-2 text-gray-600">
                         <Calendar className="w-4 h-4" />
                         <span>{new Date(booking.date).toLocaleDateString('es-ES')}</span>
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
                         <Clock className="w-4 h-4" />
+                        <span>{booking.startTime || 'N/A'}</span>
+                      </div>
+                      <div className="text-gray-600">
                         <span>{booking.duration} horas</span>
                       </div>
                     </div>

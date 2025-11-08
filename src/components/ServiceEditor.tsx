@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { ServicePlan } from '../types';
-import { Plus, Trash2, DollarSign, Clock, Check } from 'lucide-react';
+import { Plus, Trash2, DollarSign, Clock, Check, Image, X } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
+import { ImageWithFallback } from './figma/ImageWithFallback';
 
 interface ServiceEditorProps {
   open: boolean;
@@ -41,6 +42,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
 
   const [specialties, setSpecialties] = useState<string[]>(['']);
   const [availability, setAvailability] = useState<string[]>([]);
+  const [mainImage, setMainImage] = useState('');
+  const [portfolioImages, setPortfolioImages] = useState<string[]>(['']);
 
   useEffect(() => {
     if (existingService) {
@@ -56,6 +59,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
       setServicePlans(existingService.servicePlans || []);
       setSpecialties(existingService.specialties || ['']);
       setAvailability(existingService.availability || []);
+      setMainImage(existingService.image || '');
+      setPortfolioImages(existingService.portfolio && existingService.portfolio.length > 0 ? existingService.portfolio : ['']);
     }
   }, [existingService]);
 
@@ -71,6 +76,26 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     const updated = [...specialties];
     updated[index] = value;
     setSpecialties(updated);
+  };
+
+  const handleAddPortfolioImage = () => {
+    if (portfolioImages.length < 5) {
+      setPortfolioImages([...portfolioImages, '']);
+    } else {
+      toast.error('Máximo 5 imágenes de portafolio');
+    }
+  };
+
+  const handleRemovePortfolioImage = (index: number) => {
+    if (portfolioImages.length > 1) {
+      setPortfolioImages(portfolioImages.filter((_, i) => i !== index));
+    }
+  };
+
+  const handlePortfolioImageChange = (index: number, value: string) => {
+    const updated = [...portfolioImages];
+    updated[index] = value;
+    setPortfolioImages(updated);
   };
 
   const handleAddInclude = () => {
@@ -144,6 +169,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
       return;
     }
 
+    const filteredPortfolio = portfolioImages.filter(img => img.trim() !== '');
+    
     const service = {
       id: existingService?.id || `service-${Date.now()}`,
       name: formData.name,
@@ -155,8 +182,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
       specialties: specialties.filter(s => s.trim() !== ''),
       availability: availability,
       servicePlans: servicePlans,
-      image: existingService?.image || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400',
-      portfolio: existingService?.portfolio || [],
+      image: mainImage || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400',
+      portfolio: filteredPortfolio.length > 0 ? filteredPortfolio : [],
       verified: existingService?.verified || false,
       rating: existingService?.rating || 5,
       reviews: existingService?.reviews || 0,
@@ -328,6 +355,87 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                     {day}
                   </Badge>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Images */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Imágenes del Servicio</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Main Image */}
+              <div>
+                <Label htmlFor="mainImage">Imagen Principal *</Label>
+                <p className="text-xs text-gray-500 mb-2">Esta imagen se mostrará en la tarjeta de tu servicio</p>
+                <Input
+                  id="mainImage"
+                  value={mainImage}
+                  onChange={(e) => setMainImage(e.target.value)}
+                  placeholder="https://images.unsplash.com/..."
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  💡 Puedes usar URLs de Unsplash, Imgur, o cualquier servicio de imágenes
+                </p>
+                {mainImage && (
+                  <div className="mt-3 relative w-full h-48 rounded-lg overflow-hidden border">
+                    <ImageWithFallback
+                      src={mainImage}
+                      alt="Vista previa imagen principal"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Portfolio Images */}
+              <div>
+                <Label>Galería de Imágenes (Máximo 5)</Label>
+                <p className="text-xs text-gray-500 mb-3">Muestra ejemplos de tu trabajo o eventos anteriores</p>
+                <div className="space-y-3">
+                  {portfolioImages.map((img, index) => (
+                    <div key={index} className="space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          value={img}
+                          onChange={(e) => handlePortfolioImageChange(index, e.target.value)}
+                          placeholder={`URL de imagen ${index + 1}`}
+                        />
+                        {portfolioImages.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleRemovePortfolioImage(index)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                      {img && (
+                        <div className="relative w-full h-32 rounded-lg overflow-hidden border">
+                          <ImageWithFallback
+                            src={img}
+                            alt={`Vista previa ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {portfolioImages.length < 5 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleAddPortfolioImage}
+                      className="w-full"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Agregar Imagen ({portfolioImages.length}/5)
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

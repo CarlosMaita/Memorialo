@@ -74,7 +74,9 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     return {
       id: contractId,
       bookingId,
+      artistId: artist.id,
       artistName: artist.name,
+      clientId: user?.id,
       clientName: formData.clientName,
       createdAt: new Date().toISOString(),
       terms: {
@@ -144,7 +146,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Reservar a {artist.name}</DialogTitle>
           <DialogDescription>

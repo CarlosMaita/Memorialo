@@ -33,7 +33,7 @@ export function ArtistProfile({ artist, open, onClose, onBookNow, reviews = [], 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="sr-only">{artist.name} Profile</DialogTitle>
           <DialogDescription className="sr-only">
@@ -122,14 +122,14 @@ export function ArtistProfile({ artist, open, onClose, onBookNow, reviews = [], 
             <Separator />
             <div className="space-y-4">
               <h3>Planes y Servicios</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-4">
                 {artist.servicePlans.map((plan) => (
                   <Card 
                     key={plan.id} 
                     className={`relative ${plan.popular ? 'border-primary border-2' : ''}`}
                   >
                     {plan.popular && (
-                      <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                      <div className="absolute -top-3 left-4">
                         <Badge className="bg-primary">
                           <Sparkles className="w-3 h-3 mr-1" />
                           Más Popular
@@ -137,37 +137,42 @@ export function ArtistProfile({ artist, open, onClose, onBookNow, reviews = [], 
                       </div>
                     )}
                     
-                    <CardHeader className="pb-3">
-                      <h4 className="text-sm mb-1">{plan.name}</h4>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-green-600">${plan.price}</span>
-                        <span className="text-sm text-gray-500">/ {plan.duration}h</span>
-                      </div>
-                      <p className="text-xs text-gray-600 mt-2">{plan.description}</p>
-                    </CardHeader>
-                    
-                    <CardContent className="space-y-3">
-                      <div className="space-y-2">
-                        <p className="text-xs text-gray-600">Incluye:</p>
-                        <ul className="space-y-1.5">
-                          {plan.includes.map((item, idx) => (
-                            <li key={idx} className="flex items-start gap-2 text-xs">
-                              <Check className="w-3.5 h-3.5 text-green-600 flex-shrink-0 mt-0.5" />
-                              <span className="text-gray-700">{item}</span>
-                            </li>
-                          ))}
-                        </ul>
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6">
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <h4 className="mb-1">{plan.name}</h4>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-green-600">${plan.price}</span>
+                            <span className="text-sm text-gray-500">/ {plan.duration}h</span>
+                          </div>
+                        </div>
+                        
+                        <p className="text-sm text-gray-600">{plan.description}</p>
+                        
+                        <div>
+                          <p className="text-sm text-gray-600 mb-2">Incluye:</p>
+                          <ul className="space-y-1.5">
+                            {plan.includes.map((item, idx) => (
+                              <li key={idx} className="flex items-start gap-2 text-sm">
+                                <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                                <span className="text-gray-700">{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       </div>
                       
-                      <Button 
-                        size="sm" 
-                        className="w-full"
-                        variant={plan.popular ? 'default' : 'outline'}
-                        onClick={() => onBookNow(artist, plan)}
-                      >
-                        {isAuthenticated ? 'Seleccionar Plan' : 'Iniciar Sesión para Reservar'}
-                      </Button>
-                    </CardContent>
+                      <div className="md:w-48 flex-shrink-0">
+                        <Button 
+                          size="default" 
+                          className="w-full text-center"
+                          variant={plan.popular ? 'default' : 'outline'}
+                          onClick={() => onBookNow(artist, plan)}
+                        >
+                          {isAuthenticated ? 'Seleccionar Plan' : 'Iniciar Sesión'}
+                        </Button>
+                      </div>
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -180,14 +185,14 @@ export function ArtistProfile({ artist, open, onClose, onBookNow, reviews = [], 
           <>
             <Separator />
             <div className="space-y-3">
-              <h3>Portfolio</h3>
-              <div className="grid grid-cols-3 gap-3">
+              <h3>Galería de Trabajos</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {artist.portfolio.map((image, index) => (
-                  <div key={index} className="aspect-square rounded-lg overflow-hidden">
+                  <div key={index} className="aspect-square rounded-lg overflow-hidden border hover:shadow-lg transition-shadow cursor-pointer">
                     <ImageWithFallback 
                       src={image} 
-                      alt={`Portfolio ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      alt={`Trabajo ${index + 1}`}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform"
                     />
                   </div>
                 ))}

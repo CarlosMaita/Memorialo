@@ -12,10 +12,12 @@ import { Checkbox } from './ui/checkbox';
 interface AuthDialogProps {
   open: boolean;
   onClose: () => void;
-  onLogin: (user: User) => void;
+  onLogin: (user: User, accessToken: string) => void;
+  onSignUp: (email: string, password: string, name: string, phone: string, isProvider: boolean) => Promise<void>;
+  onSignIn: (email: string, password: string) => Promise<void>;
 }
 
-export function AuthDialog({ open, onClose, onLogin }: AuthDialogProps) {
+export function AuthDialog({ open, onClose, onLogin, onSignUp, onSignIn }: AuthDialogProps) {
   const [loginForm, setLoginForm] = useState({
     email: '',
     password: ''
@@ -30,24 +32,32 @@ export function AuthDialog({ open, onClose, onLogin }: AuthDialogProps) {
     isProvider: false
   });
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Simulate login - in real app, this would call an API
-    const mockUser: User = {
-      id: 'user-' + Date.now(),
-      email: loginForm.email,
-      name: loginForm.email.split('@')[0],
-      createdAt: new Date().toISOString(),
-      isArtist: false
-    };
-
-    onLogin(mockUser);
-    toast.success('¡Bienvenido de nuevo!');
-    onClose();
+    setLoading(true);
+    try {
+      await onSignIn(loginForm.email, loginForm.password);
+      toast.success('¡Bienvenido de nuevo!');
+      onClose();
+      
+      // Reset form
+      setLoginForm({ email: '', password: '' });
+    } catch (error: any) {
+      const errorMessage = error.message || 'Error al iniciar sesión';
+      if (errorMessage.includes('Invalid login credentials')) {
+        toast.error('Email o contraseña incorrectos. Verifica tus credenciales o crea una cuenta nueva.');
+      } else {
+        toast.error(errorMessage);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (registerForm.password !== registerForm.confirmPassword) {
@@ -60,19 +70,39 @@ export function AuthDialog({ open, onClose, onLogin }: AuthDialogProps) {
       return;
     }
 
-    // Simulate registration - in real app, this would call an API
-    const newUser: User = {
-      id: 'user-' + Date.now(),
-      email: registerForm.email,
-      name: registerForm.name,
-      phone: registerForm.phone,
-      createdAt: new Date().toISOString(),
-      isProvider: registerForm.isProvider
-    };
-
-    onLogin(newUser);
-    toast.success('¡Cuenta creada exitosamente!');
-    onClose();
+    setLoading(true);
+    try {
+      await onSignUp(
+        registerForm.email,
+        registerForm.password,
+        registerForm.name,
+        registerForm.phone,
+        registerForm.isProvider
+      );
+      toast.success('¡Cuenta creada exitosamente!');
+      onClose();
+      
+      // Reset form
+      setRegisterForm({
+        name: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: '',
+        isProvider: false
+      });
+    } catch (error: any) {
+      const errorMessage = error.message || 'Error al crear la cuenta';
+      
+      // Handle specific error messages
+      if (errorMessage.includes('ya está registrado') || errorMessage.includes('already been registered')) {
+        toast.error('Este correo ya tiene una cuenta. Por favor, inicia sesión en la pestaña "Iniciar Sesión".');
+      } else {
+        toast.error(errorMessage);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -125,9 +155,13 @@ export function AuthDialog({ open, onClose, onLogin }: AuthDialogProps) {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full">
-                Iniciar Sesión
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
               </Button>
+              
+              <p className="text-xs text-center text-gray-500 mt-2">
+                ¿Primera vez? Crea una cuenta en la pestaña "Registrarse"
+              </p>
             </form>
           </TabsContent>
 
@@ -233,8 +267,8 @@ export function AuthDialog({ open, onClose, onLogin }: AuthDialogProps) {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full">
-                Crear Cuenta
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Creando cuenta...' : 'Crear Cuenta'}
               </Button>
             </form>
           </TabsContent>
