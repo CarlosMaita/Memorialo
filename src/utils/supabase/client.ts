@@ -22,9 +22,18 @@ export async function apiRequest(
   body?: any,
   accessToken?: string
 ) {
+  const tokenToUse = accessToken || publicAnonKey;
+  const isUsingAccessToken = !!accessToken;
+  
+  // Log for review creation specifically
+  if (path === '/reviews' && method === 'POST') {
+    console.log('API Request to /reviews - Using access token:', isUsingAccessToken);
+    console.log('API Request to /reviews - Token preview:', tokenToUse.substring(0, 20) + '...');
+  }
+  
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${accessToken || publicAnonKey}`
+    'Authorization': `Bearer ${tokenToUse}`
   };
 
   const options: RequestInit = {

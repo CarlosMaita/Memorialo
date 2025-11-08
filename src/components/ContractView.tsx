@@ -56,7 +56,7 @@ export function ContractView({ contract, open, onClose, userType, onSign }: Cont
           : { artistSignature: signature }
         ),
         status: (userType === 'client' && contract.artistSignature) || (userType === 'artist' && contract.clientSignature)
-          ? 'signed' as const
+          ? 'active' as const
           : (userType === 'client' ? 'pending_artist' as const : 'pending_client' as const)
       };
 
@@ -68,7 +68,7 @@ export function ContractView({ contract, open, onClose, userType, onSign }: Cont
       setSigning(false);
       setAgreedToTerms(false);
       
-      if (updatedContract.status === 'signed') {
+      if (updatedContract.status === 'active') {
         toast.success('🎉 ¡El contrato está completamente firmado por ambas partes!');
       }
     }, 1500);
@@ -76,8 +76,10 @@ export function ContractView({ contract, open, onClose, userType, onSign }: Cont
 
   const getStatusBadge = () => {
     switch (contract.status) {
-      case 'signed':
+      case 'active':
         return <Badge className="bg-green-600">Firmado por ambas partes</Badge>;
+      case 'completed':
+        return <Badge className="bg-blue-600">Completado</Badge>;
       case 'pending_client':
         return <Badge variant="outline" className="border-orange-500 text-orange-700">Pendiente de firma del cliente</Badge>;
       case 'pending_artist':
@@ -169,9 +171,12 @@ export function ContractView({ contract, open, onClose, userType, onSign }: Cont
                 <div>
                   <div className="flex items-center gap-1 mb-1">
                     <Clock className="w-4 h-4 text-gray-500" />
-                    <p className="text-xs text-gray-600">Duración</p>
+                    <p className="text-xs text-gray-600">{contract.terms.startTime ? 'Hora y Duración' : 'Duración'}</p>
                   </div>
-                  <p className="text-sm">{contract.terms.duration} horas</p>
+                  <p className="text-sm">
+                    {contract.terms.startTime && `${contract.terms.startTime} • `}
+                    {contract.terms.duration} {contract.terms.duration === 1 ? 'hora' : 'horas'}
+                  </p>
                 </div>
                 <div>
                   <div className="flex items-center gap-1 mb-1">

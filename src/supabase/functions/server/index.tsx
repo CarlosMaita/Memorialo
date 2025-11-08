@@ -30,21 +30,27 @@ app.use(
 // Helper function to verify user authentication
 async function verifyAuth(authHeader: string | null) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('verifyAuth: No auth header or invalid format. Header:', authHeader);
     return null;
   }
   
   const accessToken = authHeader.split(' ')[1];
+  console.log('verifyAuth: Token preview:', accessToken?.substring(0, 20) + '...');
   
   // If it's the anon key, return null (not authenticated)
   if (accessToken === Deno.env.get('SUPABASE_ANON_KEY')) {
+    console.log('verifyAuth: Anon key detected, not authenticated');
     return null;
   }
   
   try {
     const { data: { user }, error } = await supabase.auth.getUser(accessToken);
     if (error || !user) {
+      console.log('verifyAuth: Failed to get user. Error:', error?.message || 'No user found');
+      console.log('verifyAuth: Error details:', JSON.stringify(error));
       return null;
     }
+    console.log('verifyAuth: Successfully authenticated user:', user.id, user.email);
     return { user, accessToken };
   } catch (error) {
     console.error('Auth verification error:', error);
@@ -354,11 +360,8 @@ app.delete("/make-server-5d78aefb/services/:id", async (c) => {
 
 // Create contract
 app.post("/make-server-5d78aefb/contracts", async (c) => {
+  // Allow both authenticated and guest users to create contracts
   const authResult = await verifyAuth(c.req.header('Authorization'));
-  
-  if (!authResult) {
-    return c.json({ error: 'Unauthorized' }, 401);
-  }
 
   try {
     const contractData = await c.req.json();
@@ -421,14 +424,19 @@ app.put("/make-server-5d78aefb/contracts/:id", async (c) => {
 
 // Create review
 app.post("/make-server-5d78aefb/reviews", async (c) => {
-  const authResult = await verifyAuth(c.req.header('Authorization'));
+  const authHeader = c.req.header('Authorization');
+  console.log('Review creation - Auth header:', authHeader ? 'Present' : 'Missing');
+  
+  const authResult = await verifyAuth(authHeader);
   
   if (!authResult) {
-    return c.json({ error: 'Unauthorized' }, 401);
+    console.error('Review creation - Unauthorized: No valid auth result');
+    return c.json({ error: 'Unauthorized. You must be logged in to create a review.' }, 401);
   }
 
   try {
     const reviewData = await c.req.json();
+    console.log('Review creation - User ID:', authResult.user.id);
     
     const review = {
       ...reviewData,
@@ -438,6 +446,7 @@ app.post("/make-server-5d78aefb/reviews", async (c) => {
     };
 
     await kv.set(`review:${review.id}`, review);
+    console.log('Review created successfully:', review.id);
 
     return c.json(review);
   } catch (error) {
@@ -461,11 +470,8 @@ app.get("/make-server-5d78aefb/reviews", async (c) => {
 
 // Create booking
 app.post("/make-server-5d78aefb/bookings", async (c) => {
+  // Allow both authenticated and guest users to create bookings
   const authResult = await verifyAuth(c.req.header('Authorization'));
-  
-  if (!authResult) {
-    return c.json({ error: 'Unauthorized' }, 401);
-  }
 
   try {
     const bookingData = await c.req.json();
@@ -473,7 +479,8 @@ app.post("/make-server-5d78aefb/bookings", async (c) => {
     const booking = {
       ...bookingData,
       id: bookingData.id || `booking-${Date.now()}`,
-      userId: authResult.user.id,
+      // Use authenticated user ID if available, otherwise use the userId from bookingData (guest)
+      userId: authResult?.user.id || bookingData.userId,
       createdAt: new Date().toISOString()
     };
 

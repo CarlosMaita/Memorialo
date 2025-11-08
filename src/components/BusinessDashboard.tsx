@@ -218,6 +218,15 @@ export function BusinessDashboard({
     const updatedBooking = { ...booking, status };
     onBookingUpdate(updatedBooking);
     
+    // If marking as completed, also update the contract
+    if (status === 'completed' && booking.contractId) {
+      const contract = providerContracts.find(c => c.id === booking.contractId);
+      if (contract) {
+        const updatedContract = { ...contract, status: 'completed' as const };
+        onContractUpdate(updatedContract);
+      }
+    }
+    
     const statusMap: { [key: string]: string } = {
       'pending': 'pendiente',
       'confirmed': 'confirmada',
@@ -597,8 +606,12 @@ export function BusinessDashboard({
                           </p>
                         </div>
                         <div>
-                          <p className="text-gray-600">Duración</p>
-                          <p>{contract.terms.duration}h</p>
+                          <p className="text-gray-600">{contract.terms.startTime ? 'Hora y Duración' : 'Duración'}</p>
+                          <p className="flex items-center gap-1">
+                            <Clock className="w-4 h-4" />
+                            {contract.terms.startTime && `${contract.terms.startTime} • `}
+                            {contract.terms.duration}h
+                          </p>
                         </div>
                         <div>
                           <p className="text-gray-600">Precio</p>

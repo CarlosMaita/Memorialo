@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, DollarSign, Check, FileText } from 'lucide-react';
-import { Artist, ServicePlan, Contract, User } from '../types';
+import { Artist, ServicePlan, Contract, User, Booking } from '../types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -17,16 +17,19 @@ interface BookingDialogProps {
   open: boolean;
   onClose: () => void;
   onContractCreated?: (contract: Contract) => void;
+  onBookingCreated?: (booking: Booking) => void;
+  onBookingUpdate?: (booking: Booking) => void;
   user: User | null;
   onLoginRequired?: () => void;
 }
 
-export function BookingDialog({ artist, selectedPlan, open, onClose, onContractCreated, user, onLoginRequired }: BookingDialogProps) {
+export function BookingDialog({ artist, selectedPlan, open, onClose, onContractCreated, onBookingCreated, onBookingUpdate, user, onLoginRequired }: BookingDialogProps) {
   const [formData, setFormData] = useState({
     clientName: user?.name || '',
     clientEmail: user?.email || '',
     clientPhone: user?.phone || '',
     date: '',
+    startTime: '',
     duration: selectedPlan?.duration.toString() || '2',
     eventType: '',
     location: '',
@@ -36,6 +39,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
 
   const [showContract, setShowContract] = useState(false);
   const [generatedContract, setGeneratedContract] = useState<Contract | null>(null);
+  const [generatedBooking, setGeneratedBooking] = useState<Booking | null>(null);
 
   useEffect(() => {
     if (selectedPlan) {
@@ -84,6 +88,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
         price: totalPrice,
         duration: parseInt(formData.duration),
         date: formData.date,
+        startTime: formData.startTime,
         location: formData.location,
         paymentTerms: 'Se requiere un depósito del 50% para confirmar la reserva. El saldo restante debe pagarse 7 días antes del evento. Los pagos pueden realizarse mediante transferencia bancaria, tarjeta de crédito o efectivo.',
         cancellationPolicy: 'Cancelaciones con más de 30 días de anticipación: reembolso completo del depósito. Cancelaciones entre 15-30 días: reembolso del 50%. Cancelaciones con menos de 15 días: sin reembolso. En caso de emergencia o enfermedad grave, se evaluarán excepciones caso por caso.',
@@ -116,6 +121,35 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     // Generate contract
     const contract = generateContract();
     setGeneratedContract(contract);
+    
+    // Generate booking
+    const booking: Booking = {
+      id: contract.bookingId,
+      artistId: artist.id,
+      artistName: artist.name,
+      userId: user.id,
+      clientName: formData.clientName,
+      clientEmail: formData.clientEmail,
+      clientPhone: formData.clientPhone,
+      date: formData.date,
+      startTime: formData.startTime,
+      duration: parseInt(formData.duration),
+      eventType: formData.eventType,
+      location: formData.location,
+      specialRequests: formData.specialRequests,
+      totalPrice: totalPrice,
+      status: 'pending',
+      planId: formData.planId || undefined,
+      planName: selectedServicePlan?.name,
+      contractId: contract.id
+    };
+    setGeneratedBooking(booking);
+    
+    // Create booking immediately
+    if (onBookingCreated) {
+      onBookingCreated(booking);
+    }
+    
     setShowContract(true);
   };
 
@@ -124,7 +158,16 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
       onContractCreated(signedContract);
     }
     
-    toast.success('¡Reserva creada! El artista revisará y firmará el contrato.');
+    // Update booking to confirmed when client signs
+    if (generatedBooking && onBookingUpdate) {
+      const updatedBooking = {
+        ...generatedBooking,
+        status: 'confirmed' as const
+      };
+      onBookingUpdate(updatedBooking);
+    }
+    
+    toast.success('¡Reserva confirmada! Tu evento ha sido reservado exitosamente.');
     
     // Reset form
     setFormData({
@@ -132,6 +175,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
       clientEmail: '',
       clientPhone: '',
       date: '',
+      startTime: '',
       duration: '2',
       eventType: '',
       location: '',
@@ -141,6 +185,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     
     setShowContract(false);
     setGeneratedContract(null);
+    setGeneratedBooking(null);
     onClose();
   };
 
@@ -291,26 +336,41 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
               </div>
 
               <div>
-                <Label htmlFor="duration">Duración (horas) *</Label>
+                <Label htmlFor="startTime">Hora de Inicio *</Label>
                 <div className="relative">
                   <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Select 
-                    value={formData.duration} 
-                    onValueChange={(value) => setFormData({ ...formData, duration: value, planId: '' })}
-                    disabled={!!selectedServicePlan}
-                  >
-                    <SelectTrigger className="pl-10">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5, 6, 8, 10].map((hours) => (
-                        <SelectItem key={hours} value={hours.toString()}>
-                          {hours} {hours === 1 ? 'hora' : 'horas'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    required
+                    value={formData.startTime}
+                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                    className="pl-10"
+                  />
                 </div>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="duration">Duración (horas) *</Label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Select 
+                  value={formData.duration} 
+                  onValueChange={(value) => setFormData({ ...formData, duration: value, planId: '' })}
+                  disabled={!!selectedServicePlan}
+                >
+                  <SelectTrigger className="pl-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 8, 10].map((hours) => (
+                      <SelectItem key={hours} value={hours.toString()}>
+                        {hours} {hours === 1 ? 'hora' : 'horas'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

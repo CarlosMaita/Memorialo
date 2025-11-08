@@ -7,27 +7,67 @@ export function useSupabase() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Check for existing session on mount
+  // Check for existing session on mount and listen for auth changes
   useEffect(() => {
     checkSession();
+    
+    // Listen for auth state changes
+    const supabase = getSupabaseClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event);
+      
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (session) {
+          console.log('Session updated, refreshing user data');
+          try {
+            const userData = await apiRequest(`/users/${session.user.id}`, 'GET');
+            setCurrentUser(userData);
+            setAccessToken(session.access_token);
+          } catch (err) {
+            console.error('Error loading user data after auth change:', err);
+          }
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+        setAccessToken(null);
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const checkSession = async () => {
     try {
       // Check if there's an active session with Supabase client
       const supabase = getSupabaseClient();
-      const { data: { session }, error } = await supabase.auth.getSession();
       
-      if (error || !session) {
-        setLoading(false);
-        return;
+      // First try to refresh the session to get a fresh token
+      const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+      
+      let session = refreshedSession;
+      
+      // If refresh fails, try to get the existing session
+      if (refreshError || !refreshedSession) {
+        console.log('Session refresh failed, trying to get existing session');
+        const { data: { session: existingSession }, error } = await supabase.auth.getSession();
+        
+        if (error || !existingSession) {
+          setLoading(false);
+          return;
+        }
+        session = existingSession;
       }
+
+      console.log('Session found, access token present:', !!session.access_token);
 
       // Get user data from backend
       try {
         const userData = await apiRequest(`/users/${session.user.id}`, 'GET');
         setCurrentUser(userData);
         setAccessToken(session.access_token);
+        console.log('User session restored:', userData.email);
       } catch (err) {
         console.error('Error loading user data:', err);
         // Session exists but user data not found, sign out
@@ -228,7 +268,15 @@ export function useSupabase() {
   // Review functions
   const createReview = async (reviewData: any) => {
     try {
-      const data = await apiRequest('/reviews', 'POST', reviewData, accessToken || undefined);
+      console.log('Creating review - accessToken present:', !!accessToken);
+      console.log('Creating review - accessToken value:', accessToken?.substring(0, 20) + '...');
+      console.log('Creating review - currentUser:', currentUser?.email);
+      
+      if (!accessToken) {
+        throw new Error('You must be logged in to create a review');
+      }
+      
+      const data = await apiRequest('/reviews', 'POST', reviewData, accessToken);
       return data;
     } catch (error) {
       console.error('Create review error:', error);

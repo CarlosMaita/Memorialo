@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -20,6 +20,15 @@ export function ReviewDialog({ open, onClose, booking, user, onReviewSubmit }: R
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
 
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setRating(0);
+      setHoverRating(0);
+      setComment('');
+    }
+  }, [open]);
+
   if (!booking) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -37,6 +46,7 @@ export function ReviewDialog({ open, onClose, booking, user, onReviewSubmit }: R
 
     const newReview: Review = {
       id: 'review-' + Date.now(),
+      contractId: booking.contractId || booking.id, // Usar contractId si existe, sino usar bookingId
       bookingId: booking.id,
       artistId: booking.artistId,
       userId: user.id,
@@ -48,13 +58,6 @@ export function ReviewDialog({ open, onClose, booking, user, onReviewSubmit }: R
     };
 
     onReviewSubmit(newReview);
-    toast.success('¡Reseña publicada exitosamente!');
-    
-    // Reset form
-    setRating(0);
-    setHoverRating(0);
-    setComment('');
-    onClose();
   };
 
   return (

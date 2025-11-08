@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase } from 'lucide-react';
+import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase, Music } from 'lucide-react';
 import { Artist, ServicePlan, Contract, User, Review, Booking, Provider } from './types';
 import { mockArtists } from './data/mockData';
 import { mockReviews } from './data/mockReviews';
@@ -71,15 +71,26 @@ export default function App() {
     }
   }, [currentUser]);
 
+  // Update selected artist when artists state changes
+  useEffect(() => {
+    if (selectedArtist) {
+      const updatedArtist = artists.find(a => a.id === selectedArtist.id);
+      if (updatedArtist) {
+        setSelectedArtist(updatedArtist);
+      }
+    }
+  }, [artists]);
+
   const loadData = async () => {
     try {
       // Load services (artists) - use mock data as fallback
       const servicesData = await supabase.getServices();
+      let loadedArtists: Artist[] = [];
       if (servicesData && servicesData.length > 0) {
-        setArtists(servicesData);
+        loadedArtists = servicesData;
       } else {
         // If no data in DB, use mock data
-        setArtists(mockArtists);
+        loadedArtists = mockArtists;
       }
 
       // Load contracts
@@ -90,11 +101,33 @@ export default function App() {
 
       // Load reviews - use mock data as fallback
       const reviewsData = await supabase.getReviews();
+      let loadedReviews: Review[] = [];
       if (reviewsData && reviewsData.length > 0) {
-        setReviews(reviewsData);
+        loadedReviews = reviewsData;
       } else {
-        setReviews(mockReviews);
+        loadedReviews = mockReviews;
       }
+      setReviews(loadedReviews);
+
+      // Update artist ratings based on loaded reviews
+      const updatedArtists = loadedArtists.map(artist => {
+        const artistReviews = loadedReviews.filter(r => r.artistId === artist.id);
+        
+        if (artistReviews.length === 0) {
+          return artist;
+        }
+        
+        const totalRating = artistReviews.reduce((sum, r) => sum + r.rating, 0);
+        const averageRating = totalRating / artistReviews.length;
+        
+        return {
+          ...artist,
+          rating: Math.round(averageRating * 10) / 10,
+          reviews: artistReviews.length
+        };
+      });
+      
+      setArtists(updatedArtists);
 
       // Load bookings
       const bookingsData = await supabase.getBookings();
@@ -321,10 +354,47 @@ export default function App() {
     }
   };
 
+  // Function to recalculate and update artist ratings
+  const updateArtistRatings = (artistId: string, allReviews: Review[]) => {
+    // Get all reviews for this artist
+    const artistReviews = allReviews.filter(r => r.artistId === artistId);
+    
+    if (artistReviews.length === 0) return;
+    
+    // Calculate average rating
+    const totalRating = artistReviews.reduce((sum, r) => sum + r.rating, 0);
+    const averageRating = totalRating / artistReviews.length;
+    
+    // Update the artist with new rating and review count
+    setArtists(prev => 
+      prev.map(artist => 
+        artist.id === artistId 
+          ? { 
+              ...artist, 
+              rating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
+              reviews: artistReviews.length 
+            }
+          : artist
+      )
+    );
+  };
+
   const handleReviewSubmit = async (review: Review) => {
     try {
+      if (!currentUser) {
+        toast.error('Debes iniciar sesión para dejar una reseña');
+        return;
+      }
+      
       const createdReview = await supabase.createReview(review);
-      setReviews(prev => [...prev, createdReview]);
+      setReviews(prev => {
+        const newReviews = [...prev, createdReview];
+        
+        // Update artist rating and review count
+        updateArtistRatings(review.artistId, newReviews);
+        
+        return newReviews;
+      });
       
       // Update booking to mark it as reviewed
       setBookings(prev => 
@@ -334,9 +404,18 @@ export default function App() {
             : b
         )
       );
-    } catch (error) {
+      
+      // Close dialog and show success message
+      setShowReviewDialog(false);
+      setReviewBooking(null);
+      toast.success('¡Reseña publicada exitosamente!');
+    } catch (error: any) {
       console.error('Error submitting review:', error);
-      toast.error('Error al enviar reseña');
+      if (error.message?.includes('logged in')) {
+        toast.error('Debes iniciar sesión para dejar una reseña');
+      } else {
+        toast.error('Error al enviar reseña. Por favor intenta de nuevo.');
+      }
     }
   };
 
@@ -424,8 +503,8 @@ export default function App() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-purple-600 to-blue-600 text-white p-2 rounded-lg">
-                <Users className="w-6 h-6" />
+              <div className="bg-black text-white p-2 rounded-lg">
+                <Music className="w-6 h-6" />
               </div>
               <div>
                 <h1 className="text-sm">Famitos</h1>
@@ -814,6 +893,8 @@ export default function App() {
           setSelectedPlan(null);
         }}
         onContractCreated={handleContractCreated}
+        onBookingCreated={handleBookingCreate}
+        onBookingUpdate={handleBookingUpdate}
         user={currentUser}
         onLoginRequired={() => setShowAuthDialog(true)}
       />

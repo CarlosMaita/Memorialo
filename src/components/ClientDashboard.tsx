@@ -64,7 +64,8 @@ export function ClientDashboard({ contracts, user, onReviewCreate, reviews }: Cl
   };
 
   const hasReviewed = (contractId: string): boolean => {
-    return reviews.some(r => r.bookingId === contractId);
+    // Verificar si ya existe una reseña para este contrato específico
+    return reviews.some(r => r.contractId === contractId);
   };
 
   const ContractCard = ({ contract }: { contract: Contract }) => {
@@ -104,8 +105,11 @@ export function ClientDashboard({ contracts, user, onReviewCreate, reviews }: Cl
             <div className="flex items-center gap-2 text-sm">
               <Clock className="w-4 h-4 text-gray-500" />
               <div>
-                <p className="text-xs text-gray-500">Duración</p>
-                <p>{contract.terms.duration} {contract.terms.duration === 1 ? 'hora' : 'horas'}</p>
+                <p className="text-xs text-gray-500">{contract.terms.startTime ? 'Hora y Duración' : 'Duración'}</p>
+                <p>
+                  {contract.terms.startTime && `${contract.terms.startTime} • `}
+                  {contract.terms.duration} {contract.terms.duration === 1 ? 'hora' : 'horas'}
+                </p>
               </div>
             </div>
 

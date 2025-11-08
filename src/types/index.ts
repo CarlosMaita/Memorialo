@@ -47,6 +47,7 @@ export interface Contract {
     price: number;
     duration: number;
     date: string;
+    startTime?: string; // Hora de inicio (formato HH:mm)
     location: string;
     cancellationPolicy: string;
     paymentTerms: string;
@@ -115,7 +116,8 @@ export interface Provider {
 
 export interface Review {
   id: string;
-  bookingId: string;
+  contractId: string; // ID del contrato específico
+  bookingId: string; // ID del booking (legacy - mantener por compatibilidad)
   artistId: string;
   userId: string;
   userName: string;
