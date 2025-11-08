@@ -18,7 +18,7 @@ interface SearchFiltersProps {
   onSortChange: (value: string) => void;
 }
 
-const categories = ['All', 'Musician', 'DJ', 'Mariachi', 'Animator'];
+const categories = ['Todos', 'Músico', 'DJ', 'Mariachi', 'Animador'];
 
 export function SearchFilters({
   searchQuery,
@@ -37,7 +37,7 @@ export function SearchFilters({
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
         <Input
           type="text"
-          placeholder="Search by name, specialty, or location..."
+          placeholder="Buscar por nombre, especialidad o ubicación..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-10"
@@ -64,16 +64,16 @@ export function SearchFilters({
           <SheetTrigger asChild>
             <Button variant="outline" size="sm" className="lg:hidden">
               <SlidersHorizontal className="w-4 h-4 mr-2" />
-              Filters
+              Filtros
             </Button>
           </SheetTrigger>
           <SheetContent>
             <SheetHeader>
-              <SheetTitle>Filters</SheetTitle>
+              <SheetTitle>Filtros</SheetTitle>
             </SheetHeader>
             <div className="space-y-6 mt-6">
               <div>
-                <Label>Price Range (per hour)</Label>
+                <Label>Rango de Precio (por hora)</Label>
                 <div className="mt-4">
                   <Slider
                     min={0}
@@ -90,16 +90,16 @@ export function SearchFilters({
               </div>
 
               <div>
-                <Label>Sort By</Label>
+                <Label>Ordenar Por</Label>
                 <Select value={sortBy} onValueChange={onSortChange}>
                   <SelectTrigger className="mt-2">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="rating">Highest Rated</SelectItem>
-                    <SelectItem value="price-low">Price: Low to High</SelectItem>
-                    <SelectItem value="price-high">Price: High to Low</SelectItem>
-                    <SelectItem value="reviews">Most Reviews</SelectItem>
+                    <SelectItem value="rating">Mejor Calificación</SelectItem>
+                    <SelectItem value="price-low">Precio: Menor a Mayor</SelectItem>
+                    <SelectItem value="price-high">Precio: Mayor a Menor</SelectItem>
+                    <SelectItem value="reviews">Más Reseñas</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -110,14 +110,14 @@ export function SearchFilters({
         {/* Desktop Filters */}
         <div className="hidden lg:flex items-center gap-3">
           <Select value={sortBy} onValueChange={onSortChange}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[200px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="rating">Highest Rated</SelectItem>
-              <SelectItem value="price-low">Price: Low to High</SelectItem>
-              <SelectItem value="price-high">Price: High to Low</SelectItem>
-              <SelectItem value="reviews">Most Reviews</SelectItem>
+              <SelectItem value="rating">Mejor Calificación</SelectItem>
+              <SelectItem value="price-low">Precio: Menor a Mayor</SelectItem>
+              <SelectItem value="price-high">Precio: Mayor a Menor</SelectItem>
+              <SelectItem value="reviews">Más Reseñas</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -125,7 +125,7 @@ export function SearchFilters({
 
       {/* Desktop Price Filter */}
       <div className="hidden lg:block">
-        <Label>Price Range (per hour): ${priceRange[0]} - ${priceRange[1]}</Label>
+        <Label>Rango de Precio (por hora): ${priceRange[0]} - ${priceRange[1]}</Label>
         <Slider
           min={0}
           max={500}

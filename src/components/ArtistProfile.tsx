@@ -1,27 +1,44 @@
-import { Star, MapPin, CheckCircle, Clock, Calendar, Award, Check, Sparkles } from 'lucide-react';
-import { Artist, ServicePlan } from '../types';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Star, MapPin, CheckCircle, Clock, Calendar, Award, Check, Sparkles, MessageSquare } from 'lucide-react';
+import { Artist, ServicePlan, Review } from '../types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { Avatar, AvatarFallback } from './ui/avatar';
 
 interface ArtistProfileProps {
   artist: Artist | null;
   open: boolean;
   onClose: () => void;
   onBookNow: (artist: Artist, plan?: ServicePlan) => void;
+  reviews?: Review[];
+  isAuthenticated?: boolean;
 }
 
-export function ArtistProfile({ artist, open, onClose, onBookNow }: ArtistProfileProps) {
+export function ArtistProfile({ artist, open, onClose, onBookNow, reviews = [], isAuthenticated = false }: ArtistProfileProps) {
   if (!artist) return null;
+
+  const artistReviews = reviews.filter(r => r.artistId === artist.id);
+  
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="sr-only">{artist.name} Profile</DialogTitle>
+          <DialogDescription className="sr-only">
+            Perfil completo de {artist.name}, incluyendo servicios, planes, portafolio y reseñas
+          </DialogDescription>
         </DialogHeader>
 
         {/* Hero Section */}
@@ -43,7 +60,7 @@ export function ArtistProfile({ artist, open, onClose, onBookNow }: ArtistProfil
               <Badge variant="secondary">{artist.category}</Badge>
               <div className="flex items-center gap-1">
                 <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                <span>{artist.rating.toFixed(1)} ({artist.reviews} reviews)</span>
+                <span>{artist.rating.toFixed(1)} ({artist.reviews} reseñas)</span>
               </div>
             </div>
           </div>
@@ -53,17 +70,17 @@ export function ArtistProfile({ artist, open, onClose, onBookNow }: ArtistProfil
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="text-center p-3 bg-gray-50 rounded-lg">
             <Award className="w-5 h-5 mx-auto mb-1 text-primary" />
-            <p className="text-sm text-gray-600">Completed</p>
+            <p className="text-sm text-gray-600">Completados</p>
             <p>{artist.bookingsCompleted}</p>
           </div>
           <div className="text-center p-3 bg-gray-50 rounded-lg">
             <Clock className="w-5 h-5 mx-auto mb-1 text-primary" />
-            <p className="text-sm text-gray-600">Response</p>
+            <p className="text-sm text-gray-600">Respuesta</p>
             <p>{artist.responseTime}</p>
           </div>
           <div className="text-center p-3 bg-gray-50 rounded-lg">
             <MapPin className="w-5 h-5 mx-auto mb-1 text-primary" />
-            <p className="text-sm text-gray-600">Location</p>
+            <p className="text-sm text-gray-600">Ubicación</p>
             <p className="text-sm">{artist.location}</p>
           </div>
         </div>
@@ -72,7 +89,7 @@ export function ArtistProfile({ artist, open, onClose, onBookNow }: ArtistProfil
 
         {/* Bio */}
         <div className="space-y-2">
-          <h3>About</h3>
+          <h3>Acerca de</h3>
           <p className="text-gray-700">{artist.bio}</p>
         </div>
 
@@ -80,7 +97,7 @@ export function ArtistProfile({ artist, open, onClose, onBookNow }: ArtistProfil
 
         {/* Specialties */}
         <div className="space-y-2">
-          <h3>Specialties</h3>
+          <h3>Especialidades</h3>
           <div className="flex flex-wrap gap-2">
             {artist.specialties.map((specialty, index) => (
               <Badge key={index} variant="outline">{specialty}</Badge>
@@ -92,7 +109,7 @@ export function ArtistProfile({ artist, open, onClose, onBookNow }: ArtistProfil
 
         {/* Availability */}
         <div className="space-y-2">
-          <h3>Availability</h3>
+          <h3>Disponibilidad</h3>
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-gray-500" />
             <span className="text-gray-700">{artist.availability.join(', ')}</span>
@@ -148,7 +165,7 @@ export function ArtistProfile({ artist, open, onClose, onBookNow }: ArtistProfil
                         variant={plan.popular ? 'default' : 'outline'}
                         onClick={() => onBookNow(artist, plan)}
                       >
-                        Seleccionar Plan
+                        {isAuthenticated ? 'Seleccionar Plan' : 'Iniciar Sesión para Reservar'}
                       </Button>
                     </CardContent>
                   </Card>
@@ -174,6 +191,63 @@ export function ArtistProfile({ artist, open, onClose, onBookNow }: ArtistProfil
                     />
                   </div>
                 ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Reviews Section */}
+        {artistReviews.length > 0 && (
+          <>
+            <Separator />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3>Reseñas de Clientes</h3>
+                <div className="flex items-center gap-2">
+                  <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                  <span>{artist.rating.toFixed(1)}</span>
+                  <span className="text-sm text-gray-500">({artistReviews.length} reseñas)</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {artistReviews.slice(0, 5).map((review) => (
+                  <div key={review.id} className="border rounded-lg p-4">
+                    <div className="flex items-start gap-3 mb-2">
+                      <Avatar className="w-10 h-10">
+                        <AvatarFallback className="bg-primary text-white text-sm">
+                          {getInitials(review.userName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm">{review.userName}</p>
+                          <span className="text-xs text-gray-500">
+                            {new Date(review.createdAt).toLocaleDateString('es-ES')}
+                          </span>
+                        </div>
+                        <div className="flex gap-0.5 mb-2">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-4 h-4 ${
+                                i < review.rating
+                                  ? 'fill-yellow-400 text-yellow-400'
+                                  : 'text-gray-300'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <p className="text-sm text-gray-700">{review.comment}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {artistReviews.length > 5 && (
+                  <p className="text-sm text-gray-500 text-center">
+                    +{artistReviews.length - 5} reseñas más
+                  </p>
+                )}
               </div>
             </div>
           </>

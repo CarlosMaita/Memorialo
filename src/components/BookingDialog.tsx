@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, DollarSign, Check, FileText } from 'lucide-react';
-import { Artist, ServicePlan, Contract } from '../types';
+import { Artist, ServicePlan, Contract, User } from '../types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -17,13 +17,15 @@ interface BookingDialogProps {
   open: boolean;
   onClose: () => void;
   onContractCreated?: (contract: Contract) => void;
+  user: User | null;
+  onLoginRequired?: () => void;
 }
 
-export function BookingDialog({ artist, selectedPlan, open, onClose, onContractCreated }: BookingDialogProps) {
+export function BookingDialog({ artist, selectedPlan, open, onClose, onContractCreated, user, onLoginRequired }: BookingDialogProps) {
   const [formData, setFormData] = useState({
-    clientName: '',
-    clientEmail: '',
-    clientPhone: '',
+    clientName: user?.name || '',
+    clientEmail: user?.email || '',
+    clientPhone: user?.phone || '',
     date: '',
     duration: selectedPlan?.duration.toString() || '2',
     eventType: '',
@@ -44,6 +46,17 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
       }));
     }
   }, [selectedPlan]);
+
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        clientName: user.name,
+        clientEmail: user.email,
+        clientPhone: user.phone || prev.clientPhone
+      }));
+    }
+  }, [user]);
 
   if (!artist) return null;
 
@@ -89,6 +102,15 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Check if user is logged in
+    if (!user) {
+      toast.error('Debes iniciar sesión para hacer una reserva');
+      if (onLoginRequired) {
+        onLoginRequired();
+      }
+      return;
+    }
+    
     // Generate contract
     const contract = generateContract();
     setGeneratedContract(contract);
@@ -124,9 +146,9 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Book {artist.name}</DialogTitle>
+          <DialogTitle>Reservar a {artist.name}</DialogTitle>
           <DialogDescription>
-            Fill out the form below to request a booking. The artist will respond within {artist.responseTime}.
+            Completa el formulario para solicitar una reserva. El artista responderá en {artist.responseTime}.
           </DialogDescription>
         </DialogHeader>
 
@@ -169,21 +191,29 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
             <div className="space-y-3">
               <Label htmlFor="planSelect">Seleccionar Plan (Opcional)</Label>
               <Select 
-                value={formData.planId} 
+                value={formData.planId || 'custom'} 
                 onValueChange={(value) => {
-                  const plan = artist.servicePlans?.find(p => p.id === value);
-                  setFormData({ 
-                    ...formData, 
-                    planId: value,
-                    duration: plan ? plan.duration.toString() : formData.duration
-                  });
+                  if (value === 'custom') {
+                    setFormData({ 
+                      ...formData, 
+                      planId: '',
+                      duration: '2'
+                    });
+                  } else {
+                    const plan = artist.servicePlans?.find(p => p.id === value);
+                    setFormData({ 
+                      ...formData, 
+                      planId: value,
+                      duration: plan ? plan.duration.toString() : formData.duration
+                    });
+                  }
                 }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Reserva personalizada o selecciona un plan" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Reserva personalizada</SelectItem>
+                  <SelectItem value="custom">Reserva personalizada</SelectItem>
                   {artist.servicePlans.map((plan) => (
                     <SelectItem key={plan.id} value={plan.id}>
                       {plan.name} - ${plan.price} ({plan.duration}h)
@@ -196,33 +226,35 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
 
           {/* Client Information */}
           <div className="space-y-3">
-            <h3 className="text-sm">Your Information</h3>
+            <h3 className="text-sm">Tu Información</h3>
             
             <div>
-              <Label htmlFor="name">Full Name *</Label>
+              <Label htmlFor="name">Nombre Completo *</Label>
               <Input
                 id="name"
                 required
                 value={formData.clientName}
                 onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                placeholder="John Doe"
+                placeholder="Juan Pérez"
+                disabled={!!user}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="email">Email *</Label>
+                <Label htmlFor="email">Correo Electrónico *</Label>
                 <Input
                   id="email"
                   type="email"
                   required
                   value={formData.clientEmail}
                   onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })}
-                  placeholder="john@example.com"
+                  placeholder="juan@ejemplo.com"
+                  disabled={!!user}
                 />
               </div>
               <div>
-                <Label htmlFor="phone">Phone *</Label>
+                <Label htmlFor="phone">Teléfono *</Label>
                 <Input
                   id="phone"
                   type="tel"
@@ -237,11 +269,11 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
 
           {/* Event Details */}
           <div className="space-y-3 pt-4 border-t">
-            <h3 className="text-sm">Event Details</h3>
+            <h3 className="text-sm">Detalles del Evento</h3>
             
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="date">Event Date *</Label>
+                <Label htmlFor="date">Fecha del Evento *</Label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
@@ -257,7 +289,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
               </div>
 
               <div>
-                <Label htmlFor="duration">Duration (hours) *</Label>
+                <Label htmlFor="duration">Duración (horas) *</Label>
                 <div className="relative">
                   <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Select 
@@ -271,7 +303,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
                     <SelectContent>
                       {[1, 2, 3, 4, 5, 6, 8, 10].map((hours) => (
                         <SelectItem key={hours} value={hours.toString()}>
-                          {hours} {hours === 1 ? 'hour' : 'hours'}
+                          {hours} {hours === 1 ? 'hora' : 'horas'}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -281,44 +313,44 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
             </div>
 
             <div>
-              <Label htmlFor="eventType">Event Type *</Label>
+              <Label htmlFor="eventType">Tipo de Evento *</Label>
               <Select 
                 value={formData.eventType} 
                 onValueChange={(value) => setFormData({ ...formData, eventType: value })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select event type" />
+                  <SelectValue placeholder="Selecciona el tipo de evento" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="wedding">Wedding</SelectItem>
-                  <SelectItem value="corporate">Corporate Event</SelectItem>
-                  <SelectItem value="birthday">Birthday Party</SelectItem>
+                  <SelectItem value="wedding">Boda</SelectItem>
+                  <SelectItem value="corporate">Evento Corporativo</SelectItem>
+                  <SelectItem value="birthday">Fiesta de Cumpleaños</SelectItem>
                   <SelectItem value="quinceanera">Quinceañera</SelectItem>
-                  <SelectItem value="concert">Concert</SelectItem>
-                  <SelectItem value="private">Private Party</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="concert">Concierto</SelectItem>
+                  <SelectItem value="private">Fiesta Privada</SelectItem>
+                  <SelectItem value="other">Otro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="location">Event Location *</Label>
+              <Label htmlFor="location">Ubicación del Evento *</Label>
               <Input
                 id="location"
                 required
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="City, State or Full Address"
+                placeholder="Ciudad, Estado o Dirección Completa"
               />
             </div>
 
             <div>
-              <Label htmlFor="requests">Special Requests (Optional)</Label>
+              <Label htmlFor="requests">Solicitudes Especiales (Opcional)</Label>
               <Textarea
                 id="requests"
                 value={formData.specialRequests}
                 onChange={(e) => setFormData({ ...formData, specialRequests: e.target.value })}
-                placeholder="Any special songs, requirements, or details the artist should know..."
+                placeholder="Canciones especiales, requisitos o detalles que el artista deba saber..."
                 rows={3}
               />
             </div>
@@ -347,17 +379,17 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
             ) : (
               <>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Rate per hour</span>
+                  <span className="text-gray-600">Tarifa por hora</span>
                   <span>${artist.pricePerHour}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Duration</span>
-                  <span>{formData.duration} {parseInt(formData.duration) === 1 ? 'hour' : 'hours'}</span>
+                  <span className="text-gray-600">Duración</span>
+                  <span>{formData.duration} {parseInt(formData.duration) === 1 ? 'hora' : 'horas'}</span>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t">
                   <span className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4" />
-                    <span>Estimated Total</span>
+                    <span>Total Estimado</span>
                   </span>
                   <span className="text-green-600">${totalPrice}</span>
                 </div>
@@ -366,7 +398,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
             <p className="text-xs text-gray-500 pt-2">
               {selectedServicePlan 
                 ? 'El precio incluye todo lo mencionado en el plan. El artista confirmará los detalles finales.'
-                : 'Final price may vary based on specific requirements and will be confirmed by the artist.'
+                : 'El precio final puede variar según los requisitos específicos y será confirmado por el artista.'
               }
             </p>
           </div>
@@ -374,7 +406,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
           {/* Submit */}
           <div className="flex gap-3 pt-4">
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-              Cancel
+              Cancelar
             </Button>
             <Button type="submit" className="flex-1">
               <FileText className="w-4 h-4 mr-2" />

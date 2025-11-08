@@ -10,9 +10,9 @@ export const mockArtists: Artist[] = [
     reviews: 127,
     pricePerHour: 150,
     location: 'Los Angeles, CA',
-    bio: 'Traditional mariachi band with 15+ years of experience. Perfect for weddings, quinceañeras, and celebrations.',
-    specialties: ['Weddings', 'Quinceañeras', 'Corporate Events', 'Serenades'],
-    availability: ['Weekends', 'Evenings'],
+    bio: 'Banda de mariachi tradicional con más de 15 años de experiencia. Perfecto para bodas, quinceañeras y celebraciones.',
+    specialties: ['Bodas', 'Quinceañeras', 'Eventos Corporativos', 'Serenatas'],
+    availability: ['Fines de semana', 'Noches'],
     portfolio: [
       'https://images.unsplash.com/photo-1729638276657-0a0978e66d38?w=400',
       'https://images.unsplash.com/photo-1727831140213-18650ae7ef36?w=400'
@@ -78,63 +78,63 @@ export const mockArtists: Artist[] = [
     reviews: 89,
     pricePerHour: 200,
     location: 'Miami, FL',
-    bio: 'Professional DJ specializing in weddings, corporate events, and private parties. Full sound and lighting equipment included.',
-    specialties: ['Weddings', 'Corporate Events', 'House Parties', 'EDM'],
-    availability: ['Weekends', 'Evenings', 'Weekdays'],
+    bio: 'DJ profesional especializado en bodas, eventos corporativos y fiestas privadas. Equipo completo de sonido e iluminación incluido.',
+    specialties: ['Bodas', 'Eventos Corporativos', 'Fiestas en Casa', 'EDM'],
+    availability: ['Fines de semana', 'Noches', 'Entre semana'],
     portfolio: [
       'https://images.unsplash.com/photo-1618107095181-e3ba0f53ee59?w=400'
     ],
     verified: true,
-    responseTime: '< 2 hours',
+    responseTime: '< 2 horas',
     bookingsCompleted: 215,
     servicePlans: [
       {
         id: 'p2-1',
-        name: 'Starter Party',
+        name: 'Fiesta Inicial',
         price: 350,
         duration: 2,
-        description: 'Perfect for small gatherings and intimate celebrations',
+        description: 'Perfecto para reuniones pequeñas y celebraciones íntimas',
         includes: [
-          'Professional DJ service',
-          'Basic sound system',
-          'Music mixing',
-          'Up to 50 guests',
-          'Digital music library'
+          'Servicio profesional de DJ',
+          'Sistema de sonido básico',
+          'Mezcla de música',
+          'Hasta 50 invitados',
+          'Biblioteca musical digital'
         ]
       },
       {
         id: 'p2-2',
-        name: 'Premium Event',
+        name: 'Evento Premium',
         price: 800,
         duration: 4,
-        description: 'Complete entertainment package for weddings and large events',
+        description: 'Paquete completo de entretenimiento para bodas y eventos grandes',
         includes: [
-          'Professional DJ & MC services',
-          'Premium sound system',
-          'LED lighting package',
-          'Wireless microphones',
-          'Up to 200 guests',
-          'Custom playlist creation',
-          'Event coordination meeting'
+          'DJ profesional y servicios de MC',
+          'Sistema de sonido premium',
+          'Paquete de iluminación LED',
+          'Micrófonos inalámbricos',
+          'Hasta 200 invitados',
+          'Creación de playlist personalizada',
+          'Reunión de coordinación del evento'
         ],
         popular: true
       },
       {
         id: 'p2-3',
-        name: 'VIP Experience',
+        name: 'Experiencia VIP',
         price: 1500,
         duration: 6,
-        description: 'Ultimate DJ experience with full production',
+        description: 'Experiencia DJ definitiva con producción completa',
         includes: [
-          'Professional DJ & MC',
-          'Premium sound & lighting',
-          'Fog machine & special effects',
-          'Photo booth integration',
-          'Video mixing capabilities',
-          'Unlimited guests',
-          'Custom monogram projection',
-          'Backup equipment',
-          'Assistant DJ'
+          'DJ profesional y MC',
+          'Sonido e iluminación premium',
+          'Máquina de humo y efectos especiales',
+          'Integración de cabina de fotos',
+          'Capacidades de mezcla de video',
+          'Invitados ilimitados',
+          'Proyección de monograma personalizado',
+          'Equipo de respaldo',
+          'DJ asistente'
         ]
       }
     ]
@@ -148,61 +148,61 @@ export const mockArtists: Artist[] = [
     reviews: 156,
     pricePerHour: 175,
     location: 'Austin, TX',
-    bio: 'Classical and contemporary violinist available for weddings, galas, and intimate events. Solo or quartet available.',
-    specialties: ['Weddings', 'Classical', 'Contemporary', 'Chamber Music'],
-    availability: ['Weekends', 'Evenings'],
+    bio: 'Violinista clásica y contemporánea disponible para bodas, galas y eventos íntimos. Disponible en solo o cuarteto.',
+    specialties: ['Bodas', 'Clásica', 'Contemporánea', 'Música de Cámara'],
+    availability: ['Fines de semana', 'Noches'],
     portfolio: [
       'https://images.unsplash.com/photo-1727831140213-18650ae7ef36?w=400'
     ],
     verified: true,
-    responseTime: '< 3 hours',
+    responseTime: '< 3 horas',
     bookingsCompleted: 189,
     servicePlans: [
       {
         id: 'p3-1',
-        name: 'Solo Performance',
+        name: 'Presentación en Solo',
         price: 300,
         duration: 2,
-        description: 'Elegant violin performance for intimate occasions',
+        description: 'Elegante presentación de violín para ocasiones íntimas',
         includes: [
-          'Solo violin performance',
-          'Classical & contemporary repertoire',
-          'Up to 10 songs',
-          'Professional sound system',
-          'Ceremony or cocktail hour'
+          'Presentación de violín en solo',
+          'Repertorio clásico y contemporáneo',
+          'Hasta 10 canciones',
+          'Sistema de sonido profesional',
+          'Ceremonia o hora de cóctel'
         ]
       },
       {
         id: 'p3-2',
-        name: 'Duo Ensemble',
+        name: 'Ensamble de Dúo',
         price: 550,
         duration: 3,
-        description: 'Beautiful violin and piano/cello combination',
+        description: 'Hermosa combinación de violín y piano/cello',
         includes: [
-          'Violin + Piano or Cello',
-          'Extended repertoire',
-          'Custom song requests',
-          'Ceremony & cocktail hour',
-          'Professional audio setup',
-          'Coordination meeting'
+          'Violín + Piano o Cello',
+          'Repertorio extendido',
+          'Canciones personalizadas a petición',
+          'Ceremonia y hora de cóctel',
+          'Configuración de audio profesional',
+          'Reunión de coordinación'
         ],
         popular: true
       },
       {
         id: 'p3-3',
-        name: 'String Quartet',
+        name: 'Cuarteto de Cuerdas',
         price: 1000,
         duration: 4,
-        description: 'Full chamber ensemble for an unforgettable experience',
+        description: 'Ensamble de cámara completo para una experiencia inolvidable',
         includes: [
-          'Professional string quartet',
-          'Complete classical repertoire',
-          'Custom arrangements available',
-          'Multiple performance locations',
-          'Premium sound equipment',
-          'Music consultation',
-          'Unlimited song requests',
-          'Ceremony, cocktail & reception'
+          'Cuarteto de cuerdas profesional',
+          'Repertorio clásico completo',
+          'Arreglos personalizados disponibles',
+          'Múltiples ubicaciones de presentación',
+          'Equipo de sonido premium',
+          'Consultoría musical',
+          'Solicitudes de canciones ilimitadas',
+          'Ceremonia, cóctel y recepción'
         ]
       }
     ]
@@ -216,66 +216,66 @@ export const mockArtists: Artist[] = [
     reviews: 73,
     pricePerHour: 125,
     location: 'San Francisco, CA',
-    bio: '2D/3D animator specializing in commercial work, music videos, and explainer videos. Fast turnaround guaranteed.',
-    specialties: ['2D Animation', '3D Animation', 'Motion Graphics', 'Commercial Work'],
-    availability: ['Weekdays', 'Remote'],
+    bio: 'Animador 2D/3D especializado en trabajo comercial, videos musicales y videos explicativos. Entrega rápida garantizada.',
+    specialties: ['Animación 2D', 'Animación 3D', 'Motion Graphics', 'Trabajo Comercial'],
+    availability: ['Entre semana', 'Remoto'],
     portfolio: [
       'https://images.unsplash.com/photo-1628494391267-befcfdfaef67?w=400'
     ],
     verified: true,
-    responseTime: '< 4 hours',
+    responseTime: '< 4 horas',
     bookingsCompleted: 98,
     servicePlans: [
       {
         id: 'p4-1',
-        name: 'Basic Animation',
+        name: 'Animación Básica',
         price: 500,
         duration: 10,
-        description: 'Simple 2D animation project - perfect for social media',
+        description: 'Proyecto simple de animación 2D - perfecto para redes sociales',
         includes: [
-          'Up to 30 seconds animation',
-          '2D animation style',
-          '2 revision rounds',
-          'HD export (1080p)',
-          '5-7 day delivery',
-          'Source files included'
+          'Hasta 30 segundos de animación',
+          'Estilo de animación 2D',
+          '2 rondas de revisión',
+          'Exportación HD (1080p)',
+          'Entrega en 5-7 días',
+          'Archivos fuente incluidos'
         ]
       },
       {
         id: 'p4-2',
-        name: 'Professional Package',
+        name: 'Paquete Profesional',
         price: 1200,
         duration: 25,
-        description: 'High-quality animation for commercial use',
+        description: 'Animación de alta calidad para uso comercial',
         includes: [
-          'Up to 60 seconds animation',
-          '2D or simple 3D animation',
-          'Custom character design',
-          '4 revision rounds',
-          '4K export available',
-          'Background music integration',
-          'Voiceover coordination',
-          '10-14 day delivery'
+          'Hasta 60 segundos de animación',
+          'Animación 2D o 3D simple',
+          'Diseño de personajes personalizado',
+          '4 rondas de revisión',
+          'Exportación 4K disponible',
+          'Integración de música de fondo',
+          'Coordinación de locución',
+          'Entrega en 10-14 días'
         ],
         popular: true
       },
       {
         id: 'p4-3',
-        name: 'Premium 3D Production',
+        name: 'Producción 3D Premium',
         price: 3000,
         duration: 60,
-        description: 'Full 3D animation production with advanced effects',
+        description: 'Producción completa de animación 3D con efectos avanzados',
         includes: [
-          'Up to 2 minutes animation',
-          'Advanced 3D animation',
-          'Custom 3D modeling',
-          'Complex character rigging',
-          'Unlimited revisions',
-          '4K/8K export',
-          'Motion graphics & VFX',
-          'Sound design included',
-          'Storyboard development',
-          'Priority support'
+          'Hasta 2 minutos de animación',
+          'Animación 3D avanzada',
+          'Modelado 3D personalizado',
+          'Rigging complejo de personajes',
+          'Revisiones ilimitadas',
+          'Exportación 4K/8K',
+          'Motion graphics y VFX',
+          'Diseño de sonido incluido',
+          'Desarrollo de storyboard',
+          'Soporte prioritario'
         ]
       }
     ]
@@ -289,41 +289,41 @@ export const mockArtists: Artist[] = [
     reviews: 64,
     pricePerHour: 180,
     location: 'New York, NY',
-    bio: 'High-energy DJ specializing in Latin, Hip-Hop, and Top 40. Available for clubs, weddings, and private events.',
-    specialties: ['Latin Music', 'Hip-Hop', 'Top 40', 'Clubs'],
-    availability: ['Weekends', 'Evenings'],
+    bio: 'DJ de alta energía especializada en Latina, Hip-Hop y Top 40. Disponible para clubes, bodas y eventos privados.',
+    specialties: ['Música Latina', 'Hip-Hop', 'Top 40', 'Clubes'],
+    availability: ['Fines de semana', 'Noches'],
     portfolio: [],
     verified: true,
-    responseTime: '< 2 hours',
+    responseTime: '< 2 horas',
     bookingsCompleted: 142,
     servicePlans: [
       {
         id: 'p5-1',
-        name: 'Party Starter',
+        name: 'Inicio de Fiesta',
         price: 400,
         duration: 3,
-        description: 'Great for house parties and small events',
+        description: 'Ideal para fiestas en casa y eventos pequeños',
         includes: [
-          'DJ service - 3 hours',
-          'Basic sound system',
-          'Latin, Hip-Hop & Top 40 mix',
-          'Up to 75 guests'
+          'Servicio de DJ - 3 horas',
+          'Sistema de sonido básico',
+          'Mezcla Latina, Hip-Hop y Top 40',
+          'Hasta 75 invitados'
         ]
       },
       {
         id: 'p5-2',
-        name: 'Club Experience',
+        name: 'Experiencia de Club',
         price: 900,
         duration: 5,
-        description: 'Full club atmosphere for your event',
+        description: 'Ambiente completo de club para tu evento',
         includes: [
-          'DJ service - 5 hours',
-          'Professional club sound',
-          'LED lighting effects',
-          'Smoke machine',
-          'Custom playlist',
-          'Up to 150 guests',
-          'MC services'
+          'Servicio de DJ - 5 horas',
+          'Sonido profesional de club',
+          'Efectos de iluminación LED',
+          'Máquina de humo',
+          'Playlist personalizada',
+          'Hasta 150 invitados',
+          'Servicios de MC'
         ],
         popular: true
       }
@@ -338,41 +338,41 @@ export const mockArtists: Artist[] = [
     reviews: 91,
     pricePerHour: 250,
     location: 'Chicago, IL',
-    bio: 'Professional jazz ensemble for upscale events, corporate functions, and private parties. Classic and contemporary jazz.',
-    specialties: ['Jazz', 'Corporate Events', 'Cocktail Hours', 'Galas'],
-    availability: ['Weekends', 'Evenings', 'Weekdays'],
+    bio: 'Ensamble de jazz profesional para eventos exclusivos, funciones corporativas y fiestas privadas. Jazz clásico y contemporáneo.',
+    specialties: ['Jazz', 'Eventos Corporativos', 'Horas de Cóctel', 'Galas'],
+    availability: ['Fines de semana', 'Noches', 'Entre semana'],
     portfolio: [],
     verified: true,
-    responseTime: '< 5 hours',
+    responseTime: '< 5 horas',
     bookingsCompleted: 167,
     servicePlans: [
       {
         id: 'p6-1',
-        name: 'Cocktail Hour',
+        name: 'Hora de Cóctel',
         price: 500,
         duration: 2,
-        description: 'Sophisticated jazz for cocktail receptions',
+        description: 'Jazz sofisticado para recepciones de cóctel',
         includes: [
-          'Professional jazz quartet',
-          'Classic jazz standards',
-          'Elegant ambiance',
-          'Premium audio setup'
+          'Cuarteto de jazz profesional',
+          'Clásicos del jazz',
+          'Ambiente elegante',
+          'Configuración de audio premium'
         ]
       },
       {
         id: 'p6-2',
-        name: 'Evening Gala',
+        name: 'Gala Nocturna',
         price: 1200,
         duration: 4,
-        description: 'Complete evening of jazz entertainment',
+        description: 'Noche completa de entretenimiento de jazz',
         includes: [
-          'Full quartet performance',
-          'Jazz standards & contemporary',
-          'Custom song selection',
-          'Multiple sets',
-          'Professional sound',
-          'Dinner & dancing music',
-          'Event coordination'
+          'Presentación completa del cuarteto',
+          'Clásicos y jazz contemporáneo',
+          'Selección de canciones personalizada',
+          'Múltiples sets',
+          'Sonido profesional',
+          'Música para cena y baile',
+          'Coordinación del evento'
         ],
         popular: true
       }
@@ -387,42 +387,42 @@ export const mockArtists: Artist[] = [
     reviews: 45,
     pricePerHour: 140,
     location: 'Los Angeles, CA',
-    bio: 'Character animator and storyboard artist. Specializing in children\'s content and educational animations.',
-    specialties: ['Character Animation', 'Storyboarding', 'Educational Content', 'Children\'s Media'],
-    availability: ['Weekdays', 'Remote'],
+    bio: 'Animadora de personajes y artista de storyboard. Especializada en contenido infantil y animaciones educativas.',
+    specialties: ['Animación de Personajes', 'Storyboarding', 'Contenido Educativo', 'Medios Infantiles'],
+    availability: ['Entre semana', 'Remoto'],
     portfolio: [],
     verified: false,
-    responseTime: '< 6 hours',
+    responseTime: '< 6 horas',
     bookingsCompleted: 52,
     servicePlans: [
       {
         id: 'p7-1',
-        name: 'Character Design',
+        name: 'Diseño de Personajes',
         price: 350,
         duration: 8,
-        description: 'Custom character creation for your project',
+        description: 'Creación de personajes personalizada para tu proyecto',
         includes: [
-          'Original character design',
-          '3 concept sketches',
-          'Final colored design',
-          '2 revision rounds',
-          'Source files'
+          'Diseño de personaje original',
+          '3 bocetos conceptuales',
+          'Diseño final coloreado',
+          '2 rondas de revisión',
+          'Archivos fuente'
         ]
       },
       {
         id: 'p7-2',
-        name: 'Educational Video',
+        name: 'Video Educativo',
         price: 800,
         duration: 20,
-        description: 'Engaging animated educational content',
+        description: 'Contenido educativo animado atractivo',
         includes: [
-          'Up to 3 minutes animation',
-          'Educational storyboard',
-          'Character animation',
-          'Voiceover integration',
-          'Background illustrations',
-          '3 revision rounds',
-          'Full HD export'
+          'Hasta 3 minutos de animación',
+          'Storyboard educativo',
+          'Animación de personajes',
+          'Integración de locución',
+          'Ilustraciones de fondo',
+          '3 rondas de revisión',
+          'Exportación Full HD'
         ],
         popular: true
       }
@@ -437,9 +437,9 @@ export const mockArtists: Artist[] = [
     reviews: 203,
     pricePerHour: 175,
     location: 'San Antonio, TX',
-    bio: 'Award-winning mariachi group with traditional and modern repertoire. 8-piece band available for all occasions.',
-    specialties: ['Traditional Mariachi', 'Modern Fusion', 'Weddings', 'Festivals'],
-    availability: ['Weekends'],
+    bio: 'Grupo de mariachi galardonado con repertorio tradicional y moderno. Banda de 8 piezas disponible para todas las ocasiones.',
+    specialties: ['Mariachi Tradicional', 'Fusión Moderna', 'Bodas', 'Festivales'],
+    availability: ['Fines de semana'],
     portfolio: [],
     verified: true,
     responseTime: '< 1 hour',
@@ -450,12 +450,12 @@ export const mockArtists: Artist[] = [
         name: 'Serenata Especial',
         price: 250,
         duration: 1,
-        description: 'Romantic serenade with traditional songs',
+        description: 'Serenata romántica con canciones tradicionales',
         includes: [
-          '6-8 traditional songs',
-          '4-5 professional musicians',
-          'Traditional attire',
-          'Romantic repertoire'
+          '6-8 canciones tradicionales',
+          '4-5 músicos profesionales',
+          'Vestimenta tradicional',
+          'Repertorio romántico'
         ]
       },
       {
@@ -463,15 +463,15 @@ export const mockArtists: Artist[] = [
         name: 'Fiesta Grande',
         price: 700,
         duration: 4,
-        description: 'Complete mariachi experience for celebrations',
+        description: 'Experiencia completa de mariachi para celebraciones',
         includes: [
-          'Full 8-piece band',
-          'Traditional & modern songs',
-          'Complete traditional attire',
-          'Custom song requests',
-          'Sound system included',
-          'Event coordination',
-          'Photo opportunities'
+          'Banda completa de 8 piezas',
+          'Canciones tradicionales y modernas',
+          'Vestimenta tradicional completa',
+          'Canciones a petición personalizadas',
+          'Sistema de sonido incluido',
+          'Coordinación del evento',
+          'Oportunidades fotográficas'
         ],
         popular: true
       },
@@ -480,17 +480,17 @@ export const mockArtists: Artist[] = [
         name: 'Boda Imperial',
         price: 1200,
         duration: 6,
-        description: 'Premium wedding package with full production',
+        description: 'Paquete premium para bodas con producción completa',
         includes: [
-          '10-piece professional band',
-          'Ceremony & reception music',
-          'Premium traditional attire',
-          'Unlimited song requests',
-          'Professional sound & lighting',
-          'Personalized coordination',
-          'Multiple performance areas',
-          'Champagne toast music',
-          'Grand entrance & exits'
+          'Banda profesional de 10 piezas',
+          'Música para ceremonia y recepción',
+          'Vestimenta tradicional premium',
+          'Canciones ilimitadas a petición',
+          'Sonido e iluminación profesional',
+          'Coordinación personalizada',
+          'Múltiples áreas de presentación',
+          'Música para brindis con champagne',
+          'Entradas y salidas grandiosas'
         ]
       }
     ]
@@ -501,8 +501,8 @@ export const mockServices: Service[] = [
   {
     id: 's1',
     artistId: '1',
-    name: 'Wedding Performance - 3 Hours',
-    description: 'Full mariachi experience for your special day',
+    name: 'Presentación para Boda - 3 Horas',
+    description: 'Experiencia completa de mariachi para tu día especial',
     price: 450,
     duration: 3,
     category: 'Mariachi'
@@ -510,8 +510,8 @@ export const mockServices: Service[] = [
   {
     id: 's2',
     artistId: '2',
-    name: 'Premium DJ Package - 4 Hours',
-    description: 'Complete DJ service with lights and sound',
+    name: 'Paquete Premium de DJ - 4 Horas',
+    description: 'Servicio completo de DJ con luces y sonido',
     price: 800,
     duration: 4,
     category: 'DJ'

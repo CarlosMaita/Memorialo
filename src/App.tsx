@@ -1,23 +1,31 @@
 import { useState, useMemo } from 'react';
-import { Users, LayoutDashboard, Menu, X } from 'lucide-react';
-import { Artist, ServicePlan, Contract } from './types';
+import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase } from 'lucide-react';
+import { Artist, ServicePlan, Contract, User, Review, Booking, Provider } from './types';
 import { mockArtists } from './data/mockData';
+import { mockReviews } from './data/mockReviews';
 import { ArtistCard } from './components/ArtistCard';
 import { SearchFilters } from './components/SearchFilters';
 import { ArtistProfile } from './components/ArtistProfile';
 import { BookingDialog } from './components/BookingDialog';
 import { CompareView } from './components/CompareView';
 import { ArtistDashboard } from './components/ArtistDashboard';
+import { ProviderDashboard } from './components/ProviderDashboard';
+import { AuthDialog } from './components/AuthDialog';
+import { UserProfile } from './components/UserProfile';
+import { ReviewDialog } from './components/ReviewDialog';
 import { Button } from './components/ui/button';
 import { Badge } from './components/ui/badge';
 import { Toaster } from './components/ui/sonner';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './components/ui/dropdown-menu';
+import { toast } from 'sonner@2.0.3';
 
-type ViewMode = 'client' | 'artist';
+type ViewMode = 'client' | 'artist' | 'provider';
 
 export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('client');
+  const [artists, setArtists] = useState<Artist[]>(mockArtists);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [priceRange, setPriceRange] = useState([0, 500]);
   const [sortBy, setSortBy] = useState('rating');
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
@@ -29,16 +37,42 @@ export default function App() {
   const [showCompare, setShowCompare] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
+  
+  // User authentication and profile
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [showUserProfile, setShowUserProfile] = useState(false);
+  
+  // Reviews and bookings
+  const [reviews, setReviews] = useState<Review[]>(mockReviews);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [reviewBooking, setReviewBooking] = useState<Booking | null>(null);
+  
+  // Provider
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const currentProvider = currentUser?.isProvider 
+    ? providers.find(p => p.userId === currentUser.id) || null
+    : null;
 
   // Filter and sort artists
   const filteredArtists = useMemo(() => {
-    let filtered = mockArtists.filter((artist) => {
+    let filtered = artists.filter((artist) => {
       const matchesSearch = 
         artist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         artist.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
         artist.specialties.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
       
-      const matchesCategory = selectedCategory === 'All' || artist.category === selectedCategory;
+      // Map Spanish category names to English for filtering
+      const categoryMap: { [key: string]: string } = {
+        'Todos': 'All',
+        'Músico': 'Musician',
+        'DJ': 'DJ',
+        'Mariachi': 'Mariachi',
+        'Animador': 'Animator'
+      };
+      const englishCategory = categoryMap[selectedCategory] || selectedCategory;
+      const matchesCategory = selectedCategory === 'Todos' || artist.category === englishCategory;
       
       const matchesPrice = artist.pricePerHour >= priceRange[0] && artist.pricePerHour <= priceRange[1];
 
@@ -62,7 +96,7 @@ export default function App() {
     });
 
     return filtered;
-  }, [searchQuery, selectedCategory, priceRange, sortBy]);
+  }, [artists, searchQuery, selectedCategory, priceRange, sortBy]);
 
   const handleViewProfile = (artist: Artist) => {
     setSelectedArtist(artist);
@@ -70,6 +104,13 @@ export default function App() {
   };
 
   const handleBookNow = (artist: Artist, plan?: ServicePlan) => {
+    // Check if user is logged in
+    if (!currentUser) {
+      toast.error('Debes iniciar sesión para contratar un servicio');
+      setShowAuthDialog(true);
+      return;
+    }
+    
     setBookingArtist(artist);
     setSelectedPlan(plan || null);
     setShowProfile(false);
@@ -96,6 +137,80 @@ export default function App() {
     setContracts(prev => [...prev, contract]);
   };
 
+  const handleLogin = (user: User) => {
+    setCurrentUser(user);
+    // If user is a provider, switch to provider view
+    if (user.isProvider) {
+      setViewMode('provider');
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setViewMode('client');
+  };
+
+  const handleProviderCreate = (provider: Provider) => {
+    setProviders([...providers, provider]);
+  };
+
+  const handleServiceCreate = (service: Artist) => {
+    setArtists([...artists, service]);
+    
+    // Link service to provider
+    if (currentProvider) {
+      setProviders(providers.map(p => 
+        p.id === currentProvider.id 
+          ? { ...p, services: [...p.services, service.id] }
+          : p
+      ));
+    }
+  };
+
+  const handleServiceUpdate = (updatedService: Artist) => {
+    setArtists(artists.map(s => s.id === updatedService.id ? updatedService : s));
+  };
+
+  const handleServiceDelete = (serviceId: string) => {
+    setArtists(artists.filter(s => s.id !== serviceId));
+  };
+
+  const handleReviewSubmit = (review: Review) => {
+    setReviews(prev => [...prev, review]);
+    
+    // Update booking to mark it as reviewed
+    setBookings(prev => 
+      prev.map(b => 
+        b.id === review.bookingId 
+          ? { ...b, reviewId: review.id }
+          : b
+      )
+    );
+  };
+
+  const openReviewDialog = (booking: Booking) => {
+    setReviewBooking(booking);
+    setShowReviewDialog(true);
+  };
+
+  // Get user-specific data
+  const userBookings = currentUser 
+    ? bookings.filter(b => b.userId === currentUser.id)
+    : [];
+  
+  const userContracts = currentUser
+    ? contracts.filter(c => c.clientId === currentUser.id)
+    : [];
+  
+  const userReviews = currentUser
+    ? reviews.filter(r => r.userId === currentUser.id)
+    : [];
+
+  // Get provider-specific data
+  const providerServices = currentProvider
+    ? artists.filter(a => currentProvider.services.includes(a.id))
+    : [];
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Toaster />
@@ -110,7 +225,7 @@ export default function App() {
               </div>
               <div>
                 <h1 className="text-sm">ArtistHub</h1>
-                <p className="text-xs text-gray-500">Find & Book Talented Artists</p>
+                <p className="text-xs text-gray-500">Encuentra y Contrata Artistas Talentosos</p>
               </div>
             </div>
 
@@ -121,15 +236,60 @@ export default function App() {
                 onClick={() => setViewMode('client')}
               >
                 <Users className="w-4 h-4 mr-2" />
-                Find Artists
+                Buscar Artistas
               </Button>
-              <Button
-                variant={viewMode === 'artist' ? 'default' : 'outline'}
-                onClick={() => setViewMode('artist')}
-              >
-                <LayoutDashboard className="w-4 h-4 mr-2" />
-                Artist Dashboard
-              </Button>
+              {currentUser?.isProvider && (
+                <Button
+                  variant={viewMode === 'provider' ? 'default' : 'outline'}
+                  onClick={() => setViewMode('provider')}
+                >
+                  <Briefcase className="w-4 h-4 mr-2" />
+                  Mi Negocio
+                </Button>
+              )}
+              {currentUser && (
+                <Button
+                  variant={viewMode === 'artist' ? 'default' : 'outline'}
+                  onClick={() => setViewMode('artist')}
+                >
+                  <LayoutDashboard className="w-4 h-4 mr-2" />
+                  Panel de Artista
+                </Button>
+              )}
+              
+              {/* User Menu */}
+              {currentUser ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      <UserCircle className="w-4 h-4 mr-2" />
+                      {currentUser.name}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setShowUserProfile(true)}>
+                      <UserCircle className="w-4 h-4 mr-2" />
+                      Mi Perfil
+                    </DropdownMenuItem>
+                    {currentUser.isProvider && (
+                      <DropdownMenuItem onClick={() => setViewMode('provider')}>
+                        <Briefcase className="w-4 h-4 mr-2" />
+                        Mi Negocio
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Cerrar Sesión
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button onClick={() => setShowAuthDialog(true)}>
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Iniciar Sesión
+                </Button>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -155,19 +315,72 @@ export default function App() {
                 className="w-full"
               >
                 <Users className="w-4 h-4 mr-2" />
-                Find Artists
+                Buscar Artistas
               </Button>
-              <Button
-                variant={viewMode === 'artist' ? 'default' : 'outline'}
-                onClick={() => {
-                  setViewMode('artist');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full"
-              >
-                <LayoutDashboard className="w-4 h-4 mr-2" />
-                Artist Dashboard
-              </Button>
+              {currentUser?.isProvider && (
+                <Button
+                  variant={viewMode === 'provider' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setViewMode('provider');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full"
+                >
+                  <Briefcase className="w-4 h-4 mr-2" />
+                  Mi Negocio
+                </Button>
+              )}
+              {currentUser && (
+                <Button
+                  variant={viewMode === 'artist' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setViewMode('artist');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full"
+                >
+                  <LayoutDashboard className="w-4 h-4 mr-2" />
+                  Panel de Artista
+                </Button>
+              )}
+              
+              {currentUser ? (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowUserProfile(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full"
+                  >
+                    <UserCircle className="w-4 h-4 mr-2" />
+                    Mi Perfil
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      handleLogout();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Cerrar Sesión
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={() => {
+                    setShowAuthDialog(true);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full"
+                >
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Iniciar Sesión
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -175,14 +388,30 @@ export default function App() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {viewMode === 'client' ? (
+        {viewMode === 'provider' ? (
+          currentUser && (
+            <ProviderDashboard
+              user={currentUser}
+              provider={currentProvider}
+              services={providerServices}
+              contracts={contracts}
+              onServiceCreate={handleServiceCreate}
+              onServiceUpdate={handleServiceUpdate}
+              onServiceDelete={handleServiceDelete}
+              onContractUpdate={(updated) => {
+                setContracts(prev => prev.map(c => c.id === updated.id ? updated : c));
+              }}
+              onProviderCreate={handleProviderCreate}
+            />
+          )
+        ) : viewMode === 'client' ? (
           <>
             {/* Search & Filters */}
             <div className="mb-8">
               <div className="mb-6">
-                <h2 className="mb-2">Discover Amazing Artists</h2>
+                <h2 className="mb-2">Descubre Artistas Increíbles</h2>
                 <p className="text-gray-600">
-                  Browse through our curated selection of talented musicians, DJs, animators, and mariachi bands
+                  Explora nuestra selección curada de músicos talentosos, DJs, animadores y bandas de mariachi
                 </p>
               </div>
 
@@ -204,7 +433,7 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span>
-                      {compareArtists.length} artist{compareArtists.length !== 1 ? 's' : ''} selected
+                      {compareArtists.length} artista{compareArtists.length !== 1 ? 's' : ''} seleccionado{compareArtists.length !== 1 ? 's' : ''}
                     </span>
                     <div className="flex gap-2">
                       {compareArtists.map((artist) => (
@@ -220,13 +449,13 @@ export default function App() {
                       size="sm"
                       onClick={() => setCompareArtists([])}
                     >
-                      Clear
+                      Limpiar
                     </Button>
                     <Button
                       size="sm"
                       onClick={() => setShowCompare(true)}
                     >
-                      Compare ({compareArtists.length}/3)
+                      Comparar ({compareArtists.length}/3)
                     </Button>
                   </div>
                 </div>
@@ -236,7 +465,7 @@ export default function App() {
             {/* Results */}
             <div className="mb-4">
               <p className="text-gray-600">
-                {filteredArtists.length} artist{filteredArtists.length !== 1 ? 's' : ''} found
+                {filteredArtists.length} artista{filteredArtists.length !== 1 ? 's' : ''} encontrado{filteredArtists.length !== 1 ? 's' : ''}
               </p>
             </div>
 
@@ -255,17 +484,17 @@ export default function App() {
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-gray-500">No artists found matching your criteria</p>
+                <p className="text-gray-500">No se encontraron artistas que coincidan con tus criterios</p>
                 <Button
                   variant="outline"
                   className="mt-4"
                   onClick={() => {
                     setSearchQuery('');
-                    setSelectedCategory('All');
+                    setSelectedCategory('Todos');
                     setPriceRange([0, 500]);
                   }}
                 >
-                  Reset Filters
+                  Restablecer Filtros
                 </Button>
               </div>
             )}
@@ -283,6 +512,8 @@ export default function App() {
         open={showProfile}
         onClose={() => setShowProfile(false)}
         onBookNow={handleBookNow}
+        reviews={reviews}
+        isAuthenticated={!!currentUser}
       />
 
       <BookingDialog
@@ -294,6 +525,8 @@ export default function App() {
           setSelectedPlan(null);
         }}
         onContractCreated={handleContractCreated}
+        user={currentUser}
+        onLoginRequired={() => setShowAuthDialog(true)}
       />
 
       <CompareView
@@ -303,6 +536,33 @@ export default function App() {
         onRemove={handleRemoveFromCompare}
         onBook={handleBookNow}
       />
+
+      <AuthDialog
+        open={showAuthDialog}
+        onClose={() => setShowAuthDialog(false)}
+        onLogin={handleLogin}
+      />
+
+      {currentUser && (
+        <UserProfile
+          user={currentUser}
+          open={showUserProfile}
+          onClose={() => setShowUserProfile(false)}
+          bookings={userBookings}
+          contracts={userContracts}
+          reviews={userReviews}
+        />
+      )}
+
+      {currentUser && (
+        <ReviewDialog
+          open={showReviewDialog}
+          onClose={() => setShowReviewDialog(false)}
+          booking={reviewBooking}
+          user={currentUser}
+          onReviewSubmit={handleReviewSubmit}
+        />
+      )}
     </div>
   );
 }

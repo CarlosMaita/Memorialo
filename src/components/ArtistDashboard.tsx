@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
@@ -42,15 +42,15 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
   const [services, setServices] = useState<Service[]>([
     {
       id: '1',
-      name: 'Wedding Performance - 3 Hours',
-      description: 'Full performance for your special day',
+      name: 'Presentación para Boda - 3 Horas',
+      description: 'Presentación completa para tu día especial',
       price: 450,
       duration: 3
     },
     {
       id: '2',
-      name: 'Corporate Event - 2 Hours',
-      description: 'Professional entertainment for corporate gatherings',
+      name: 'Evento Corporativo - 2 Horas',
+      description: 'Entretenimiento profesional para reuniones corporativas',
       price: 350,
       duration: 2
     }
@@ -59,30 +59,30 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
   const [bookings, setBookings] = useState<Booking[]>([
     {
       id: '1',
-      clientName: 'John Smith',
+      clientName: 'Juan García',
       date: '2025-11-15',
       duration: 3,
-      eventType: 'Wedding',
-      location: 'Los Angeles, CA',
+      eventType: 'Boda',
+      location: 'Los Ángeles, CA',
       totalPrice: 450,
       status: 'pending'
     },
     {
       id: '2',
-      clientName: 'Jane Doe',
+      clientName: 'María López',
       date: '2025-11-20',
       duration: 2,
-      eventType: 'Corporate Event',
-      location: 'Santa Monica, CA',
+      eventType: 'Evento Corporativo',
+      location: 'Santa Mónica, CA',
       totalPrice: 350,
       status: 'confirmed'
     },
     {
       id: '3',
-      clientName: 'Mike Johnson',
+      clientName: 'Miguel Hernández',
       date: '2025-10-30',
       duration: 4,
-      eventType: 'Birthday Party',
+      eventType: 'Fiesta de Cumpleaños',
       location: 'Beverly Hills, CA',
       totalPrice: 600,
       status: 'completed'
@@ -129,7 +129,7 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
           ? { ...s, ...serviceForm, price: parseFloat(serviceForm.price), duration: parseInt(serviceForm.duration) }
           : s
       ));
-      toast.success('Service updated successfully');
+      toast.success('Servicio actualizado exitosamente');
     } else {
       const newService: Service = {
         id: Date.now().toString(),
@@ -139,19 +139,25 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
         duration: parseInt(serviceForm.duration)
       };
       setServices([...services, newService]);
-      toast.success('Service added successfully');
+      toast.success('Servicio agregado exitosamente');
     }
     setShowServiceDialog(false);
   };
 
   const handleDeleteService = (id: string) => {
     setServices(services.filter(s => s.id !== id));
-    toast.success('Service deleted');
+    toast.success('Servicio eliminado');
   };
 
   const handleUpdateBookingStatus = (id: string, status: Booking['status']) => {
     setBookings(bookings.map(b => b.id === id ? { ...b, status } : b));
-    toast.success(`Booking ${status}`);
+    const statusMap: { [key: string]: string } = {
+      'pending': 'pendiente',
+      'confirmed': 'confirmada',
+      'completed': 'completada',
+      'cancelled': 'cancelada'
+    };
+    toast.success(`Reserva ${statusMap[status]}`);
   };
 
   const getStatusIcon = (status: string) => {
@@ -189,7 +195,7 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Bookings</p>
+                <p className="text-sm text-gray-600">Reservas Totales</p>
                 <p className="mt-1">{stats.totalBookings}</p>
               </div>
               <Calendar className="w-8 h-8 text-blue-500" />
@@ -201,7 +207,7 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Pending</p>
+                <p className="text-sm text-gray-600">Pendientes</p>
                 <p className="mt-1">{stats.pendingBookings}</p>
               </div>
               <Clock className="w-8 h-8 text-yellow-500" />
@@ -213,7 +219,7 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Confirmed</p>
+                <p className="text-sm text-gray-600">Confirmadas</p>
                 <p className="mt-1">{stats.confirmedBookings}</p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-500" />
@@ -225,7 +231,7 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Revenue</p>
+                <p className="text-sm text-gray-600">Ingresos</p>
                 <p className="mt-1">${stats.totalRevenue}</p>
               </div>
               <DollarSign className="w-8 h-8 text-green-500" />
@@ -237,15 +243,15 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
       {/* Main Content */}
       <Tabs defaultValue="bookings" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="bookings">Bookings</TabsTrigger>
+          <TabsTrigger value="bookings">Reservas</TabsTrigger>
           <TabsTrigger value="contracts">Contratos</TabsTrigger>
-          <TabsTrigger value="services">My Services</TabsTrigger>
+          <TabsTrigger value="services">Mis Servicios</TabsTrigger>
         </TabsList>
 
         <TabsContent value="bookings" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Bookings</CardTitle>
+              <CardTitle>Reservas Recientes</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -267,11 +273,11 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
                     <div className="grid grid-cols-2 gap-3 text-sm mb-3">
                       <div className="flex items-center gap-2 text-gray-600">
                         <Calendar className="w-4 h-4" />
-                        <span>{new Date(booking.date).toLocaleDateString()}</span>
+                        <span>{new Date(booking.date).toLocaleDateString('es-ES')}</span>
                       </div>
                       <div className="flex items-center gap-2 text-gray-600">
                         <Clock className="w-4 h-4" />
-                        <span>{booking.duration} hours</span>
+                        <span>{booking.duration} horas</span>
                       </div>
                     </div>
 
@@ -285,13 +291,13 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
                             variant="outline"
                             onClick={() => handleUpdateBookingStatus(booking.id, 'cancelled')}
                           >
-                            Decline
+                            Rechazar
                           </Button>
                           <Button 
                             size="sm"
                             onClick={() => handleUpdateBookingStatus(booking.id, 'confirmed')}
                           >
-                            Accept
+                            Aceptar
                           </Button>
                         </div>
                       )}
@@ -301,7 +307,7 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
                           size="sm"
                           onClick={() => handleUpdateBookingStatus(booking.id, 'completed')}
                         >
-                          Mark Complete
+                          Marcar como Completada
                         </Button>
                       )}
                     </div>
@@ -415,10 +421,10 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
         <TabsContent value="services" className="space-y-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>My Services</CardTitle>
+              <CardTitle>Mis Servicios</CardTitle>
               <Button onClick={handleAddService}>
                 <Plus className="w-4 h-4 mr-2" />
-                Add Service
+                Agregar Servicio
               </Button>
             </CardHeader>
             <CardContent>
@@ -450,7 +456,7 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
                     
                     <div className="flex items-center gap-4 text-sm pt-3 border-t">
                       <span className="text-green-600">${service.price}</span>
-                      <span className="text-gray-600">{service.duration} hours</span>
+                      <span className="text-gray-600">{service.duration} horas</span>
                     </div>
                   </div>
                 ))}
@@ -464,34 +470,37 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
       <Dialog open={showServiceDialog} onOpenChange={setShowServiceDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingService ? 'Edit Service' : 'Add New Service'}</DialogTitle>
+            <DialogTitle>{editingService ? 'Editar Servicio' : 'Agregar Nuevo Servicio'}</DialogTitle>
+            <DialogDescription>
+              {editingService ? 'Modifica la información de tu servicio' : 'Agrega un nuevo servicio a tu portafolio'}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="serviceName">Service Name</Label>
+              <Label htmlFor="serviceName">Nombre del Servicio</Label>
               <Input
                 id="serviceName"
                 value={serviceForm.name}
                 onChange={(e) => setServiceForm({ ...serviceForm, name: e.target.value })}
-                placeholder="e.g., Wedding Performance"
+                placeholder="ej., Presentación para Boda"
               />
             </div>
 
             <div>
-              <Label htmlFor="serviceDesc">Description</Label>
+              <Label htmlFor="serviceDesc">Descripción</Label>
               <Textarea
                 id="serviceDesc"
                 value={serviceForm.description}
                 onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })}
-                placeholder="Describe your service..."
+                placeholder="Describe tu servicio..."
                 rows={3}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="servicePrice">Price ($)</Label>
+                <Label htmlFor="servicePrice">Precio ($)</Label>
                 <Input
                   id="servicePrice"
                   type="number"
@@ -502,7 +511,7 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
               </div>
 
               <div>
-                <Label htmlFor="serviceDuration">Duration (hours)</Label>
+                <Label htmlFor="serviceDuration">Duración (horas)</Label>
                 <Select 
                   value={serviceForm.duration} 
                   onValueChange={(value) => setServiceForm({ ...serviceForm, duration: value })}
@@ -513,7 +522,7 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
                   <SelectContent>
                     {[1, 2, 3, 4, 5, 6, 8, 10].map((hours) => (
                       <SelectItem key={hours} value={hours.toString()}>
-                        {hours} {hours === 1 ? 'hour' : 'hours'}
+                        {hours} {hours === 1 ? 'hora' : 'horas'}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -527,14 +536,14 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
                 onClick={() => setShowServiceDialog(false)}
                 className="flex-1"
               >
-                Cancel
+                Cancelar
               </Button>
               <Button 
                 onClick={handleSaveService}
                 className="flex-1"
                 disabled={!serviceForm.name || !serviceForm.price}
               >
-                Save Service
+                Guardar Servicio
               </Button>
             </div>
           </div>

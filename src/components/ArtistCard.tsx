@@ -45,17 +45,17 @@ export function ArtistCard({ artist, onViewProfile, onCompare, isComparing }: Ar
         <div className="flex items-center gap-1 mb-3" onClick={() => onViewProfile(artist)}>
           <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
           <span>{artist.rating.toFixed(1)}</span>
-          <span className="text-gray-500 text-sm">({artist.reviews} reviews)</span>
+          <span className="text-gray-500 text-sm">({artist.reviews} reseñas)</span>
         </div>
 
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-3" onClick={() => onViewProfile(artist)}>
           <Clock className="w-3 h-3" />
-          <span>Responds in {artist.responseTime}</span>
+          <span>Responde en {artist.responseTime}</span>
         </div>
 
         <div className="flex items-center justify-between pt-3 border-t">
           <div>
-            <span className="text-gray-600 text-sm">Starting at</span>
+            <span className="text-gray-600 text-sm">Desde</span>
             <p className="text-green-600">${artist.pricePerHour}/hr</p>
           </div>
           <div className="flex gap-2">
@@ -68,11 +68,11 @@ export function ArtistCard({ artist, onViewProfile, onCompare, isComparing }: Ar
                   onCompare(artist);
                 }}
               >
-                {isComparing ? 'Added' : 'Compare'}
+                {isComparing ? 'Agregado' : 'Comparar'}
               </Button>
             )}
             <Button size="sm" onClick={() => onViewProfile(artist)}>
-              View
+              Ver
             </Button>
           </div>
         </div>

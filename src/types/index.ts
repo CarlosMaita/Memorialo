@@ -36,7 +36,9 @@ export interface ContractSignature {
 export interface Contract {
   id: string;
   bookingId: string;
+  artistId: string;
   artistName: string;
+  clientId?: string; // User ID of client
   clientName: string;
   createdAt: string;
   terms: {
@@ -57,6 +59,7 @@ export interface Contract {
 export interface Booking {
   id: string;
   artistId: string;
+  userId?: string; // User who made the booking
   clientName: string;
   clientEmail: string;
   clientPhone: string;
@@ -70,6 +73,7 @@ export interface Booking {
   planId?: string;
   planName?: string;
   contractId?: string;
+  reviewId?: string; // Link to review if user has left one
 }
 
 export interface Service {
@@ -80,4 +84,44 @@ export interface Service {
   price: number;
   duration: number;
   category: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  phone?: string;
+  createdAt: string;
+  avatar?: string;
+  isProvider: boolean; // If true, user is a service provider
+  providerId?: string; // If user is a provider, link to their provider profile
+}
+
+export interface Provider {
+  id: string;
+  userId: string;
+  businessName: string;
+  category: string;
+  description: string;
+  verified: boolean;
+  createdAt: string;
+  services: string[]; // Array of service IDs
+  totalBookings: number;
+  rating: number;
+}
+
+export interface Review {
+  id: string;
+  bookingId: string;
+  artistId: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  rating: number; // 1-5
+  comment: string;
+  createdAt: string;
+  response?: {
+    text: string;
+    createdAt: string;
+  };
 }

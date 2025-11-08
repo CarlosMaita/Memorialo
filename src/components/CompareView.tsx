@@ -1,6 +1,6 @@
 import { X, Star, MapPin, Clock, Award, CheckCircle } from 'lucide-react';
 import { Artist } from '../types';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -18,13 +18,16 @@ export function CompareView({ artists, open, onClose, onRemove, onBook }: Compar
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Compare Artists ({artists.length}/3)</DialogTitle>
+          <DialogTitle>Comparar Artistas ({artists.length}/3)</DialogTitle>
+          <DialogDescription>
+            Compara precios, servicios y calificaciones de hasta 3 artistas
+          </DialogDescription>
         </DialogHeader>
 
         {artists.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
-            <p>No artists selected for comparison</p>
-            <p className="text-sm mt-2">Select up to 3 artists to compare</p>
+            <p>No hay artistas seleccionados para comparar</p>
+            <p className="text-sm mt-2">Selecciona hasta 3 artistas para comparar</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -77,17 +80,17 @@ export function CompareView({ artists, open, onClose, onRemove, onBook }: Compar
 
                     <div className="flex items-center gap-2">
                       <Award className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                      <span className="text-gray-700">{artist.bookingsCompleted} completed</span>
+                      <span className="text-gray-700">{artist.bookingsCompleted} completados</span>
                     </div>
                   </div>
 
                   <div className="pt-3 border-t">
-                    <p className="text-xs text-gray-600">Starting price</p>
+                    <p className="text-xs text-gray-600">Precio inicial</p>
                     <p className="text-green-600">${artist.pricePerHour}/hr</p>
                   </div>
 
                   <div className="space-y-2">
-                    <p className="text-xs text-gray-600">Specialties:</p>
+                    <p className="text-xs text-gray-600">Especialidades:</p>
                     <div className="flex flex-wrap gap-1">
                       {artist.specialties.slice(0, 3).map((specialty, idx) => (
                         <Badge key={idx} variant="outline" className="text-xs">
@@ -110,7 +113,7 @@ export function CompareView({ artists, open, onClose, onRemove, onBook }: Compar
                       onClose();
                     }}
                   >
-                    Book Now
+                    Reservar Ahora
                   </Button>
                 </div>
               </div>
