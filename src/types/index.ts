@@ -41,6 +41,7 @@ export interface Contract {
   artistName: string;
   clientId?: string; // User ID of client
   clientName: string;
+  eventId?: string; // ID of the event this contract belongs to
   createdAt: string;
   terms: {
     serviceDescription: string;
@@ -129,4 +130,19 @@ export interface Review {
     text: string;
     createdAt: string;
   };
+}
+
+export interface Event {
+  id: string;
+  userId: string; // Owner of the event
+  name: string; // e.g., "Boda", "Cumpleaños 2026"
+  description?: string;
+  eventDate?: string; // Date of the event
+  eventType?: string; // e.g., "Boda", "Cumpleaños", "Fiesta Corporativa"
+  location?: string;
+  budget?: number;
+  status: 'planning' | 'confirmed' | 'completed' | 'cancelled';
+  contractIds: string[]; // List of contract IDs associated with this event
+  createdAt: string;
+  updatedAt: string;
 }

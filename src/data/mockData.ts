@@ -1,17 +1,17 @@
-import { Artist, Service } from '../types';
+import { Artist, Service, Event } from '../types';
 
 export const mockArtists: Artist[] = [
   {
     id: '1',
-    name: 'Carlos Rodriguez',
-    category: 'Mariachi',
+    name: 'Mariachi Los Gallos',
+    category: 'Música y DJs',
     image: 'https://images.unsplash.com/photo-1729638276657-0a0978e66d38?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYXJpYWNoaSUyMGJhbmR8ZW58MXx8fHwxNzYyNTcxMTkzfDA&ixlib=rb-4.1.0&q=80&w=1080',
     rating: 4.9,
     reviews: 127,
     pricePerHour: 150,
-    location: 'Los Angeles, CA',
+    location: 'Caracas',
     bio: 'Banda de mariachi tradicional con más de 15 años de experiencia. Perfecto para bodas, quinceañeras y celebraciones.',
-    specialties: ['Bodas', 'Quinceañeras', 'Eventos Corporativos', 'Serenatas'],
+    specialties: ['Música y DJs', 'Cultura y Ceremonia', 'Bodas', 'Quinceañeras'],
     availability: ['Fines de semana', 'Noches'],
     portfolio: [
       'https://images.unsplash.com/photo-1729638276657-0a0978e66d38?w=400',
@@ -75,14 +75,14 @@ export const mockArtists: Artist[] = [
   {
     id: '2',
     name: 'DJ Mike Thompson',
-    category: 'DJ',
+    category: 'Música y DJs',
     image: 'https://images.unsplash.com/photo-1618107095181-e3ba0f53ee59?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxESiUyMHR1cm50YWJsZXN8ZW58MXx8fHwxNzYyNTAwNDIxfDA&ixlib=rb-4.1.0&q=80&w=1080',
     rating: 4.8,
     reviews: 89,
     pricePerHour: 200,
-    location: 'Miami, FL',
+    location: 'Maracaibo',
     bio: 'DJ profesional especializado en bodas, eventos corporativos y fiestas privadas. Equipo completo de sonido e iluminación incluido.',
-    specialties: ['Bodas', 'Eventos Corporativos', 'Fiestas en Casa', 'EDM'],
+    specialties: ['Música y DJs', 'Bodas', 'Eventos Corporativos', 'EDM'],
     availability: ['Fines de semana', 'Noches', 'Entre semana'],
     portfolio: [
       'https://images.unsplash.com/photo-1618107095181-e3ba0f53ee59?w=400',
@@ -148,14 +148,14 @@ export const mockArtists: Artist[] = [
   {
     id: '3',
     name: 'Sarah Martinez',
-    category: 'Musician',
+    category: 'Música y DJs',
     image: 'https://images.unsplash.com/photo-1727831140213-18650ae7ef36?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtdXNpY2lhbiUyMHBlcmZvcm1pbmd8ZW58MXx8fHwxNzYyNDQ3NDUxfDA&ixlib=rb-4.1.0&q=80&w=1080',
     rating: 5.0,
     reviews: 156,
     pricePerHour: 175,
-    location: 'Austin, TX',
+    location: 'Valencia',
     bio: 'Violinista clásica y contemporánea disponible para bodas, galas y eventos íntimos. Disponible en solo o cuarteto.',
-    specialties: ['Bodas', 'Clásica', 'Contemporánea', 'Música de Cámara'],
+    specialties: ['Música y DJs', 'Cultura y Ceremonia', 'Bodas', 'Clásica'],
     availability: ['Fines de semana', 'Noches'],
     portfolio: [
       'https://images.unsplash.com/photo-1727831140213-18650ae7ef36?w=400'
@@ -221,7 +221,7 @@ export const mockArtists: Artist[] = [
     rating: 4.9,
     reviews: 73,
     pricePerHour: 125,
-    location: 'San Francisco, CA',
+    location: 'Barquisimeto',
     bio: 'Animador 2D/3D especializado en trabajo comercial, videos musicales y videos explicativos. Entrega rápida garantizada.',
     specialties: ['Animación 2D', 'Animación 3D', 'Motion Graphics', 'Trabajo Comercial'],
     availability: ['Entre semana', 'Remoto'],
@@ -294,7 +294,7 @@ export const mockArtists: Artist[] = [
     rating: 4.7,
     reviews: 64,
     pricePerHour: 180,
-    location: 'New York, NY',
+    location: 'Maracay',
     bio: 'DJ de alta energía especializada en Latina, Hip-Hop y Top 40. Disponible para clubes, bodas y eventos privados.',
     specialties: ['Música Latina', 'Hip-Hop', 'Top 40', 'Clubes'],
     availability: ['Fines de semana', 'Noches'],
@@ -343,7 +343,7 @@ export const mockArtists: Artist[] = [
     rating: 4.8,
     reviews: 91,
     pricePerHour: 250,
-    location: 'Chicago, IL',
+    location: 'Mérida',
     bio: 'Ensamble de jazz profesional para eventos exclusivos, funciones corporativas y fiestas privadas. Jazz clásico y contemporáneo.',
     specialties: ['Jazz', 'Eventos Corporativos', 'Horas de Cóctel', 'Galas'],
     availability: ['Fines de semana', 'Noches', 'Entre semana'],
@@ -521,5 +521,50 @@ export const mockServices: Service[] = [
     price: 800,
     duration: 4,
     category: 'DJ'
+  }
+];
+
+export const mockEvents: Event[] = [
+  {
+    id: 'event-1',
+    userId: 'user-1',
+    name: 'Boda María y Juan',
+    description: 'Nuestra ceremonia de boda y recepción',
+    eventDate: '2026-06-15',
+    eventType: 'Boda',
+    location: 'Jardín Botánico de Caracas',
+    budget: 15000,
+    status: 'planning',
+    contractIds: [],
+    createdAt: '2025-11-01T10:00:00Z',
+    updatedAt: '2025-11-01T10:00:00Z'
+  },
+  {
+    id: 'event-2',
+    userId: 'user-1',
+    name: 'Cumpleaños 30 de Ana',
+    description: 'Celebración de cumpleaños número 30',
+    eventDate: '2026-03-20',
+    eventType: 'Cumpleaños',
+    location: 'Club Los Samanes, Maracaibo',
+    budget: 8000,
+    status: 'planning',
+    contractIds: [],
+    createdAt: '2025-10-15T14:30:00Z',
+    updatedAt: '2025-10-15T14:30:00Z'
+  },
+  {
+    id: 'event-3',
+    userId: 'user-2',
+    name: 'Aniversario 25 años',
+    description: 'Celebración bodas de plata',
+    eventDate: '2026-08-10',
+    eventType: 'Aniversario',
+    location: 'Hacienda El Encanto, Valencia',
+    budget: 12000,
+    status: 'confirmed',
+    contractIds: [],
+    createdAt: '2025-09-20T09:15:00Z',
+    updatedAt: '2025-11-05T16:20:00Z'
   }
 ];

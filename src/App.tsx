@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase, Music } from 'lucide-react';
-import { Artist, ServicePlan, Contract, User, Review, Booking, Provider } from './types';
-import { mockArtists } from './data/mockData';
+import { Artist, ServicePlan, Contract, User, Review, Booking, Provider, Event } from './types';
+import { mockArtists, mockEvents } from './data/mockData';
 import { mockReviews } from './data/mockReviews';
+import { mockContracts } from './data/mockContracts';
 import { useSupabase } from './utils/useSupabase';
 import { ArtistCard } from './components/ArtistCard';
-import { SearchFilters } from './components/SearchFilters';
+import { AirbnbSearchBar, SearchCriteria } from './components/AirbnbSearchBar';
 import { ArtistProfile } from './components/ArtistProfile';
 import { BookingDialog } from './components/BookingDialog';
 import { CompareView } from './components/CompareView';
@@ -14,6 +15,8 @@ import { ClientDashboard } from './components/ClientDashboard';
 import { AuthDialog } from './components/AuthDialog';
 import { UserProfile } from './components/UserProfile';
 import { ReviewDialog } from './components/ReviewDialog';
+import { Footer } from './components/Footer';
+import { AboutPage } from './components/AboutPage';
 import { Button } from './components/ui/button';
 import { Badge } from './components/ui/badge';
 import { Toaster } from './components/ui/sonner';
@@ -28,9 +31,12 @@ export default function App() {
   
   const [viewMode, setViewMode] = useState<ViewMode>('client');
   const [artists, setArtists] = useState<Artist[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Todos');
-  const [priceRange, setPriceRange] = useState([0, 500]);
+  const [searchCriteria, setSearchCriteria] = useState<SearchCriteria>({
+    city: '',
+    category: '',
+    subcategory: '',
+    priceRange: [0, 50000]
+  });
   const [sortBy, setSortBy] = useState('rating');
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
   const [showProfile, setShowProfile] = useState(false);
@@ -41,6 +47,7 @@ export default function App() {
   const [showCompare, setShowCompare] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [showAbout, setShowAbout] = useState(false);
   
   // User authentication and profile
   const currentUser = supabase.currentUser;
@@ -56,6 +63,9 @@ export default function App() {
   // Provider
   const [providers, setProviders] = useState<Provider[]>([]);
   const [currentProvider, setCurrentProvider] = useState<Provider | null>(null);
+
+  // Events
+  const [events, setEvents] = useState<Event[]>([]);
 
   // Load initial data from Supabase
   useEffect(() => {
@@ -93,10 +103,12 @@ export default function App() {
         loadedArtists = mockArtists;
       }
 
-      // Load contracts
+      // Load contracts - use mock data as fallback
       const contractsData = await supabase.getContracts();
-      if (contractsData) {
+      if (contractsData && contractsData.length > 0) {
         setContracts(contractsData);
+      } else {
+        setContracts(mockContracts);
       }
 
       // Load reviews - use mock data as fallback
@@ -140,12 +152,17 @@ export default function App() {
       if (providersData) {
         setProviders(providersData);
       }
+
+      // Load mock events for now (will be replaced with Supabase later)
+      setEvents(mockEvents);
     } catch (error) {
       console.error('Error loading data:', error);
       toast.error('Error al cargar datos. Usando datos de ejemplo.');
       // Fallback to mock data
       setArtists(mockArtists);
       setReviews(mockReviews);
+      setEvents(mockEvents);
+      setContracts(mockContracts);
     }
   };
 
@@ -159,49 +176,6 @@ export default function App() {
       console.error('Error loading provider:', error);
     }
   };
-
-  // Filter and sort artists
-  const filteredArtists = useMemo(() => {
-    let filtered = artists.filter((artist) => {
-      const matchesSearch = 
-        artist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        artist.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        artist.specialties.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
-      
-      // Map Spanish category names to English for filtering
-      const categoryMap: { [key: string]: string } = {
-        'Todos': 'All',
-        'Músico': 'Musician',
-        'DJ': 'DJ',
-        'Mariachi': 'Mariachi',
-        'Animador': 'Animator'
-      };
-      const englishCategory = categoryMap[selectedCategory] || selectedCategory;
-      const matchesCategory = selectedCategory === 'Todos' || artist.category === englishCategory;
-      
-      const matchesPrice = artist.pricePerHour >= priceRange[0] && artist.pricePerHour <= priceRange[1];
-
-      return matchesSearch && matchesCategory && matchesPrice;
-    });
-
-    // Sort
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'rating':
-          return b.rating - a.rating;
-        case 'price-low':
-          return a.pricePerHour - b.pricePerHour;
-        case 'price-high':
-          return b.pricePerHour - a.pricePerHour;
-        case 'reviews':
-          return b.reviews - a.reviews;
-        default:
-          return 0;
-      }
-    });
-
-    return filtered;
-  }, [artists, searchQuery, selectedCategory, priceRange, sortBy]);
 
   const handleViewProfile = (artist: Artist) => {
     setSelectedArtist(artist);
@@ -444,6 +418,78 @@ export default function App() {
     }
   };
 
+  // Event management functions
+  const handleCreateEvent = (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!currentUser) {
+      toast.error('Debes iniciar sesión para crear un evento');
+      return;
+    }
+
+    const newEvent: Event = {
+      ...eventData,
+      id: `event-${Date.now()}`,
+      userId: currentUser.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    setEvents(prev => [...prev, newEvent]);
+    toast.success('Evento creado exitosamente');
+  };
+
+  const handleUpdateEvent = (eventId: string, updates: Partial<Event>) => {
+    setEvents(prev => prev.map(event => 
+      event.id === eventId 
+        ? { ...event, ...updates, updatedAt: new Date().toISOString() }
+        : event
+    ));
+    toast.success('Evento actualizado');
+  };
+
+  const handleDeleteEvent = (eventId: string) => {
+    // Remove event from all contracts
+    setContracts(prev => prev.map(contract => 
+      contract.eventId === eventId 
+        ? { ...contract, eventId: undefined }
+        : contract
+    ));
+    
+    setEvents(prev => prev.filter(event => event.id !== eventId));
+    toast.success('Evento eliminado');
+  };
+
+  const handleAssignContractToEvent = (contractId: string, eventId: string | null) => {
+    setContracts(prev => prev.map(contract => 
+      contract.id === contractId 
+        ? { ...contract, eventId: eventId || undefined }
+        : contract
+    ));
+
+    // Update event's contract list
+    if (eventId) {
+      setEvents(prev => prev.map(event => {
+        if (event.id === eventId) {
+          const contractIds = new Set(event.contractIds);
+          contractIds.add(contractId);
+          return { ...event, contractIds: Array.from(contractIds) };
+        }
+        // Remove from other events
+        return {
+          ...event,
+          contractIds: event.contractIds.filter(id => id !== contractId)
+        };
+      }));
+      toast.success('Reserva asignada al evento');
+    } else {
+      // Remove from all events
+      setEvents(prev => prev.map(event => ({
+        ...event,
+        contractIds: event.contractIds.filter(id => id !== contractId)
+      })));
+      toast.success('Reserva removida del evento');
+    }
+  };
+
   // Get user-specific data
   const userBookings = currentUser 
     ? bookings.filter(b => b.userId === currentUser.id)
@@ -479,6 +525,63 @@ export default function App() {
     console.log('Provider View - Filtered Provider Services:', providerServices);
   }
 
+  // Filter and sort artists based on search criteria
+  const filteredArtists = useMemo(() => {
+    let filtered = [...artists];
+
+    // Filter by city
+    if (searchCriteria.city) {
+      filtered = filtered.filter(artist => 
+        artist.location.toLowerCase().includes(searchCriteria.city.toLowerCase())
+      );
+    }
+
+    // Filter by category/subcategory
+    if (searchCriteria.subcategory) {
+      filtered = filtered.filter(artist => 
+        artist.category.toLowerCase().includes(searchCriteria.subcategory.toLowerCase()) ||
+        artist.specialties.some(s => s.toLowerCase().includes(searchCriteria.subcategory.toLowerCase()))
+      );
+    } else if (searchCriteria.category) {
+      filtered = filtered.filter(artist => 
+        artist.category.toLowerCase().includes(searchCriteria.category.toLowerCase()) ||
+        artist.specialties.some(s => s.toLowerCase().includes(searchCriteria.category.toLowerCase()))
+      );
+    }
+
+    // Filter by price range
+    filtered = filtered.filter(artist => {
+      const minPrice = Math.min(...artist.servicePlans.map(p => p.price));
+      return minPrice >= searchCriteria.priceRange[0] && minPrice <= searchCriteria.priceRange[1];
+    });
+
+    // Sort
+    switch (sortBy) {
+      case 'rating':
+        filtered.sort((a, b) => b.rating - a.rating);
+        break;
+      case 'price-low':
+        filtered.sort((a, b) => {
+          const minPriceA = Math.min(...a.servicePlans.map(p => p.price));
+          const minPriceB = Math.min(...b.servicePlans.map(p => p.price));
+          return minPriceA - minPriceB;
+        });
+        break;
+      case 'price-high':
+        filtered.sort((a, b) => {
+          const minPriceA = Math.min(...a.servicePlans.map(p => p.price));
+          const minPriceB = Math.min(...b.servicePlans.map(p => p.price));
+          return minPriceB - minPriceA;
+        });
+        break;
+      case 'reviews':
+        filtered.sort((a, b) => b.reviews - a.reviews);
+        break;
+    }
+
+    return filtered;
+  }, [artists, searchCriteria, sortBy]);
+
   // Show loading screen while checking authentication
   if (supabase.loading) {
     return (
@@ -502,7 +605,14 @@ export default function App() {
       <header className="sticky top-0 z-40 shadow-sm" style={{ backgroundColor: 'var(--navy-blue)' }}>
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <button 
+              onClick={() => {
+                setShowAbout(false);
+                setViewMode('client');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="flex items-center gap-3 cursor-pointer bg-transparent border-none p-0 hover:opacity-90 transition-opacity"
+            >
               {/* Logo: El Enlace Armónico */}
               <div className="relative" style={{ width: '48px', height: '48px' }}>
                 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
@@ -538,10 +648,17 @@ export default function App() {
                 <h1 className="text-sm font-bold text-white" style={{ fontFamily: 'system-ui, -apple-system, sans-serif', letterSpacing: '0.02em' }}>Memorialo</h1>
                 <p className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>El inicio de lo inolvidable</p>
               </div>
-            </div>
+            </button>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => setShowAbout(true)}
+                className="text-white hover:text-white hover:bg-white/10"
+              >
+                Sobre Nosotros
+              </Button>
               <Button
                 variant={viewMode === 'client' ? 'secondary' : 'ghost'}
                 onClick={() => setViewMode('client')}
@@ -620,6 +737,16 @@ export default function App() {
           {/* Mobile Navigation */}
           {mobileMenuOpen && (
             <div className="md:hidden mt-4 pt-4 border-t border-white/20 space-y-2">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowAbout(true);
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full text-white hover:text-white hover:bg-white/10"
+              >
+                Sobre Nosotros
+              </Button>
               <Button
                 variant={viewMode === 'client' ? 'secondary' : 'ghost'}
                 onClick={() => {
@@ -702,8 +829,16 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 mx-[85px] my-[0px]">
-        {viewMode === 'business' ? (
+      <main className={showAbout ? "" : "container mx-auto px-4 py-8 mx-[85px] my-[0px]"}>
+        {showAbout ? (
+          <AboutPage 
+            onGetStarted={() => {
+              setShowAbout(false);
+              setViewMode('client');
+            }}
+            onClose={() => setShowAbout(false)}
+          />
+        ) : viewMode === 'business' ? (
           currentUser && currentUser.isProvider ? (
             <BusinessDashboard
               user={currentUser}
@@ -766,6 +901,11 @@ export default function App() {
                   }
                 }}
                 reviews={reviews}
+                events={events}
+                onCreateEvent={handleCreateEvent}
+                onUpdateEvent={handleUpdateEvent}
+                onDeleteEvent={handleDeleteEvent}
+                onAssignContractToEvent={handleAssignContractToEvent}
               />
             )
           )
@@ -773,22 +913,15 @@ export default function App() {
           <>
             {/* Search & Filters */}
             <div className="mb-8">
-              <div className="mb-6">
-                <h2 className="mb-2">Descubre Artistas Increíbles</h2>
+              <div className="mb-6 text-center">
+                <h2 className="mb-2">Encuentra el Servicio Perfecto para tu Evento</h2>
                 <p className="text-gray-600">
-                  El inicio de lo inolvidable. Explora nuestra selección curada de músicos talentosos, DJs, animadores y bandas de mariachi
+                  El inicio de lo inolvidable. Desde espacios únicos hasta el mejor talento, todo lo que necesitas para crear momentos memorables
                 </p>
               </div>
 
-              <SearchFilters
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                selectedCategory={selectedCategory}
-                onCategoryChange={setSelectedCategory}
-                priceRange={priceRange}
-                onPriceRangeChange={setPriceRange}
-                sortBy={sortBy}
-                onSortChange={setSortBy}
+              <AirbnbSearchBar
+                onSearch={setSearchCriteria}
               />
             </div>
 
@@ -798,7 +931,7 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span>
-                      {compareArtists.length} artista{compareArtists.length !== 1 ? 's' : ''} seleccionado{compareArtists.length !== 1 ? 's' : ''}
+                      {compareArtists.length} proveedor{compareArtists.length !== 1 ? 'es' : ''} seleccionado{compareArtists.length !== 1 ? 's' : ''}
                     </span>
                     <div className="flex gap-2">
                       {compareArtists.map((artist) => (
@@ -827,11 +960,24 @@ export default function App() {
               </div>
             )}
 
-            {/* Results */}
-            <div className="mb-4">
+            {/* Results & Sort */}
+            <div className="mb-4 flex items-center justify-between">
               <p className="text-gray-600">
-                {filteredArtists.length} artista{filteredArtists.length !== 1 ? 's' : ''} encontrado{filteredArtists.length !== 1 ? 's' : ''}
+                {filteredArtists.length} proveedor{filteredArtists.length !== 1 ? 'es' : ''} encontrado{filteredArtists.length !== 1 ? 's' : ''}
               </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Ordenar por:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gold/50"
+                >
+                  <option value="rating">Mejor Calificación</option>
+                  <option value="price-low">Precio: Menor a Mayor</option>
+                  <option value="price-high">Precio: Mayor a Menor</option>
+                  <option value="reviews">Más Reseñas</option>
+                </select>
+              </div>
             </div>
 
             {/* Artist Grid */}
@@ -849,14 +995,17 @@ export default function App() {
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-gray-500">No se encontraron artistas que coincidan con tus criterios</p>
+                <p className="text-gray-500">No se encontraron proveedores que coincidan con tus criterios</p>
                 <Button
                   variant="outline"
                   className="mt-4"
                   onClick={() => {
-                    setSearchQuery('');
-                    setSelectedCategory('Todos');
-                    setPriceRange([0, 500]);
+                    setSearchCriteria({
+                      city: '',
+                      category: '',
+                      subcategory: '',
+                      priceRange: [0, 50000]
+                    });
                   }}
                 >
                   Restablecer Filtros
@@ -990,6 +1139,9 @@ export default function App() {
           onReviewSubmit={handleReviewSubmit}
         />
       )}
+
+      {/* Footer */}
+      <Footer onAboutClick={() => setShowAbout(true)} />
     </div>
   );
 }

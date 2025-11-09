@@ -1,0 +1,233 @@
+import { useState } from 'react';
+import { Plus, Calendar, MapPin, DollarSign, Edit2, Trash2, FolderPlus } from 'lucide-react';
+import { Event } from '../types';
+import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+
+interface EventManagerProps {
+  events: Event[];
+  onCreateEvent: (event: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onUpdateEvent: (eventId: string, updates: Partial<Event>) => void;
+  onDeleteEvent: (eventId: string) => void;
+}
+
+const EVENT_TYPES = [
+  'Boda',
+  'Cumpleaños',
+  'Aniversario',
+  'Graduación',
+  'Baby Shower',
+  'Fiesta Corporativa',
+  'Conferencia',
+  'Concierto',
+  'Festival',
+  'Otro'
+];
+
+export function EventManager({ events, onCreateEvent, onUpdateEvent, onDeleteEvent }: EventManagerProps) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    eventDate: '',
+    eventType: '',
+    location: '',
+    budget: '',
+    status: 'planning' as Event['status']
+  });
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      eventDate: '',
+      eventType: '',
+      location: '',
+      budget: '',
+      status: 'planning'
+    });
+    setEditingEvent(null);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const eventData = {
+      userId: 'current-user-id', // This should come from props
+      name: formData.name,
+      description: formData.description || undefined,
+      eventDate: formData.eventDate || undefined,
+      eventType: formData.eventType || undefined,
+      location: formData.location || undefined,
+      budget: formData.budget ? parseFloat(formData.budget) : undefined,
+      status: formData.status,
+      contractIds: editingEvent?.contractIds || []
+    };
+
+    if (editingEvent) {
+      onUpdateEvent(editingEvent.id, eventData);
+    } else {
+      onCreateEvent(eventData);
+    }
+
+    setIsDialogOpen(false);
+    resetForm();
+  };
+
+  const handleEdit = (event: Event) => {
+    setEditingEvent(event);
+    setFormData({
+      name: event.name,
+      description: event.description || '',
+      eventDate: event.eventDate || '',
+      eventType: event.eventType || '',
+      location: event.location || '',
+      budget: event.budget?.toString() || '',
+      status: event.status
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (eventId: string) => {
+    if (confirm('¿Estás seguro de que deseas eliminar este evento? Las reservas no se eliminarán, solo se desagruparán.')) {
+      onDeleteEvent(eventId);
+    }
+  };
+
+  return (
+    <div>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) resetForm();
+      }}>
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="w-4 h-4 mr-2" />
+            Crear Nuevo Evento
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingEvent ? 'Editar Evento' : 'Crear Nuevo Evento'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingEvent 
+                ? 'Actualiza la información de tu evento' 
+                : 'Crea un evento para agrupar todas las reservas de servicios'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="name">Nombre del Evento *</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Ej: Boda de María y Juan"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="eventType">Tipo de Evento</Label>
+              <Select value={formData.eventType} onValueChange={(value) => setFormData({ ...formData, eventType: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EVENT_TYPES.map(type => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="eventDate">Fecha del Evento</Label>
+              <Input
+                id="eventDate"
+                type="date"
+                value={formData.eventDate}
+                onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="location">Ubicación</Label>
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                placeholder="Ej: Salón de Eventos Los Jardines"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="budget">Presupuesto Total</Label>
+              <Input
+                id="budget"
+                type="number"
+                step="0.01"
+                value={formData.budget}
+                onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
+                placeholder="0.00"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="description">Descripción</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Detalles adicionales sobre el evento..."
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="status">Estado</Label>
+              <Select value={formData.status} onValueChange={(value: Event['status']) => setFormData({ ...formData, status: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="planning">Planificando</SelectItem>
+                  <SelectItem value="confirmed">Confirmado</SelectItem>
+                  <SelectItem value="completed">Completado</SelectItem>
+                  <SelectItem value="cancelled">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <Button type="submit" className="flex-1">
+                {editingEvent ? 'Actualizar' : 'Crear'} Evento
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  resetForm();
+                }}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

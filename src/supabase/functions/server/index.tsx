@@ -86,19 +86,20 @@ app.post("/make-server-5d78aefb/auth/signup", async (c) => {
       console.error('Signup error:', error);
       
       // Handle specific error cases
-      if (error.message.includes('already been registered') || error.code === 'email_exists') {
+      if (error.message?.includes('already been registered') || error.code === 'email_exists') {
+        console.log('Email already exists, returning 409 error');
         return c.json({ 
           error: 'Este correo electrónico ya está registrado. Por favor, inicia sesión o usa otro correo.' 
         }, 409);
       }
       
-      if (error.message.includes('Password should be at least')) {
+      if (error.message?.includes('Password should be at least')) {
         return c.json({ 
           error: 'La contraseña debe tener al menos 6 caracteres' 
         }, 400);
       }
       
-      return c.json({ error: error.message }, 400);
+      return c.json({ error: error.message || 'Error al crear la cuenta' }, 400);
     }
 
     // Store user data in KV store
