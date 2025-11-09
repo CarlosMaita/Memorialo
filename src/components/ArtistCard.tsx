@@ -22,8 +22,8 @@ export function ArtistCard({ artist, onViewProfile, onCompare, isComparing }: Ar
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
         {artist.verified && (
-          <div className="absolute top-2 right-2 bg-blue-500 text-white p-1 rounded-full">
-            <CheckCircle className="w-4 h-4" />
+          <div className="absolute top-2 right-2 p-1 rounded-full" style={{ background: 'linear-gradient(135deg, var(--gold) 0%, var(--copper) 100%)' }}>
+            <CheckCircle className="w-4 h-4" style={{ color: 'var(--navy-blue)' }} />
           </div>
         )}
         <div className="absolute top-2 left-2">
@@ -43,7 +43,7 @@ export function ArtistCard({ artist, onViewProfile, onCompare, isComparing }: Ar
         </div>
 
         <div className="flex items-center gap-1 mb-3" onClick={() => onViewProfile(artist)}>
-          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+          <Star className="w-4 h-4" style={{ fill: 'var(--gold)', color: 'var(--gold)' }} />
           <span>{artist.rating.toFixed(1)}</span>
           <span className="text-gray-500 text-sm">({artist.reviews} reseñas)</span>
         </div>
@@ -56,12 +56,12 @@ export function ArtistCard({ artist, onViewProfile, onCompare, isComparing }: Ar
         <div className="flex items-center justify-between pt-3 border-t">
           <div>
             <span className="text-gray-600 text-sm">Desde</span>
-            <p className="text-green-600">${artist.pricePerHour}/hr</p>
+            <p style={{ color: 'var(--gold)' }}>${artist.pricePerHour}/hr</p>
           </div>
           <div className="flex gap-2">
             {onCompare && (
               <Button 
-                variant={isComparing ? "default" : "outline"} 
+                variant={isComparing ? "secondary" : "outline"} 
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -71,7 +71,7 @@ export function ArtistCard({ artist, onViewProfile, onCompare, isComparing }: Ar
                 {isComparing ? 'Agregado' : 'Comparar'}
               </Button>
             )}
-            <Button size="sm" onClick={() => onViewProfile(artist)}>
+            <Button variant="secondary" size="sm" onClick={() => onViewProfile(artist)}>
               Ver
             </Button>
           </div>

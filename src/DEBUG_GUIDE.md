@@ -1,4 +1,4 @@
-# 🔧 Guía de Debugging - Famitos + Supabase
+# 🔧 Guía de Debugging - Memorialo + Supabase
 
 ## ✅ Errores Corregidos
 

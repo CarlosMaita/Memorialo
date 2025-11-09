@@ -1,4 +1,4 @@
-# 🚨 Manejo de Errores - Famitos
+# 🚨 Manejo de Errores - Memorialo
 
 ## Errores de Autenticación
 

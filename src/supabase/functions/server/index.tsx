@@ -413,6 +413,24 @@ app.put("/make-server-5d78aefb/contracts/:id", async (c) => {
     const updatedContract = { ...currentContract, ...updates };
     await kv.set(`contract:${contractId}`, updatedContract);
 
+    // If contract is being marked as completed, increment artist's bookingsCompleted
+    if (updates.status === 'completed' && currentContract.status !== 'completed') {
+      console.log(`Contract ${contractId} marked as completed, updating artist bookingsCompleted`);
+      
+      // Find and update the artist/service
+      const artistId = currentContract.artistId;
+      const service = await kv.get(`service:${artistId}`);
+      
+      if (service) {
+        const currentBookings = service.bookingsCompleted || 0;
+        service.bookingsCompleted = currentBookings + 1;
+        await kv.set(`service:${artistId}`, service);
+        console.log(`Updated service ${artistId} bookingsCompleted from ${currentBookings} to ${service.bookingsCompleted}`);
+      } else {
+        console.warn(`Service ${artistId} not found when trying to update bookingsCompleted`);
+      }
+    }
+
     return c.json(updatedContract);
   } catch (error) {
     console.error('Update contract error:', error);

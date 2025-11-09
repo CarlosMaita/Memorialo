@@ -47,7 +47,7 @@ export function SearchFilters({
       {/* Category Badges & Filters */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex gap-2 flex-wrap flex-1">
-          {categories.map((category) => (
+          {['Todos', 'Músico', 'DJ', 'Mariachi', 'Animador'].map((category) => (
             <Badge
               key={category}
               variant={selectedCategory === category ? 'default' : 'outline'}

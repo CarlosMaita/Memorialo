@@ -484,10 +484,10 @@ export default function App() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="bg-gradient-to-br from-purple-600 to-blue-600 text-white p-4 rounded-full inline-block mb-4">
-            <Users className="w-12 h-12 animate-pulse" />
+          <div className="p-4 rounded-full inline-block mb-4" style={{ background: 'linear-gradient(135deg, var(--gold) 0%, var(--copper) 100%)' }}>
+            <Music className="w-12 h-12 animate-pulse" style={{ color: 'var(--navy-blue)' }} />
           </div>
-          <h2>Famitos</h2>
+          <h2>Memorialo</h2>
           <p className="text-gray-600">Cargando...</p>
         </div>
       </div>
@@ -495,36 +495,66 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--cream-white)' }}>
       <Toaster />
       
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-40">
+      <header className="sticky top-0 z-40 shadow-sm" style={{ backgroundColor: 'var(--navy-blue)' }}>
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-black text-white p-2 rounded-lg">
-                <Music className="w-6 h-6" />
+              {/* Logo: El Enlace Armónico */}
+              <div className="relative" style={{ width: '48px', height: '48px' }}>
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+                  {/* Gradiente de fondo */}
+                  <defs>
+                    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style={{ stopColor: 'var(--gold)', stopOpacity: 1 }} />
+                      <stop offset="100%" style={{ stopColor: 'var(--copper)', stopOpacity: 1 }} />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Fondo con bordes redondeados */}
+                  <rect x="0" y="0" width="100" height="100" rx="16" fill="url(#logoGradient)" />
+                  
+                  {/* Letra M estilizada como arco/portal */}
+                  <path 
+                    d="M 20 70 L 20 35 Q 20 25 30 25 L 35 25 L 50 50 L 65 25 L 70 25 Q 80 25 80 35 L 80 70" 
+                    stroke="var(--navy-blue)" 
+                    strokeWidth="6" 
+                    fill="none" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                  />
+                  
+                  {/* Estrella de 4 puntas en el centro */}
+                  <path 
+                    d="M 50 42 L 52 48 L 58 50 L 52 52 L 50 58 L 48 52 L 42 50 L 48 48 Z" 
+                    fill="var(--navy-blue)"
+                  />
+                </svg>
               </div>
               <div>
-                <h1 className="text-sm">Famitos</h1>
-                <p className="text-xs text-gray-500">Encuentra y Contrata Artistas Talentosos</p>
+                <h1 className="text-sm font-bold text-white" style={{ fontFamily: 'system-ui, -apple-system, sans-serif', letterSpacing: '0.02em' }}>Memorialo</h1>
+                <p className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>El inicio de lo inolvidable</p>
               </div>
             </div>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-3">
               <Button
-                variant={viewMode === 'client' ? 'default' : 'outline'}
+                variant={viewMode === 'client' ? 'secondary' : 'ghost'}
                 onClick={() => setViewMode('client')}
+                className={viewMode === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}
               >
                 <Users className="w-4 h-4 mr-2" />
                 Buscar Artistas
               </Button>
               {currentUser?.isProvider && (
                 <Button
-                  variant={viewMode === 'business' ? 'default' : 'outline'}
+                  variant={viewMode === 'business' ? 'secondary' : 'ghost'}
                   onClick={() => setViewMode('business')}
+                  className={viewMode === 'business' ? '' : 'text-white hover:text-white hover:bg-white/10'}
                 >
                   <Briefcase className="w-4 h-4 mr-2" />
                   Mi Negocio
@@ -532,8 +562,9 @@ export default function App() {
               )}
               {currentUser && !currentUser.isProvider && (
                 <Button
-                  variant={viewMode === 'business' ? 'default' : 'outline'}
+                  variant={viewMode === 'business' ? 'secondary' : 'ghost'}
                   onClick={() => setViewMode('business')}
+                  className={viewMode === 'business' ? '' : 'text-white hover:text-white hover:bg-white/10'}
                 >
                   <LayoutDashboard className="w-4 h-4 mr-2" />
                   Mis Reservas
@@ -544,7 +575,7 @@ export default function App() {
               {currentUser ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
+                    <Button variant="ghost" className="text-white hover:text-white hover:bg-white/10 border border-white/20">
                       <UserCircle className="w-4 h-4 mr-2" />
                       {currentUser.name}
                     </Button>
@@ -568,7 +599,7 @@ export default function App() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Button onClick={() => setShowAuthDialog(true)}>
+                <Button variant="secondary" onClick={() => setShowAuthDialog(true)}>
                   <LogIn className="w-4 h-4 mr-2" />
                   Iniciar Sesión
                 </Button>
@@ -577,9 +608,9 @@ export default function App() {
 
             {/* Mobile Menu Button */}
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="md:hidden"
+              className="md:hidden text-white hover:text-white hover:bg-white/10"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -588,26 +619,26 @@ export default function App() {
 
           {/* Mobile Navigation */}
           {mobileMenuOpen && (
-            <div className="md:hidden mt-4 pt-4 border-t space-y-2">
+            <div className="md:hidden mt-4 pt-4 border-t border-white/20 space-y-2">
               <Button
-                variant={viewMode === 'client' ? 'default' : 'outline'}
+                variant={viewMode === 'client' ? 'secondary' : 'ghost'}
                 onClick={() => {
                   setViewMode('client');
                   setMobileMenuOpen(false);
                 }}
-                className="w-full"
+                className={`w-full ${viewMode === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
               >
                 <Users className="w-4 h-4 mr-2" />
                 Buscar Artistas
               </Button>
               {currentUser?.isProvider && (
                 <Button
-                  variant={viewMode === 'business' ? 'default' : 'outline'}
+                  variant={viewMode === 'business' ? 'secondary' : 'ghost'}
                   onClick={() => {
                     setViewMode('business');
                     setMobileMenuOpen(false);
                   }}
-                  className="w-full"
+                  className={`w-full ${viewMode === 'business' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
                 >
                   <Briefcase className="w-4 h-4 mr-2" />
                   Mi Negocio
@@ -615,12 +646,12 @@ export default function App() {
               )}
               {currentUser && !currentUser.isProvider && (
                 <Button
-                  variant={viewMode === 'business' ? 'default' : 'outline'}
+                  variant={viewMode === 'business' ? 'secondary' : 'ghost'}
                   onClick={() => {
                     setViewMode('business');
                     setMobileMenuOpen(false);
                   }}
-                  className="w-full"
+                  className={`w-full ${viewMode === 'business' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
                 >
                   <LayoutDashboard className="w-4 h-4 mr-2" />
                   Mis Reservas
@@ -630,23 +661,23 @@ export default function App() {
               {currentUser ? (
                 <>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => {
                       setShowUserProfile(true);
                       setMobileMenuOpen(false);
                     }}
-                    className="w-full"
+                    className="w-full text-white hover:text-white hover:bg-white/10"
                   >
                     <UserCircle className="w-4 h-4 mr-2" />
                     Mi Perfil
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => {
                       handleLogout();
                       setMobileMenuOpen(false);
                     }}
-                    className="w-full"
+                    className="w-full text-white hover:text-white hover:bg-white/10"
                   >
                     <LogOut className="w-4 h-4 mr-2" />
                     Cerrar Sesión
@@ -654,6 +685,7 @@ export default function App() {
                 </>
               ) : (
                 <Button
+                  variant="secondary"
                   onClick={() => {
                     setShowAuthDialog(true);
                     setMobileMenuOpen(false);
@@ -670,7 +702,7 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 mx-[85px] my-[0px]">
         {viewMode === 'business' ? (
           currentUser && currentUser.isProvider ? (
             <BusinessDashboard
@@ -686,6 +718,15 @@ export default function App() {
                 try {
                   const updatedContract = await supabase.updateContract(updated.id, updated);
                   setContracts(prev => prev.map(c => c.id === updatedContract.id ? updatedContract : c));
+                  
+                  // If contract was marked as completed, reload services to update bookingsCompleted
+                  if (updated.status === 'completed') {
+                    console.log('Contract marked as completed, reloading services...');
+                    const servicesData = await supabase.getServices();
+                    if (servicesData && servicesData.length > 0) {
+                      setArtists(servicesData);
+                    }
+                  }
                 } catch (error) {
                   console.error('Error updating contract:', error);
                   toast.error('Error al actualizar contrato');
@@ -735,7 +776,7 @@ export default function App() {
               <div className="mb-6">
                 <h2 className="mb-2">Descubre Artistas Increíbles</h2>
                 <p className="text-gray-600">
-                  Explora nuestra selección curada de músicos talentosos, DJs, animadores y bandas de mariachi
+                  El inicio de lo inolvidable. Explora nuestra selección curada de músicos talentosos, DJs, animadores y bandas de mariachi
                 </p>
               </div>
 
@@ -753,7 +794,7 @@ export default function App() {
 
             {/* Compare Bar */}
             {compareArtists.length > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="rounded-lg p-4 mb-6" style={{ background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(10, 31, 68, 0.05) 100%)', border: '1px solid var(--gold)' }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span>
@@ -831,6 +872,15 @@ export default function App() {
                 try {
                   const updatedContract = await supabase.updateContract(updated.id, updated);
                   setContracts(prev => prev.map(c => c.id === updatedContract.id ? updatedContract : c));
+                  
+                  // If contract was marked as completed, reload services to update bookingsCompleted
+                  if (updated.status === 'completed') {
+                    console.log('Contract marked as completed, reloading services...');
+                    const servicesData = await supabase.getServices();
+                    if (servicesData && servicesData.length > 0) {
+                      setArtists(servicesData);
+                    }
+                  }
                 } catch (error) {
                   console.error('Error updating contract:', error);
                   toast.error('Error al actualizar contrato');

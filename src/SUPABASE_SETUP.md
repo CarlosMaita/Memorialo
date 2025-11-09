@@ -1,8 +1,8 @@
-# Integración de Supabase - Famitos
+# Integración de Supabase - Memorialo
 
 ## ✅ Estado de la Integración
 
-La plataforma Famitos ahora está completamente integrada con Supabase para autenticación y almacenamiento de datos.
+La plataforma Memorialo ahora está completamente integrada con Supabase para autenticación y almacenamiento de datos.
 
 ## 🎯 Características Implementadas
 
