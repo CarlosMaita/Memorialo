@@ -158,16 +158,10 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
       onContractCreated(signedContract);
     }
     
-    // Update booking to confirmed when client signs
-    if (generatedBooking && onBookingUpdate) {
-      const updatedBooking = {
-        ...generatedBooking,
-        status: 'confirmed' as const
-      };
-      onBookingUpdate(updatedBooking);
-    }
+    // Booking stays in 'pending' status when client signs
+    // It will be confirmed only when provider signs the contract
     
-    toast.success('¡Reserva confirmada! Tu evento ha sido reservado exitosamente.');
+    toast.success('¡Contrato firmado! El proveedor revisará tu solicitud y confirmará la reserva.');
   };
 
 

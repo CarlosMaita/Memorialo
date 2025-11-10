@@ -22,7 +22,8 @@ import {
   Clock,
   XCircle,
   CalendarPlus,
-  BarChart3
+  BarChart3,
+  AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -77,6 +78,8 @@ export function BusinessDashboard({
   const [showBookingDialog, setShowBookingDialog] = useState(false);
   const [creatingBookingContract, setCreatingBookingContract] = useState<Contract | null>(null);
   const [showMetricsModal, setShowMetricsModal] = useState(false);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [showEditBookingDialog, setShowEditBookingDialog] = useState(false);
 
   // Debug logging
   console.log('BusinessDashboard - User ID:', user.id);
@@ -95,6 +98,12 @@ export function BusinessDashboard({
     date: '',
     startTime: '',
     duration: ''
+  });
+
+  // Edit booking form
+  const [editBookingForm, setEditBookingForm] = useState({
+    date: '',
+    startTime: ''
   });
 
   const handleProviderSetup = () => {
@@ -153,12 +162,12 @@ export function BusinessDashboard({
   const confirmedBookings = providerBookings.filter(b => b.status === 'confirmed').length;
   const completedBookings = providerBookings.filter(b => b.status === 'completed').length;
 
-  // Sort contracts: pending first, signed last
+  // Sort contracts: pending first, active/signed, then completed last
   const sortedContracts = [...providerContracts].sort((a, b) => {
     const statusOrder: { [key: string]: number } = {
       'pending_artist': 1,
       'pending_client': 2,
-      'signed': 3,
+      'active': 3,
       'completed': 4,
       'cancelled': 5
     };
@@ -261,11 +270,65 @@ export function BusinessDashboard({
     toast.success(`Reserva ${statusMap[status]}`);
   };
 
+  const handleEditBooking = (booking: Booking) => {
+    setEditingBooking(booking);
+    setEditBookingForm({
+      date: booking.date,
+      startTime: booking.startTime || ''
+    });
+    setShowEditBookingDialog(true);
+  };
+
+  const handleSaveEditedBooking = () => {
+    if (!editingBooking) return;
+    
+    if (!editBookingForm.date || !editBookingForm.startTime) {
+      toast.error('Por favor completa la fecha y hora de inicio');
+      return;
+    }
+
+    // Update the booking
+    const updatedBooking: Booking = {
+      ...editingBooking,
+      date: editBookingForm.date,
+      startTime: editBookingForm.startTime
+    };
+
+    onBookingUpdate(updatedBooking);
+
+    // Also update the associated contract if it exists
+    if (editingBooking.contractId) {
+      const contract = providerContracts.find(c => c.id === editingBooking.contractId);
+      if (contract) {
+        const updatedContract: Contract = {
+          ...contract,
+          terms: {
+            ...contract.terms,
+            date: editBookingForm.date,
+            startTime: editBookingForm.startTime
+          }
+        };
+        onContractUpdate(updatedContract);
+      }
+    }
+
+    setShowEditBookingDialog(false);
+    setEditingBooking(null);
+    toast.success('Reserva actualizada exitosamente');
+  };
+
+  // Check if a booking has a pending contract (waiting for provider signature)
+  const hasContractPendingProvider = (booking: Booking) => {
+    if (!booking.contractId) return false;
+    const contract = providerContracts.find(c => c.id === booking.contractId);
+    return contract?.status === 'pending_artist';
+  };
+
   const getStatusBadge = (status: string) => {
     const statusColors: { [key: string]: string } = {
       'pending': 'bg-yellow-100 text-yellow-800',
       'confirmed': 'bg-blue-100 text-blue-800',
-      'signed': 'bg-green-600',
+      'active': 'bg-green-600',
       'pending_client': 'border-orange-500 text-orange-700',
       'pending_artist': 'border-orange-500 text-orange-700',
       'cancelled': 'bg-red-100 text-red-800',
@@ -279,7 +342,7 @@ export function BusinessDashboard({
     const statusTexts: { [key: string]: string } = {
       'pending': 'Pendiente',
       'confirmed': 'Confirmada',
-      'signed': 'Firmado',
+      'active': 'Firmado',
       'pending_client': 'Pendiente del cliente',
       'pending_artist': 'Pendiente de tu firma',
       'cancelled': 'Cancelado',
@@ -711,10 +774,22 @@ export function BusinessDashboard({
               {sortedContracts.map((contract) => {
                 const isSigned = contract.clientSignature && contract.artistSignature;
                 const contractHasBooking = hasBooking(contract.id);
+                const needsProviderSignature = contract.status === 'pending_artist' && contract.clientSignature && !contract.artistSignature;
                 
                 return (
-                  <Card key={contract.id}>
+                  <Card key={contract.id} className={needsProviderSignature ? 'border-2 border-orange-400 bg-orange-50/30' : ''}>
                     <CardContent className="p-4">
+                      {needsProviderSignature && (
+                        <div className="mb-3 flex items-start gap-2 bg-orange-100 border border-orange-300 rounded-lg p-3">
+                          <AlertCircle className="w-5 h-5 text-orange-700 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm text-orange-900">
+                              <strong>Acción requerida:</strong> El cliente ha firmado el contrato. 
+                              Revisa los términos y firma para confirmar la reserva.
+                            </p>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -809,17 +884,33 @@ export function BusinessDashboard({
             </Card>
           ) : (
             <div className="space-y-3">
-              {sortedBookings.map((booking) => (
-                <Card key={booking.id}>
+              {sortedBookings.map((booking) => {
+                // Check if this booking has a contract pending provider signature
+                const isPendingProviderSignature = hasContractPendingProvider(booking);
+                const displayStatus = isPendingProviderSignature ? 'pending' : booking.status;
+                
+                return (
+                  <Card key={booking.id} className={booking.status === 'pending' ? 'border-2 border-yellow-400 bg-yellow-50/30' : ''}>
                   <CardContent className="p-4">
+                    {isPendingProviderSignature && (
+                      <div className="mb-3 flex items-start gap-2 bg-yellow-100 border border-yellow-300 rounded-lg p-3">
+                        <Clock className="w-5 h-5 text-yellow-700 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-yellow-900">
+                            <strong>Reserva pendiente:</strong> Esta reserva se confirmará automáticamente cuando firmes el contrato asociado. 
+                            Puedes editar la fecha/hora antes de firmar.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="text-base">{booking.clientName}</h4>
-                          <Badge className={getStatusBadge(booking.status)}>
+                          <Badge className={getStatusBadge(displayStatus)}>
                             <span className="flex items-center gap-1">
-                              {getStatusIcon(booking.status)}
-                              {getStatusText(booking.status)}
+                              {getStatusIcon(displayStatus)}
+                              {getStatusText(displayStatus)}
                             </span>
                           </Badge>
                         </div>
@@ -857,25 +948,35 @@ export function BusinessDashboard({
                     </div>
 
                     <div className="flex gap-2 pt-3 border-t">
-                      {booking.status === 'pending' && (
+                      {displayStatus === 'pending' && (
                         <>
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => handleUpdateBookingStatus(booking.id, 'cancelled')}
+                            onClick={() => handleEditBooking(booking)}
                           >
-                            Rechazar
+                            <Calendar className="w-4 h-4 mr-1" />
+                            Editar Fecha/Hora
                           </Button>
-                          <Button 
-                            size="sm"
-                            onClick={() => handleUpdateBookingStatus(booking.id, 'confirmed')}
-                          >
-                            Aceptar
-                          </Button>
+                          {booking.contractId && (
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const contract = providerContracts.find(c => c.id === booking.contractId);
+                                if (contract) {
+                                  handleViewContract(contract);
+                                }
+                              }}
+                            >
+                              <FileText className="w-4 h-4 mr-1" />
+                              Ver Contrato
+                            </Button>
+                          )}
                         </>
                       )}
                       
-                      {booking.status === 'confirmed' && (
+                      {displayStatus === 'confirmed' && (
                         <Button 
                           size="sm"
                           onClick={() => handleUpdateBookingStatus(booking.id, 'completed')}
@@ -883,10 +984,27 @@ export function BusinessDashboard({
                           Marcar como Completada
                         </Button>
                       )}
+                      
+                      {displayStatus === 'completed' && booking.contractId && (
+                        <Button 
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const contract = providerContracts.find(c => c.id === booking.contractId);
+                            if (contract) {
+                              handleViewContract(contract);
+                            }
+                          }}
+                        >
+                          <FileText className="w-4 h-4 mr-1" />
+                          Ver Contrato
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                );
+              })}
             </div>
           )}
         </TabsContent>
@@ -928,11 +1046,34 @@ export function BusinessDashboard({
           }}
           onSign={(signedContract) => {
             onContractUpdate(signedContract);
+            
+            // When provider signs, update the associated booking to 'confirmed'
+            const associatedBooking = providerBookings.find(b => b.contractId === signedContract.id);
+            if (associatedBooking && associatedBooking.status === 'pending') {
+              const updatedBooking = {
+                ...associatedBooking,
+                status: 'confirmed' as const
+              };
+              onBookingUpdate(updatedBooking);
+              toast.success('¡Contrato firmado y reserva confirmada!');
+            }
+            
             setShowContractView(false);
             setSelectedContract(null);
           }}
           onReject={(rejectedContract) => {
             onContractUpdate(rejectedContract);
+            
+            // When provider rejects, cancel the associated booking
+            const associatedBooking = providerBookings.find(b => b.contractId === rejectedContract.id);
+            if (associatedBooking) {
+              const updatedBooking = {
+                ...associatedBooking,
+                status: 'cancelled' as const
+              };
+              onBookingUpdate(updatedBooking);
+            }
+            
             setShowContractView(false);
             setSelectedContract(null);
           }}
@@ -1004,6 +1145,79 @@ export function BusinessDashboard({
                 disabled={!bookingForm.date || !bookingForm.startTime}
               >
                 Crear Reserva
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Booking Dialog */}
+      <Dialog open={showEditBookingDialog} onOpenChange={setShowEditBookingDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Fecha y Hora de Reserva</DialogTitle>
+            <DialogDescription>
+              Modifica la fecha y hora de esta reserva pendiente
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {editingBooking && (
+              <div className="bg-blue-50 p-3 rounded-lg text-sm">
+                <p><strong>Cliente:</strong> {editingBooking.clientName}</p>
+                <p><strong>Servicio:</strong> {editingBooking.eventType}</p>
+                <p><strong>Precio:</strong> ${editingBooking.totalPrice}</p>
+                <Badge className={getStatusBadge(editingBooking.status)}>
+                  {getStatusText(editingBooking.status)}
+                </Badge>
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="editBookingDate">Fecha del Evento *</Label>
+              <Input
+                id="editBookingDate"
+                type="date"
+                value={editBookingForm.date}
+                onChange={(e) => setEditBookingForm({ ...editBookingForm, date: e.target.value })}
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="editBookingTime">Hora de Inicio *</Label>
+              <Input
+                id="editBookingTime"
+                type="time"
+                value={editBookingForm.startTime}
+                onChange={(e) => setEditBookingForm({ ...editBookingForm, startTime: e.target.value })}
+              />
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm text-amber-800">
+                <strong>Nota:</strong> Al editar la fecha u hora, se actualizará también el contrato asociado. 
+                El cliente será notificado de los cambios.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowEditBookingDialog(false);
+                  setEditingBooking(null);
+                }}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleSaveEditedBooking}
+                className="flex-1"
+                disabled={!editBookingForm.date || !editBookingForm.startTime}
+              >
+                Guardar Cambios
               </Button>
             </div>
           </div>

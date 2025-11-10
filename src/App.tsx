@@ -533,27 +533,28 @@ export default function App() {
       // Update local state
       setContracts(prev => prev.map(c => c.id === updated.id ? updated : c));
       
-      // Update associated booking if contract status changes
-      if (updated.bookingId) {
-        const associatedBooking = bookings.find(b => b.id === updated.bookingId);
-        if (associatedBooking) {
-          let newBookingStatus = associatedBooking.status;
-          
-          // Map contract status to booking status
-          if (updated.status === 'cancelled') {
-            newBookingStatus = 'cancelled';
-          } else if (updated.status === 'active') {
-            newBookingStatus = 'confirmed';
-          }
-          
-          // Update booking if status changed
-          if (newBookingStatus !== associatedBooking.status) {
-            const updatedBooking = {
-              ...associatedBooking,
-              status: newBookingStatus
-            };
-            await handleBookingUpdate(updatedBooking);
-          }
+      // Update associated booking - search by bookingId OR contractId
+      const associatedBooking = bookings.find(b => 
+        b.id === updated.bookingId || b.contractId === updated.id
+      );
+      
+      if (associatedBooking) {
+        let newBookingStatus = associatedBooking.status;
+        
+        // Map contract status to booking status
+        if (updated.status === 'cancelled') {
+          newBookingStatus = 'cancelled';
+        } else if (updated.status === 'active') {
+          newBookingStatus = 'confirmed';
+        }
+        
+        // Update booking if status changed
+        if (newBookingStatus !== associatedBooking.status) {
+          const updatedBooking = {
+            ...associatedBooking,
+            status: newBookingStatus
+          };
+          await handleBookingUpdate(updatedBooking);
         }
       }
       
