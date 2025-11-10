@@ -491,6 +491,11 @@ export function ProviderDashboard({
             setShowContractView(false);
             setSelectedContract(null);
           }}
+          onReject={(rejectedContract) => {
+            onContractUpdate(rejectedContract);
+            setShowContractView(false);
+            setSelectedContract(null);
+          }}
           userType="artist"
         />
       )}

@@ -77,8 +77,8 @@ export function SearchFilters({
                 <div className="mt-4">
                   <Slider
                     min={0}
-                    max={500}
-                    step={25}
+                    max={5000}
+                    step={100}
                     value={priceRange}
                     onValueChange={onPriceRangeChange}
                   />
@@ -128,8 +128,8 @@ export function SearchFilters({
         <Label>Rango de Precio (por hora): ${priceRange[0]} - ${priceRange[1]}</Label>
         <Slider
           min={0}
-          max={500}
-          step={25}
+          max={5000}
+          step={100}
           value={priceRange}
           onValueChange={onPriceRangeChange}
           className="mt-2"

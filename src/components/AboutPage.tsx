@@ -66,15 +66,15 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
               </div>
               
               <h2 className="mb-6" style={{ color: 'var(--navy-blue)' }}>
-                Revolucionando la Contratación de Artistas
+                Revolucionando la Contratación de Servicios para Eventos
               </h2>
               
               <p className="text-gray-700 mb-4 leading-relaxed">
-                En Memorialo, creemos que encontrar el artista perfecto para tu evento no debería ser complicado. Hemos creado una plataforma que elimina la búsqueda interminable por WhatsApp y las llamadas sin respuesta.
+                En Memorialo, creemos que encontrar el proveedor perfecto para tu evento no debería ser complicado. Hemos creado una plataforma que elimina la búsqueda interminable por WhatsApp y las llamadas sin respuesta.
               </p>
               
               <p className="text-gray-700 mb-6 leading-relaxed">
-                Nuestra misión es empoderar a músicos, DJs, animadores y mariachis venezolanos, brindándoles las herramientas para que puedan mostrar su talento, gestionar sus servicios y hacer crecer sus negocios, mientras facilitamos a los clientes la búsqueda, comparación y contratación de los mejores artistas para sus eventos especiales.
+                Nuestra misión es empoderar a músicos, DJs, animadores, fotógrafos, decoradores y todos los proveedores de servicios para eventos venezolanos, brindándoles las herramientas para que puedan mostrar su talento, gestionar sus servicios y hacer crecer sus negocios, mientras facilitamos a los clientes la búsqueda, comparación y contratación de los mejores proveedores para sus eventos especiales.
               </p>
 
               <div className="flex flex-wrap gap-3">
@@ -135,7 +135,7 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
                 <ul className="space-y-3">
                   <li className="flex items-start gap-3">
                     <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: '#dc2626' }} />
-                    <span className="text-gray-700">Búsqueda interminable de artistas por WhatsApp</span>
+                    <span className="text-gray-700">Búsqueda interminable de proveedores por WhatsApp</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: '#dc2626' }} />
@@ -170,7 +170,7 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
                 <ul className="space-y-3">
                   <li className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
-                    <span className="text-gray-700">Busca y compara artistas en segundos</span>
+                    <span className="text-gray-700">Busca y compara proveedores en segundos</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
@@ -263,7 +263,7 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
       <section className="py-16" style={{ backgroundColor: 'rgba(10, 31, 68, 0.03)' }}>
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            {/* Para Artistas */}
+            {/* Para Proveedores */}
             <Card className="border-0 shadow-xl overflow-hidden">
               <div className="h-3" style={{ background: 'linear-gradient(90deg, var(--gold) 0%, var(--copper) 100%)' }} />
               <CardContent className="p-8">
@@ -271,11 +271,11 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
                   <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(212, 175, 55, 0.15)' }}>
                     <Music className="w-6 h-6" style={{ color: 'var(--gold)' }} />
                   </div>
-                  <h3 style={{ color: 'var(--navy-blue)' }}>Para Artistas</h3>
+                  <h3 style={{ color: 'var(--navy-blue)' }}>Para Proveedores</h3>
                 </div>
                 
                 <p className="text-gray-700 mb-6">
-                  Memorialo es tu aliado para hacer crecer tu negocio artístico. Te ofrecemos:
+                  Memorialo es tu aliado para hacer crecer tu negocio. Te ofrecemos:
                 </p>
 
                 <ul className="space-y-4 mb-8">
@@ -317,7 +317,7 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
                   }}
                   onClick={onGetStarted}
                 >
-                  Únete como Artista
+                  Únete como Proveedor
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </CardContent>
@@ -335,7 +335,7 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
                 </div>
                 
                 <p className="text-gray-700 mb-6">
-                  Organiza eventos inolvidables con la mejor selección de artistas venezolanos:
+                  Organiza eventos inolvidables con la mejor selección de proveedores venezolanos:
                 </p>
 
                 <ul className="space-y-4 mb-8">
@@ -350,7 +350,7 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
                     <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
                     <div>
                       <div className="text-gray-900 mb-1">Comparación Inteligente</div>
-                      <div className="text-sm text-gray-600">Compara hasta 3 artistas lado a lado</div>
+                      <div className="text-sm text-gray-600">Compara hasta 3 proveedores lado a lado</div>
                     </div>
                   </li>
                   <li className="flex items-start gap-3">
@@ -377,7 +377,7 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
                   }}
                   onClick={onGetStarted}
                 >
-                  Buscar Artistas
+                  Buscar Servicios
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </CardContent>

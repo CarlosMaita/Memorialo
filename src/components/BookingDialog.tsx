@@ -93,10 +93,10 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
         paymentTerms: 'Se requiere un depósito del 50% para confirmar la reserva. El saldo restante debe pagarse 7 días antes del evento. Los pagos pueden realizarse mediante transferencia bancaria, tarjeta de crédito o efectivo.',
         cancellationPolicy: 'Cancelaciones con más de 30 días de anticipación: reembolso completo del depósito. Cancelaciones entre 15-30 días: reembolso del 50%. Cancelaciones con menos de 15 días: sin reembolso. En caso de emergencia o enfermedad grave, se evaluarán excepciones caso por caso.',
         additionalTerms: [
-          'El artista se compromete a llegar al lugar del evento con 30 minutos de anticipación para preparación.',
+          'El proveedor se compromete a llegar al lugar del evento con 30 minutos de anticipación para preparación.',
           'El cliente debe proporcionar un espacio adecuado y acceso a electricidad si es necesario.',
           'Cualquier solicitud especial o cambio en el servicio debe comunicarse con al menos 7 días de anticipación.',
-          'El artista se reserva el derecho de usar fotografías del evento para promoción, a menos que se acuerde lo contrario.',
+          'El proveedor se reserva el derecho de usar fotografías del evento para promoción, a menos que se acuerde lo contrario.',
           'En caso de fuerza mayor (clima extremo, emergencias), ambas partes acordarán reprogramar sin penalización.',
           'Ambas partes acuerdan resolver cualquier disputa mediante mediación antes de proceder legalmente.',
           formData.specialRequests ? `Solicitudes especiales del cliente: ${formData.specialRequests}` : ''
@@ -168,26 +168,9 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     }
     
     toast.success('¡Reserva confirmada! Tu evento ha sido reservado exitosamente.');
-    
-    // Reset form
-    setFormData({
-      clientName: '',
-      clientEmail: '',
-      clientPhone: '',
-      date: '',
-      startTime: '',
-      duration: '2',
-      eventType: '',
-      location: '',
-      specialRequests: '',
-      planId: ''
-    });
-    
-    setShowContract(false);
-    setGeneratedContract(null);
-    setGeneratedBooking(null);
-    onClose();
   };
+
+
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -195,7 +178,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
         <DialogHeader>
           <DialogTitle>Reservar a {artist.name}</DialogTitle>
           <DialogDescription>
-            Completa el formulario para solicitar una reserva. El artista responderá en {artist.responseTime}.
+            Completa el formulario para solicitar una reserva. El proveedor responderá en {artist.responseTime}.
           </DialogDescription>
         </DialogHeader>
 
@@ -412,7 +395,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
                 id="requests"
                 value={formData.specialRequests}
                 onChange={(e) => setFormData({ ...formData, specialRequests: e.target.value })}
-                placeholder="Canciones especiales, requisitos o detalles que el artista deba saber..."
+                placeholder="Detalles especiales, requisitos o información que el proveedor deba saber..."
                 rows={3}
               />
             </div>
@@ -459,8 +442,8 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
             )}
             <p className="text-xs text-gray-500 pt-2">
               {selectedServicePlan 
-                ? 'El precio incluye todo lo mencionado en el plan. El artista confirmará los detalles finales.'
-                : 'El precio final puede variar según los requisitos específicos y será confirmado por el artista.'
+                ? 'El precio incluye todo lo mencionado en el plan. El proveedor confirmará los detalles finales.'
+                : 'El precio final puede variar según los requisitos específicos y será confirmado por el proveedor.'
               }
             </p>
           </div>

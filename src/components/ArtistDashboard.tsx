@@ -569,6 +569,13 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
           setShowContractDialog(false);
           setSelectedContract(null);
         }}
+        onReject={(rejectedContract) => {
+          if (onContractUpdate) {
+            onContractUpdate(rejectedContract);
+          }
+          setShowContractDialog(false);
+          setSelectedContract(null);
+        }}
       />
     </div>
   );

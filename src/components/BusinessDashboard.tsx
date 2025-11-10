@@ -21,7 +21,8 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
-  CalendarPlus
+  CalendarPlus,
+  BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -75,6 +76,7 @@ export function BusinessDashboard({
   const [showProviderSetup, setShowProviderSetup] = useState(!provider);
   const [showBookingDialog, setShowBookingDialog] = useState(false);
   const [creatingBookingContract, setCreatingBookingContract] = useState<Contract | null>(null);
+  const [showMetricsModal, setShowMetricsModal] = useState(false);
 
   // Debug logging
   console.log('BusinessDashboard - User ID:', user.id);
@@ -150,6 +152,29 @@ export function BusinessDashboard({
   const pendingBookings = providerBookings.filter(b => b.status === 'pending').length;
   const confirmedBookings = providerBookings.filter(b => b.status === 'confirmed').length;
   const completedBookings = providerBookings.filter(b => b.status === 'completed').length;
+
+  // Sort contracts: pending first, signed last
+  const sortedContracts = [...providerContracts].sort((a, b) => {
+    const statusOrder: { [key: string]: number } = {
+      'pending_artist': 1,
+      'pending_client': 2,
+      'signed': 3,
+      'completed': 4,
+      'cancelled': 5
+    };
+    return (statusOrder[a.status] || 6) - (statusOrder[b.status] || 6);
+  });
+
+  // Sort bookings: pending first, confirmed second, completed third, cancelled last
+  const sortedBookings = [...providerBookings].sort((a, b) => {
+    const statusOrder: { [key: string]: number } = {
+      'pending': 1,
+      'confirmed': 2,
+      'completed': 3,
+      'cancelled': 4
+    };
+    return (statusOrder[a.status] || 5) - (statusOrder[b.status] || 5);
+  });
 
   const handleEditService = (service: Artist) => {
     setEditingService(service);
@@ -346,8 +371,20 @@ export function BusinessDashboard({
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
+      {/* Stats - Mobile Button */}
+      <div className="md:hidden mb-6">
+        <Button 
+          onClick={() => setShowMetricsModal(true)}
+          className="w-full"
+          variant="outline"
+        >
+          <BarChart3 className="w-5 h-5 mr-2" />
+          Ver Estadísticas del Negocio
+        </Button>
+      </div>
+
+      {/* Stats - Desktop Grid */}
+      <div className="hidden md:grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -446,6 +483,104 @@ export function BusinessDashboard({
           </CardContent>
         </Card>
       </div>
+
+      {/* Metrics Modal for Mobile */}
+      <Dialog open={showMetricsModal} onOpenChange={setShowMetricsModal}>
+        <DialogContent className="max-w-[90vw] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Estadísticas del Negocio</DialogTitle>
+            <DialogDescription>
+              Resumen de tu actividad y métricas principales
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <div className="bg-blue-100 p-3 rounded-lg inline-flex mb-2">
+                    <Eye className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <p className="text-xs text-gray-600 mb-1">Servicios</p>
+                  <p className="text-2xl">{services.length}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <div className="bg-green-100 p-3 rounded-lg inline-flex mb-2">
+                    <FileText className="w-6 h-6 text-green-600" />
+                  </div>
+                  <p className="text-xs text-gray-600 mb-1">Contratos</p>
+                  <p className="text-2xl">{providerContracts.length}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-2">
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <div className="bg-purple-100 p-3 rounded-lg inline-flex mb-2">
+                    <DollarSign className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <p className="text-xs text-gray-600 mb-1">Ingresos Totales</p>
+                  <p className="text-3xl">${totalRevenue.toLocaleString()}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <div className="bg-indigo-100 p-3 rounded-lg inline-flex mb-2">
+                    <Calendar className="w-6 h-6 text-indigo-600" />
+                  </div>
+                  <p className="text-xs text-gray-600 mb-1">Reservas Totales</p>
+                  <p className="text-2xl">{totalBookings}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <div className="bg-yellow-100 p-3 rounded-lg inline-flex mb-2">
+                    <Clock className="w-6 h-6 text-yellow-600" />
+                  </div>
+                  <p className="text-xs text-gray-600 mb-1">Pendientes</p>
+                  <p className="text-2xl">{pendingBookings}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <div className="bg-blue-100 p-3 rounded-lg inline-flex mb-2">
+                    <CheckCircle2 className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <p className="text-xs text-gray-600 mb-1">Confirmadas</p>
+                  <p className="text-2xl">{confirmedBookings}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <div className="bg-green-100 p-3 rounded-lg inline-flex mb-2">
+                    <CheckCircle2 className="w-6 h-6 text-green-600" />
+                  </div>
+                  <p className="text-xs text-gray-600 mb-1">Completadas</p>
+                  <p className="text-2xl">{completedBookings}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Main Content */}
       <Tabs defaultValue="services" className="w-full">
@@ -573,7 +708,7 @@ export function BusinessDashboard({
             </Card>
           ) : (
             <div className="space-y-3">
-              {providerContracts.map((contract) => {
+              {sortedContracts.map((contract) => {
                 const isSigned = contract.clientSignature && contract.artistSignature;
                 const contractHasBooking = hasBooking(contract.id);
                 
@@ -623,12 +758,12 @@ export function BusinessDashboard({
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex flex-col md:flex-row gap-2">
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleViewContract(contract)}
-                          className="flex-1"
+                          className="w-full md:flex-1"
                         >
                           <FileText className="w-4 h-4 mr-2" />
                           Ver Contrato
@@ -638,6 +773,7 @@ export function BusinessDashboard({
                           <Button
                             size="sm"
                             onClick={() => handleCreateBooking(contract)}
+                            className="w-full md:w-auto"
                           >
                             <CalendarPlus className="w-4 h-4 mr-2" />
                             Crear Reserva
@@ -645,7 +781,7 @@ export function BusinessDashboard({
                         )}
                         
                         {contractHasBooking && (
-                          <Badge variant="outline" className="text-green-700 border-green-300">
+                          <Badge variant="outline" className="text-green-700 border-green-300 w-full md:w-auto justify-center">
                             <CheckCircle2 className="w-3 h-3 mr-1" />
                             Reserva creada
                           </Badge>
@@ -673,7 +809,7 @@ export function BusinessDashboard({
             </Card>
           ) : (
             <div className="space-y-3">
-              {providerBookings.map((booking) => (
+              {sortedBookings.map((booking) => (
                 <Card key={booking.id}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
@@ -792,6 +928,11 @@ export function BusinessDashboard({
           }}
           onSign={(signedContract) => {
             onContractUpdate(signedContract);
+            setShowContractView(false);
+            setSelectedContract(null);
+          }}
+          onReject={(rejectedContract) => {
+            onContractUpdate(rejectedContract);
             setShowContractView(false);
             setSelectedContract(null);
           }}

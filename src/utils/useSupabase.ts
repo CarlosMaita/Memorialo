@@ -123,7 +123,6 @@ export function useSupabase() {
       });
 
       if (error) {
-        console.error('Sign in error:', error);
         throw new Error(error.message);
       }
 
@@ -134,7 +133,6 @@ export function useSupabase() {
 
       return { user: userData, accessToken: data.session.access_token };
     } catch (error) {
-      console.error('Sign in error:', error);
       throw error;
     }
   };

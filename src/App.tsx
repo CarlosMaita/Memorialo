@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase, Music } from 'lucide-react';
+import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase } from 'lucide-react';
 import { Artist, ServicePlan, Contract, User, Review, Booking, Provider, Event } from './types';
 import { mockArtists, mockEvents } from './data/mockData';
 import { mockReviews } from './data/mockReviews';
@@ -17,6 +17,13 @@ import { UserProfile } from './components/UserProfile';
 import { ReviewDialog } from './components/ReviewDialog';
 import { Footer } from './components/Footer';
 import { AboutPage } from './components/AboutPage';
+import { ForProvidersPage } from './components/ForProvidersPage';
+import { ForClientsPage } from './components/ForClientsPage';
+import { TermsConditions } from './components/legal/TermsConditions';
+import { PrivacyPolicy } from './components/legal/PrivacyPolicy';
+import { CancellationPolicy } from './components/legal/CancellationPolicy';
+import { RefundPolicy } from './components/legal/RefundPolicy';
+import { CodeOfConduct } from './components/legal/CodeOfConduct';
 import { Button } from './components/ui/button';
 import { Badge } from './components/ui/badge';
 import { Toaster } from './components/ui/sonner';
@@ -24,18 +31,20 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { toast } from 'sonner@2.0.3';
 
 type ViewMode = 'client' | 'business';
+type DashboardView = 'provider' | 'client';
 
 export default function App() {
   // Supabase hook
   const supabase = useSupabase();
   
   const [viewMode, setViewMode] = useState<ViewMode>('client');
+  const [dashboardView, setDashboardView] = useState<DashboardView>('provider');
   const [artists, setArtists] = useState<Artist[]>([]);
   const [searchCriteria, setSearchCriteria] = useState<SearchCriteria>({
     city: '',
     category: '',
     subcategory: '',
-    priceRange: [0, 50000]
+    priceRange: [0, 5000]
   });
   const [sortBy, setSortBy] = useState('rating');
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
@@ -48,6 +57,9 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [showAbout, setShowAbout] = useState(false);
+  const [showForProviders, setShowForProviders] = useState(false);
+  const [showForClients, setShowForClients] = useState(false);
+  const [currentRoute, setCurrentRoute] = useState(window.location.pathname);
   
   // User authentication and profile
   const currentUser = supabase.currentUser;
@@ -90,6 +102,16 @@ export default function App() {
       }
     }
   }, [artists]);
+
+  // Handle URL routing
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentRoute(window.location.pathname);
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const loadData = async () => {
     try {
@@ -236,6 +258,7 @@ export default function App() {
         setProviders([...providers, provider]);
         setCurrentProvider(provider);
         setViewMode('business');
+        setDashboardView('provider');
         
         // Update user to mark as provider
         await supabase.updateUser(result.user.id, { isProvider: true, providerId: provider.id });
@@ -253,6 +276,7 @@ export default function App() {
       if (supabase.currentUser?.isProvider) {
         await loadCurrentProvider();
         setViewMode('business');
+        setDashboardView('provider');
       }
     } catch (error) {
       throw error;
@@ -263,6 +287,7 @@ export default function App() {
     try {
       await supabase.signOut();
       setViewMode('client');
+      setDashboardView('provider');
       setCurrentProvider(null);
     } catch (error) {
       console.error('Error logging out:', error);
@@ -443,6 +468,16 @@ export default function App() {
         ? { ...event, ...updates, updatedAt: new Date().toISOString() }
         : event
     ));
+  };
+
+  // Navigation function
+  const navigateTo = (path: string) => {
+    window.history.pushState({}, '', path);
+    setCurrentRoute(path);
+    setShowAbout(false);
+    setShowForProviders(false);
+    setShowForClients(false);
+    window.scrollTo(0, 0);
     toast.success('Evento actualizado');
   };
 
@@ -487,6 +522,52 @@ export default function App() {
         contractIds: event.contractIds.filter(id => id !== contractId)
       })));
       toast.success('Reserva removida del evento');
+    }
+  };
+
+  const handleContractUpdate = async (updatedContract: Contract) => {
+    try {
+      // Update contract in Supabase
+      const updated = await supabase.updateContract(updatedContract.id, updatedContract);
+      
+      // Update local state
+      setContracts(prev => prev.map(c => c.id === updated.id ? updated : c));
+      
+      // Update associated booking if contract status changes
+      if (updated.bookingId) {
+        const associatedBooking = bookings.find(b => b.id === updated.bookingId);
+        if (associatedBooking) {
+          let newBookingStatus = associatedBooking.status;
+          
+          // Map contract status to booking status
+          if (updated.status === 'cancelled') {
+            newBookingStatus = 'cancelled';
+          } else if (updated.status === 'active') {
+            newBookingStatus = 'confirmed';
+          }
+          
+          // Update booking if status changed
+          if (newBookingStatus !== associatedBooking.status) {
+            const updatedBooking = {
+              ...associatedBooking,
+              status: newBookingStatus
+            };
+            await handleBookingUpdate(updatedBooking);
+          }
+        }
+      }
+      
+      // Show appropriate message based on status
+      if (updatedContract.status === 'cancelled') {
+        toast.error('Contrato rechazado - La reserva ha sido cancelada');
+      } else if (updatedContract.status === 'active') {
+        toast.success('Contrato firmado y activado - Reserva confirmada');
+      } else {
+        toast.success('Contrato actualizado');
+      }
+    } catch (error) {
+      console.error('Error updating contract:', error);
+      toast.error('Error al actualizar contrato');
     }
   };
 
@@ -587,8 +668,35 @@ export default function App() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="p-4 rounded-full inline-block mb-4" style={{ background: 'linear-gradient(135deg, var(--gold) 0%, var(--copper) 100%)' }}>
-            <Music className="w-12 h-12 animate-pulse" style={{ color: 'var(--navy-blue)' }} />
+          <div className="inline-block mb-4 animate-pulse">
+            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ width: '80px', height: '80px' }}>
+              {/* Gradiente de fondo */}
+              <defs>
+                <linearGradient id="loadingLogoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style={{ stopColor: 'var(--gold)', stopOpacity: 1 }} />
+                  <stop offset="100%" style={{ stopColor: 'var(--copper)', stopOpacity: 1 }} />
+                </linearGradient>
+              </defs>
+              
+              {/* Fondo con bordes redondeados */}
+              <rect x="0" y="0" width="100" height="100" rx="16" fill="url(#loadingLogoGradient)" />
+              
+              {/* Letra M estilizada como arco/portal */}
+              <path 
+                d="M 20 70 L 20 35 Q 20 25 30 25 L 35 25 L 50 50 L 65 25 L 70 25 Q 80 25 80 35 L 80 70" 
+                stroke="var(--navy-blue)" 
+                strokeWidth="6" 
+                fill="none" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              />
+              
+              {/* Estrella de 4 puntas en el centro */}
+              <path 
+                d="M 50 42 L 52 48 L 58 50 L 52 52 L 50 58 L 48 52 L 42 50 L 48 48 Z" 
+                fill="var(--navy-blue)"
+              />
+            </svg>
           </div>
           <h2>Memorialo</h2>
           <p className="text-gray-600">Cargando...</p>
@@ -597,13 +705,30 @@ export default function App() {
     );
   }
 
+  // Check if we're on a legal page
+  if (currentRoute === '/terminos-condiciones') {
+    return <TermsConditions onBack={() => navigateTo('/')} />;
+  }
+  if (currentRoute === '/politicas-privacidad') {
+    return <PrivacyPolicy onBack={() => navigateTo('/')} />;
+  }
+  if (currentRoute === '/politica-cancelacion') {
+    return <CancellationPolicy onBack={() => navigateTo('/')} />;
+  }
+  if (currentRoute === '/politica-reembolso') {
+    return <RefundPolicy onBack={() => navigateTo('/')} />;
+  }
+  if (currentRoute === '/codigo-conducta') {
+    return <CodeOfConduct onBack={() => navigateTo('/')} />;
+  }
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--cream-white)' }}>
       <Toaster />
       
       {/* Header */}
       <header className="sticky top-0 z-40 shadow-sm" style={{ backgroundColor: 'var(--navy-blue)' }}>
-        <div className="container mx-auto px-4 py-4">
+        <div className="max-w-[1400px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <button 
               onClick={() => {
@@ -655,7 +780,7 @@ export default function App() {
               <Button
                 variant="ghost"
                 onClick={() => setShowAbout(true)}
-                className="text-white hover:text-white hover:bg-white/10"
+                className="hidden text-white hover:text-white hover:bg-white/10"
               >
                 Sobre Nosotros
               </Button>
@@ -665,17 +790,33 @@ export default function App() {
                 className={viewMode === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}
               >
                 <Users className="w-4 h-4 mr-2" />
-                Buscar Artistas
+                Buscar Servicios
               </Button>
               {currentUser?.isProvider && (
-                <Button
-                  variant={viewMode === 'business' ? 'secondary' : 'ghost'}
-                  onClick={() => setViewMode('business')}
-                  className={viewMode === 'business' ? '' : 'text-white hover:text-white hover:bg-white/10'}
-                >
-                  <Briefcase className="w-4 h-4 mr-2" />
-                  Mi Negocio
-                </Button>
+                <>
+                  <Button
+                    variant={viewMode === 'business' && dashboardView === 'provider' ? 'secondary' : 'ghost'}
+                    onClick={() => {
+                      setViewMode('business');
+                      setDashboardView('provider');
+                    }}
+                    className={viewMode === 'business' && dashboardView === 'provider' ? '' : 'text-white hover:text-white hover:bg-white/10'}
+                  >
+                    <Briefcase className="w-4 h-4 mr-2" />
+                    Mi Negocio
+                  </Button>
+                  <Button
+                    variant={viewMode === 'business' && dashboardView === 'client' ? 'secondary' : 'ghost'}
+                    onClick={() => {
+                      setViewMode('business');
+                      setDashboardView('client');
+                    }}
+                    className={viewMode === 'business' && dashboardView === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}
+                  >
+                    <LayoutDashboard className="w-4 h-4 mr-2" />
+                    Mis Reservas
+                  </Button>
+                </>
               )}
               {currentUser && !currentUser.isProvider && (
                 <Button
@@ -703,10 +844,22 @@ export default function App() {
                       Mi Perfil
                     </DropdownMenuItem>
                     {currentUser.isProvider && (
-                      <DropdownMenuItem onClick={() => setViewMode('business')}>
-                        <Briefcase className="w-4 h-4 mr-2" />
-                        Mi Negocio
-                      </DropdownMenuItem>
+                      <>
+                        <DropdownMenuItem onClick={() => {
+                          setViewMode('business');
+                          setDashboardView('provider');
+                        }}>
+                          <Briefcase className="w-4 h-4 mr-2" />
+                          Mi Negocio
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          setViewMode('business');
+                          setDashboardView('client');
+                        }}>
+                          <LayoutDashboard className="w-4 h-4 mr-2" />
+                          Mis Reservas
+                        </DropdownMenuItem>
+                      </>
                     )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>
@@ -756,20 +909,35 @@ export default function App() {
                 className={`w-full ${viewMode === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
               >
                 <Users className="w-4 h-4 mr-2" />
-                Buscar Artistas
+                Buscar Servicios
               </Button>
               {currentUser?.isProvider && (
-                <Button
-                  variant={viewMode === 'business' ? 'secondary' : 'ghost'}
-                  onClick={() => {
-                    setViewMode('business');
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full ${viewMode === 'business' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
-                >
-                  <Briefcase className="w-4 h-4 mr-2" />
-                  Mi Negocio
-                </Button>
+                <>
+                  <Button
+                    variant={viewMode === 'business' && dashboardView === 'provider' ? 'secondary' : 'ghost'}
+                    onClick={() => {
+                      setViewMode('business');
+                      setDashboardView('provider');
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full ${viewMode === 'business' && dashboardView === 'provider' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
+                  >
+                    <Briefcase className="w-4 h-4 mr-2" />
+                    Mi Negocio
+                  </Button>
+                  <Button
+                    variant={viewMode === 'business' && dashboardView === 'client' ? 'secondary' : 'ghost'}
+                    onClick={() => {
+                      setViewMode('business');
+                      setDashboardView('client');
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full ${viewMode === 'business' && dashboardView === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
+                  >
+                    <LayoutDashboard className="w-4 h-4 mr-2" />
+                    Mis Reservas
+                  </Button>
+                </>
               )}
               {currentUser && !currentUser.isProvider && (
                 <Button
@@ -829,7 +997,7 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className={showAbout ? "" : "container mx-auto px-4 py-8 mx-[85px] my-[0px]"}>
+      <main className={showAbout ? "" : "max-w-[1400px] mx-auto px-6 py-8"}>
         {showAbout ? (
           <AboutPage 
             onGetStarted={() => {
@@ -839,7 +1007,7 @@ export default function App() {
             onClose={() => setShowAbout(false)}
           />
         ) : viewMode === 'business' ? (
-          currentUser && currentUser.isProvider ? (
+          currentUser && currentUser.isProvider && dashboardView === 'provider' ? (
             <BusinessDashboard
               user={currentUser}
               provider={currentProvider}
@@ -906,6 +1074,7 @@ export default function App() {
                 onUpdateEvent={handleUpdateEvent}
                 onDeleteEvent={handleDeleteEvent}
                 onAssignContractToEvent={handleAssignContractToEvent}
+                onContractUpdate={handleContractUpdate}
               />
             )
           )
@@ -914,44 +1083,47 @@ export default function App() {
             {/* Search & Filters */}
             <div className="mb-8">
               <div className="mb-6 text-center">
-                <h2 className="mb-2">Encuentra el Servicio Perfecto para tu Evento</h2>
-                <p className="text-gray-600">
+                <h2 className="mb-2">Tu Evento Inolvidable Empieza Aquí</h2>
+                <p className="text-gray-600 hidden md:block">
                   El inicio de lo inolvidable. Desde espacios únicos hasta el mejor talento, todo lo que necesitas para crear momentos memorables
                 </p>
               </div>
 
               <AirbnbSearchBar
                 onSearch={setSearchCriteria}
+                searchCriteria={searchCriteria}
               />
             </div>
 
             {/* Compare Bar */}
             {compareArtists.length > 0 && (
-              <div className="rounded-lg p-4 mb-6" style={{ background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(10, 31, 68, 0.05) 100%)', border: '1px solid var(--gold)' }}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span>
+              <div className="rounded-lg p-3 md:p-4 mb-6" style={{ background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(10, 31, 68, 0.05) 100%)', border: '1px solid var(--gold)' }}>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+                    <span className="text-sm md:text-base">
                       {compareArtists.length} proveedor{compareArtists.length !== 1 ? 'es' : ''} seleccionado{compareArtists.length !== 1 ? 's' : ''}
                     </span>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {compareArtists.map((artist) => (
-                        <Badge key={artist.id} variant="secondary">
+                        <Badge key={artist.id} variant="secondary" className="text-xs">
                           {artist.name}
                         </Badge>
                       ))}
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 self-start md:self-auto">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setCompareArtists([])}
+                      className="flex-1 md:flex-none"
                     >
                       Limpiar
                     </Button>
                     <Button
                       size="sm"
                       onClick={() => setShowCompare(true)}
+                      className="flex-1 md:flex-none"
                     >
                       Comparar ({compareArtists.length}/3)
                     </Button>
@@ -961,8 +1133,8 @@ export default function App() {
             )}
 
             {/* Results & Sort */}
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-gray-600">
+            <div className="mb-4 flex flex-col-reverse md:flex-row items-start md:items-center justify-between gap-3">
+              <p className="text-gray-600 text-xs md:text-base">
                 {filteredArtists.length} proveedor{filteredArtists.length !== 1 ? 'es' : ''} encontrado{filteredArtists.length !== 1 ? 's' : ''}
               </p>
               <div className="flex items-center gap-2">
@@ -982,7 +1154,7 @@ export default function App() {
 
             {/* Artist Grid */}
             {filteredArtists.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
                 {filteredArtists.map((artist) => (
                   <ArtistCard
                     key={artist.id}
@@ -1004,7 +1176,7 @@ export default function App() {
                       city: '',
                       category: '',
                       subcategory: '',
-                      priceRange: [0, 50000]
+                      priceRange: [0, 5000]
                     });
                   }}
                 >
@@ -1067,6 +1239,12 @@ export default function App() {
                   }
                 }}
                 reviews={reviews}
+                events={events}
+                onCreateEvent={handleCreateEvent}
+                onUpdateEvent={handleUpdateEvent}
+                onDeleteEvent={handleDeleteEvent}
+                onAssignContractToEvent={handleAssignContractToEvent}
+                onContractUpdate={handleContractUpdate}
               />
             )
           )
@@ -1140,8 +1318,57 @@ export default function App() {
         />
       )}
 
+      {/* About Page */}
+      {showAbout && (
+        <AboutPage
+          onClose={() => setShowAbout(false)}
+          onGetStarted={() => {
+            setShowAbout(false);
+            if (!currentUser) {
+              setShowAuthDialog(true);
+            }
+          }}
+        />
+      )}
+
+      {/* For Providers Page */}
+      {showForProviders && (
+        <ForProvidersPage
+          onClose={() => setShowForProviders(false)}
+          onGetStarted={() => {
+            setShowForProviders(false);
+            if (!currentUser) {
+              setShowAuthDialog(true);
+            } else if (!currentUser.isProvider) {
+              toast.info('Completa tu perfil de proveedor para comenzar');
+            }
+          }}
+        />
+      )}
+
+      {/* For Clients Page */}
+      {showForClients && (
+        <ForClientsPage
+          onClose={() => setShowForClients(false)}
+          onGetStarted={() => {
+            setShowForClients(false);
+            setViewMode('client');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      )}
+
       {/* Footer */}
-      <Footer onAboutClick={() => setShowAbout(true)} />
+      <Footer 
+        onAboutClick={() => setShowAbout(true)}
+        onForProvidersClick={() => setShowForProviders(true)}
+        onForClientsClick={() => setShowForClients(true)}
+        onTermsClick={() => navigateTo('/terminos-condiciones')}
+        onPrivacyClick={() => navigateTo('/politicas-privacidad')}
+        onCancellationClick={() => navigateTo('/politica-cancelacion')}
+        onRefundClick={() => navigateTo('/politica-reembolso')}
+        onConductClick={() => navigateTo('/codigo-conducta')}
+      />
     </div>
   );
 }

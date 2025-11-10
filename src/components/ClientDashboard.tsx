@@ -22,6 +22,7 @@ interface ClientDashboardProps {
   onUpdateEvent: (eventId: string, updates: Partial<Event>) => void;
   onDeleteEvent: (eventId: string) => void;
   onAssignContractToEvent: (contractId: string, eventId: string | null) => void;
+  onContractUpdate: (contract: Contract) => void;
 }
 
 export function ClientDashboard({ 
@@ -33,7 +34,8 @@ export function ClientDashboard({
   onCreateEvent,
   onUpdateEvent,
   onDeleteEvent,
-  onAssignContractToEvent
+  onAssignContractToEvent,
+  onContractUpdate
 }: ClientDashboardProps) {
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [showContractView, setShowContractView] = useState(false);
@@ -78,7 +80,7 @@ export function ClientDashboard({
       case 'pending_client':
         return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">Pendiente tu firma</Badge>;
       case 'pending_artist':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">Esperando artista</Badge>;
+        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">Esperando proveedor</Badge>;
       case 'active':
         return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">Confirmado</Badge>;
       case 'completed':
@@ -215,7 +217,7 @@ export function ClientDashboard({
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 pt-2">
+          <div className="flex flex-col sm:flex-row gap-2 pt-2">
             <Button 
               variant="outline" 
               size="sm"
@@ -223,6 +225,7 @@ export function ClientDashboard({
                 setSelectedContract(contract);
                 setShowContractView(true);
               }}
+              className="w-full sm:w-auto"
             >
               <FileText className="w-4 h-4 mr-2" />
               Ver Contrato
@@ -232,6 +235,7 @@ export function ClientDashboard({
               <Button 
                 size="sm"
                 onClick={() => onReviewCreate(contract.id)}
+                className="w-full sm:w-auto"
               >
                 <Star className="w-4 h-4 mr-2" />
                 Dejar Reseña
@@ -239,7 +243,7 @@ export function ClientDashboard({
             )}
 
             {hasReviewed(contract.id) && (
-              <Badge variant="outline" className="ml-auto">
+              <Badge variant="outline" className="sm:ml-auto w-full sm:w-auto justify-center">
                 <CheckCircle className="w-3 h-3 mr-1" />
                 Reseña enviada
               </Badge>
@@ -263,7 +267,7 @@ export function ClientDashboard({
               <div className="flex items-start gap-2">
                 <Clock className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                 <p className="text-blue-800">
-                  Esperando que el artista revise y firme el contrato.
+                  Esperando que el proveedor revise y firme el contrato.
                 </p>
               </div>
             </div>
@@ -385,8 +389,8 @@ export function ClientDashboard({
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="max-w-6xl mx-auto px-0 py-4 md:p-6">
+      <div className="mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h2 className="mb-2">Mis Eventos y Reservas</h2>
           <p className="text-gray-600">Organiza tus reservas por eventos</p>
@@ -466,6 +470,11 @@ export function ClientDashboard({
           contract={selectedContract}
           open={showContractView}
           onClose={() => {
+            setShowContractView(false);
+            setSelectedContract(null);
+          }}
+          onSign={(signedContract) => {
+            onContractUpdate(signedContract);
             setShowContractView(false);
             setSelectedContract(null);
           }}

@@ -2,15 +2,31 @@ import { Music, Mail, Phone, MapPin, Facebook, Instagram, Twitter, Linkedin } fr
 
 interface FooterProps {
   onAboutClick?: () => void;
+  onForProvidersClick?: () => void;
+  onForClientsClick?: () => void;
+  onTermsClick?: () => void;
+  onPrivacyClick?: () => void;
+  onCancellationClick?: () => void;
+  onRefundClick?: () => void;
+  onConductClick?: () => void;
 }
 
-export function Footer({ onAboutClick }: FooterProps = {}) {
+export function Footer({ 
+  onAboutClick, 
+  onForProvidersClick, 
+  onForClientsClick,
+  onTermsClick,
+  onPrivacyClick,
+  onCancellationClick,
+  onRefundClick,
+  onConductClick
+}: FooterProps = {}) {
   const currentYear = new Date().getFullYear();
 
   return (
     <footer style={{ backgroundColor: 'var(--navy-blue)', color: 'white' }}>
       {/* Main Footer Content */}
-      <div className="container mx-auto px-4 py-12">
+      <div className="max-w-[1400px] mx-auto px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Brand Section */}
           <div className="space-y-4">
@@ -45,7 +61,7 @@ export function Footer({ onAboutClick }: FooterProps = {}) {
               </div>
             </div>
             <p className="text-sm opacity-80">
-              Conectamos artistas talentosos con clientes que buscan hacer de sus eventos momentos memorables.
+              Desde espacios únicos hasta el mejor talento, todo lo que necesitas para crear momentos memorables.
             </p>
           </div>
 
@@ -67,16 +83,22 @@ export function Footer({ onAboutClick }: FooterProps = {}) {
                 </a>
               </li>
               <li>
-                <a href="#" className="opacity-80 hover:opacity-100 transition-opacity">
-                  Para Artistas
-                </a>
+                <button 
+                  onClick={onForProvidersClick}
+                  className="opacity-80 hover:opacity-100 transition-opacity text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
+                >
+                  Para Proveedores
+                </button>
               </li>
               <li>
-                <a href="#" className="opacity-80 hover:opacity-100 transition-opacity">
+                <button 
+                  onClick={onForClientsClick}
+                  className="opacity-80 hover:opacity-100 transition-opacity text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
+                >
                   Para Clientes
-                </a>
+                </button>
               </li>
-              <li>
+              <li className="hidden">
                 <a href="#" className="opacity-80 hover:opacity-100 transition-opacity">
                   Blog
                 </a>
@@ -89,29 +111,44 @@ export function Footer({ onAboutClick }: FooterProps = {}) {
             <h4 className="font-bold mb-4" style={{ color: 'var(--gold)' }}>Legal</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#" className="opacity-80 hover:opacity-100 transition-opacity">
+                <button
+                  onClick={onTermsClick}
+                  className="opacity-80 hover:opacity-100 transition-opacity text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
+                >
                   Términos y Condiciones
-                </a>
+                </button>
               </li>
               <li>
-                <a href="#" className="opacity-80 hover:opacity-100 transition-opacity">
+                <button
+                  onClick={onPrivacyClick}
+                  className="opacity-80 hover:opacity-100 transition-opacity text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
+                >
                   Política de Privacidad
-                </a>
+                </button>
               </li>
               <li>
-                <a href="#" className="opacity-80 hover:opacity-100 transition-opacity">
+                <button
+                  onClick={onCancellationClick}
+                  className="opacity-80 hover:opacity-100 transition-opacity text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
+                >
                   Política de Cancelación
-                </a>
+                </button>
               </li>
               <li>
-                <a href="#" className="opacity-80 hover:opacity-100 transition-opacity">
+                <button
+                  onClick={onRefundClick}
+                  className="opacity-80 hover:opacity-100 transition-opacity text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
+                >
                   Política de Reembolso
-                </a>
+                </button>
               </li>
               <li>
-                <a href="#" className="opacity-80 hover:opacity-100 transition-opacity">
+                <button
+                  onClick={onConductClick}
+                  className="opacity-80 hover:opacity-100 transition-opacity text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
+                >
                   Código de Conducta
-                </a>
+                </button>
               </li>
             </ul>
           </div>
@@ -130,7 +167,7 @@ export function Footer({ onAboutClick }: FooterProps = {}) {
               </li>
               <li className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
-                <span className="opacity-80">Ciudad de México, CDMX</span>
+                <span className="opacity-80">Venezuela</span>
               </li>
             </ul>
 
@@ -178,14 +215,14 @@ export function Footer({ onAboutClick }: FooterProps = {}) {
 
       {/* Bottom Bar */}
       <div className="border-t border-white/10">
-        <div className="container mx-auto px-4 py-6">
+        <div className="max-w-[1400px] mx-auto px-6 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm opacity-80">
             <p>
               © {currentYear} Memorialo. Todos los derechos reservados.
             </p>
             <div className="flex items-center gap-2">
               <Music className="w-4 h-4" style={{ color: 'var(--gold)' }} />
-              <span>Hecho con pasión para artistas y eventos inolvidables</span>
+              <span>Hecho con pasión para proveedores y eventos inolvidables</span>
             </div>
           </div>
         </div>

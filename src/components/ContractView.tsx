@@ -16,11 +16,13 @@ interface ContractViewProps {
   onClose: () => void;
   userType: 'client' | 'artist';
   onSign?: (contract: Contract) => void;
+  onReject?: (contract: Contract) => void;
 }
 
-export function ContractView({ contract, open, onClose, userType, onSign }: ContractViewProps) {
+export function ContractView({ contract, open, onClose, userType, onSign, onReject }: ContractViewProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
 
   if (!contract) return null;
 
@@ -71,7 +73,35 @@ export function ContractView({ contract, open, onClose, userType, onSign }: Cont
       if (updatedContract.status === 'active') {
         toast.success('🎉 ¡El contrato está completamente firmado por ambas partes!');
       }
+      
+      // Cerrar el modal después de firmar
+      setTimeout(() => {
+        onClose();
+      }, 500);
     }, 1500);
+  };
+
+  const handleReject = () => {
+    if (!confirm('¿Estás seguro de que deseas rechazar este contrato? Esta acción no se puede deshacer.')) {
+      return;
+    }
+
+    setRejecting(true);
+    
+    setTimeout(() => {
+      const rejectedContract = {
+        ...contract,
+        status: 'cancelled' as const
+      };
+
+      if (onReject) {
+        onReject(rejectedContract);
+      }
+
+      toast.error('Contrato rechazado');
+      setRejecting(false);
+      onClose();
+    }, 1000);
   };
 
   const getStatusBadge = () => {
@@ -83,7 +113,7 @@ export function ContractView({ contract, open, onClose, userType, onSign }: Cont
       case 'pending_client':
         return <Badge variant="outline" className="border-orange-500 text-orange-700">Pendiente de firma del cliente</Badge>;
       case 'pending_artist':
-        return <Badge variant="outline" className="border-orange-500 text-orange-700">Pendiente de firma del artista</Badge>;
+        return <Badge variant="outline" className="border-orange-500 text-orange-700">Pendiente de firma del proveedor</Badge>;
       case 'draft':
         return <Badge variant="secondary">Borrador</Badge>;
       case 'cancelled':
@@ -278,15 +308,30 @@ export function ContractView({ contract, open, onClose, userType, onSign }: Cont
                   </Label>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <Button
                     onClick={handleSign}
-                    disabled={!agreedToTerms || signing}
+                    disabled={!agreedToTerms || signing || rejecting}
                     className="flex-1"
                   >
                     {signing ? 'Firmando...' : 'Firmar Contrato'}
                   </Button>
-                  <Button variant="outline" onClick={onClose}>
+                  {/* Solo el proveedor puede rechazar el contrato */}
+                  {userType === 'artist' && (
+                    <Button 
+                      variant="outline" 
+                      onClick={handleReject}
+                      disabled={signing || rejecting}
+                      className="flex-1 sm:flex-initial border-red-600 text-red-600 hover:bg-red-50"
+                    >
+                      {rejecting ? 'Rechazando...' : 'Rechazar'}
+                    </Button>
+                  )}
+                  <Button 
+                    variant="outline" 
+                    onClick={onClose}
+                    disabled={signing || rejecting}
+                  >
                     Revisar Después
                   </Button>
                 </div>

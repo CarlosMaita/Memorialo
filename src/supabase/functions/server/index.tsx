@@ -83,22 +83,23 @@ app.post("/make-server-5d78aefb/auth/signup", async (c) => {
     });
 
     if (error) {
-      console.error('Signup error:', error);
-      
-      // Handle specific error cases
+      // Handle specific error cases without verbose logging for expected errors
       if (error.message?.includes('already been registered') || error.code === 'email_exists') {
-        console.log('Email already exists, returning 409 error');
+        console.log('Signup attempt with existing email:', email);
         return c.json({ 
           error: 'Este correo electrónico ya está registrado. Por favor, inicia sesión o usa otro correo.' 
         }, 409);
       }
       
       if (error.message?.includes('Password should be at least')) {
+        console.log('Signup attempt with weak password for email:', email);
         return c.json({ 
           error: 'La contraseña debe tener al menos 6 caracteres' 
         }, 400);
       }
       
+      // For unexpected errors, log the full details
+      console.error('Unexpected signup error:', error);
       return c.json({ error: error.message || 'Error al crear la cuenta' }, 400);
     }
 

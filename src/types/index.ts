@@ -120,6 +120,7 @@ export interface Review {
   contractId: string; // ID del contrato específico
   bookingId: string; // ID del booking (legacy - mantener por compatibilidad)
   artistId: string;
+  artistName?: string; // Nombre del artista/servicio
   userId: string;
   userName: string;
   userAvatar?: string;

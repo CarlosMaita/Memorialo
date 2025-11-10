@@ -1,7 +1,7 @@
 
-  # Marketplace App for Artists
+  # Memorialo Make
 
-  This is a code bundle for Marketplace App for Artists. The original project is available at https://www.figma.com/design/GDGYE51qKsosjxAB5VIMR9/Marketplace-App-for-Artists.
+  This is a code bundle for Memorialo Make. The original project is available at https://www.figma.com/design/GDGYE51qKsosjxAB5VIMR9/Memorialo-Make.
 
   ## Running the code
 

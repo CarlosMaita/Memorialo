@@ -245,7 +245,13 @@ export function AuthDialog({ open, onClose, onLogin, onSignUp, onSignIn }: AuthD
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2 p-4 bg-blue-50 rounded-lg">
+              <div 
+                className="flex items-center space-x-3 p-4 rounded-lg border-2 transition-all hover:shadow-md"
+                style={{ 
+                  background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, rgba(10, 31, 68, 0.05) 100%)',
+                  borderColor: registerForm.isProvider ? 'var(--gold)' : 'rgba(212, 175, 55, 0.3)'
+                }}
+              >
                 <Checkbox
                   id="isProvider"
                   checked={registerForm.isProvider}
@@ -256,13 +262,14 @@ export function AuthDialog({ open, onClose, onLogin, onSignUp, onSignIn }: AuthD
                 <div className="flex-1">
                   <label
                     htmlFor="isProvider"
-                    className="text-sm cursor-pointer flex items-center gap-2"
+                    className="cursor-pointer flex items-center gap-2"
+                    style={{ color: 'var(--navy-blue)' }}
                   >
-                    <Briefcase className="w-4 h-4 text-blue-600" />
-                    <span>Quiero ofrecer mis servicios como proveedor</span>
+                    <Briefcase className="w-5 h-5" style={{ color: 'var(--gold)' }} />
+                    <span className="font-semibold">Quiero ofrecer mis servicios como proveedor</span>
                   </label>
-                  <p className="text-xs text-gray-600 mt-1 ml-6">
-                    Podrás crear publicaciones y recibir reservas de clientes
+                  <p className="text-xs mt-1 ml-7" style={{ color: 'rgba(10, 31, 68, 0.7)' }}>
+                    Crea tu perfil, publica tus servicios y recibe reservas directamente de clientes
                   </p>
                 </div>
               </div>

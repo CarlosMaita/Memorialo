@@ -46,23 +46,49 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
   const [portfolioImages, setPortfolioImages] = useState<string[]>(['']);
 
   useEffect(() => {
-    if (existingService) {
-      setFormData({
-        name: existingService.name,
-        category: existingService.category,
-        description: existingService.bio,
-        location: existingService.location,
-        pricePerHour: existingService.pricePerHour.toString(),
-        responseTime: existingService.responseTime,
-        bio: existingService.bio
-      });
-      setServicePlans(existingService.servicePlans || []);
-      setSpecialties(existingService.specialties || ['']);
-      setAvailability(existingService.availability || []);
-      setMainImage(existingService.image || '');
-      setPortfolioImages(existingService.portfolio && existingService.portfolio.length > 0 ? existingService.portfolio : ['']);
+    if (open) {
+      if (existingService) {
+        // Cargar datos del servicio existente
+        setFormData({
+          name: existingService.name,
+          category: existingService.category,
+          description: existingService.bio,
+          location: existingService.location,
+          pricePerHour: existingService.pricePerHour.toString(),
+          responseTime: existingService.responseTime,
+          bio: existingService.bio
+        });
+        setServicePlans(existingService.servicePlans || []);
+        setSpecialties(existingService.specialties || ['']);
+        setAvailability(existingService.availability || []);
+        setMainImage(existingService.image || '');
+        setPortfolioImages(existingService.portfolio && existingService.portfolio.length > 0 ? existingService.portfolio : ['']);
+      } else {
+        // Resetear formulario para nuevo servicio
+        setFormData({
+          name: '',
+          category: '',
+          description: '',
+          location: '',
+          pricePerHour: '',
+          responseTime: '24 horas',
+          bio: ''
+        });
+        setServicePlans([]);
+        setCurrentPlan({
+          name: '',
+          price: '',
+          duration: '',
+          description: '',
+          includes: ['']
+        });
+        setSpecialties(['']);
+        setAvailability([]);
+        setMainImage('');
+        setPortfolioImages(['']);
+      }
     }
-  }, [existingService]);
+  }, [open, existingService]);
 
   const handleAddSpecialty = () => {
     setSpecialties([...specialties, '']);

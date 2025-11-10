@@ -125,7 +125,7 @@ export function ReviewDialog({ open, onClose, booking, user, onReviewSubmit }: R
               id="comment"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Cuéntanos sobre tu experiencia con el artista. ¿Qué te gustó? ¿Qué podría mejorar?"
+              placeholder="Cuéntanos sobre tu experiencia con el proveedor. ¿Qué te gustó? ¿Qué podría mejorar?"
               rows={5}
               className="resize-none"
             />

@@ -52,7 +52,7 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews 
       'cancelled': 'Cancelada',
       'signed': 'Firmado',
       'pending_client': 'Pendiente de tu firma',
-      'pending_artist': 'Pendiente del artista'
+      'pending_artist': 'Pendiente del proveedor'
     };
 
     return statusTexts[status] || status;
@@ -60,7 +60,7 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="sr-only">Mi Perfil</DialogTitle>
           <DialogDescription className="sr-only">
@@ -69,28 +69,28 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews 
         </DialogHeader>
 
         {/* User Header */}
-        <div className="flex items-center gap-4 pb-6 border-b">
-          <Avatar className="w-20 h-20">
-            <AvatarFallback className="text-2xl bg-primary text-white">
+        <div className="flex flex-col sm:flex-row items-center gap-4 pb-6 border-b">
+          <Avatar className="w-16 h-16 sm:w-20 sm:h-20">
+            <AvatarFallback className="text-xl sm:text-2xl bg-primary text-white">
               {getInitials(user.name)}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1">
-            <h2 className="mb-1">{user.name}</h2>
+          <div className="flex-1 text-center sm:text-left">
+            <h2 className="mb-1 text-lg sm:text-xl">{user.name}</h2>
             <div className="space-y-1">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center justify-center sm:justify-start gap-2 text-sm text-gray-600">
                 <Mail className="w-4 h-4" />
-                <span>{user.email}</span>
+                <span className="break-all">{user.email}</span>
               </div>
               {user.phone && (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center justify-center sm:justify-start gap-2 text-sm text-gray-600">
                   <Phone className="w-4 h-4" />
                   <span>{user.phone}</span>
                 </div>
               )}
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-center sm:text-right hidden sm:block">
             <p className="text-sm text-gray-600">Miembro desde</p>
             <p className="text-sm">{new Date(user.createdAt).toLocaleDateString('es-ES', { 
               year: 'numeric', 
@@ -100,26 +100,26 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews 
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
           <Card>
-            <CardContent className="p-4 text-center">
-              <Calendar className="w-6 h-6 mx-auto mb-2 text-blue-500" />
-              <p className="text-sm text-gray-600">Reservas</p>
-              <p>{bookings.length}</p>
+            <CardContent className="p-2 sm:p-4 text-center">
+              <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-blue-500" />
+              <p className="text-xs sm:text-sm text-gray-600">Reservas</p>
+              <p className="text-sm sm:text-base">{bookings.length}</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4 text-center">
-              <FileText className="w-6 h-6 mx-auto mb-2 text-green-500" />
-              <p className="text-sm text-gray-600">Contratos</p>
-              <p>{contracts.length}</p>
+            <CardContent className="p-2 sm:p-4 text-center">
+              <FileText className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-green-500" />
+              <p className="text-xs sm:text-sm text-gray-600">Contratos</p>
+              <p className="text-sm sm:text-base">{contracts.length}</p>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4 text-center">
-              <MessageSquare className="w-6 h-6 mx-auto mb-2 text-purple-500" />
-              <p className="text-sm text-gray-600">Reseñas</p>
-              <p>{reviews.length}</p>
+            <CardContent className="p-2 sm:p-4 text-center">
+              <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-purple-500" />
+              <p className="text-xs sm:text-sm text-gray-600">Reseñas</p>
+              <p className="text-sm sm:text-base">{reviews.length}</p>
             </CardContent>
           </Card>
         </div>
@@ -127,9 +127,9 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews 
         {/* Tabs */}
         <Tabs defaultValue="bookings" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="bookings">Mis Reservas</TabsTrigger>
-            <TabsTrigger value="contracts">Mis Contratos</TabsTrigger>
-            <TabsTrigger value="reviews">Mis Reseñas</TabsTrigger>
+            <TabsTrigger value="bookings" className="text-xs sm:text-sm">Mis Reservas</TabsTrigger>
+            <TabsTrigger value="contracts" className="text-xs sm:text-sm">Mis Contratos</TabsTrigger>
+            <TabsTrigger value="reviews" className="text-xs sm:text-sm">Mis Reseñas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="bookings" className="space-y-4">
@@ -142,19 +142,19 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews 
             ) : (
               bookings.map((booking) => (
                 <Card key={booking.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex flex-col sm:flex-row items-start justify-between mb-3 gap-2">
+                      <div className="flex-1">
                         <h4 className="text-sm mb-1">{booking.eventType}</h4>
-                        <p className="text-sm text-gray-600">{booking.location}</p>
+                        <p className="text-xs sm:text-sm text-gray-600">{booking.location}</p>
                       </div>
                       <Badge className={getStatusBadge(booking.status)}>
                         {getStatusText(booking.status)}
                       </Badge>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
+                    <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm text-gray-600">
                       <div className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
+                        <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
                         <span>{new Date(booking.date).toLocaleDateString('es-ES')}</span>
                       </div>
                       <div>
@@ -177,9 +177,9 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews 
             ) : (
               contracts.map((contract) => (
                 <Card key={contract.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex flex-col sm:flex-row items-start justify-between mb-3 gap-2">
+                      <div className="flex-1">
                         <h4 className="text-sm mb-1">Contrato con {contract.artistName}</h4>
                         <p className="text-xs text-gray-600">
                           {new Date(contract.terms.date).toLocaleDateString('es-ES')}
@@ -192,7 +192,7 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews 
                         {getStatusText(contract.status)}
                       </Badge>
                     </div>
-                    <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center justify-between text-xs sm:text-sm">
                       <span className="text-green-600">${contract.terms.price}</span>
                       <span className="text-gray-600">{contract.terms.duration}h</span>
                     </div>
@@ -212,13 +212,13 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews 
             ) : (
               reviews.map((review) => (
                 <Card key={review.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-2">
                       <div className="flex">
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
-                            className={`w-4 h-4 ${
+                            className={`w-3 h-3 sm:w-4 sm:h-4 ${
                               i < review.rating
                                 ? 'fill-yellow-400 text-yellow-400'
                                 : 'text-gray-300'
@@ -226,11 +226,17 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews 
                           />
                         ))}
                       </div>
-                      <span className="text-sm text-gray-500">
+                      <span className="text-xs sm:text-sm text-gray-500">
                         {new Date(review.createdAt).toLocaleDateString('es-ES')}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-700">{review.comment}</p>
+                    {review.artistName && (
+                      <p className="text-xs sm:text-sm mb-1">
+                        <span className="text-gray-600">Servicio: </span>
+                        <span className="text-gray-900">{review.artistName}</span>
+                      </p>
+                    )}
+                    <p className="text-xs sm:text-sm text-gray-700">{review.comment}</p>
                   </CardContent>
                 </Card>
               ))

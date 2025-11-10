@@ -53,16 +53,36 @@ export function ArtistCard({ artist, onViewProfile, onCompare, isComparing }: Ar
           <span>Responde en {artist.responseTime}</span>
         </div>
 
-        <div className="flex items-center justify-between pt-3 border-t">
-          <div>
-            <span className="text-gray-600 text-sm">Desde</span>
-            <p style={{ color: 'var(--gold)' }}>${artist.pricePerHour}/hr</p>
+        <div className="flex flex-col xl:flex-col items-start xl:items-stretch justify-between xl:justify-start pt-3 border-t gap-3">
+          <div className="flex items-center justify-between w-full xl:w-auto xl:justify-start">
+            <div>
+              <span className="text-gray-600 text-sm">Desde</span>
+              <p style={{ color: 'var(--gold)' }}>${artist.pricePerHour}/hr</p>
+            </div>
+            <div className="flex gap-2 xl:hidden">
+              {onCompare && (
+                <Button 
+                  variant={isComparing ? "secondary" : "outline"} 
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCompare(artist);
+                  }}
+                >
+                  {isComparing ? 'Agregado' : 'Comparar'}
+                </Button>
+              )}
+              <Button variant="secondary" size="sm" onClick={() => onViewProfile(artist)}>
+                Ver
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2">
+          <div className="hidden xl:flex gap-2 w-full">
             {onCompare && (
               <Button 
                 variant={isComparing ? "secondary" : "outline"} 
                 size="sm"
+                className="flex-1"
                 onClick={(e) => {
                   e.stopPropagation();
                   onCompare(artist);
@@ -71,7 +91,7 @@ export function ArtistCard({ artist, onViewProfile, onCompare, isComparing }: Ar
                 {isComparing ? 'Agregado' : 'Comparar'}
               </Button>
             )}
-            <Button variant="secondary" size="sm" onClick={() => onViewProfile(artist)}>
+            <Button variant="secondary" size="sm" className="flex-1" onClick={() => onViewProfile(artist)}>
               Ver
             </Button>
           </div>
