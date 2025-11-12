@@ -175,7 +175,11 @@ export function useSupabase() {
     try {
       const data = await apiRequest('/providers', 'GET');
       return data;
-    } catch (error) {
+    } catch (error: any) {
+      // If backend is unavailable, silently return empty array
+      if (error?.message === 'BACKEND_UNAVAILABLE') {
+        return [];
+      }
       console.error('Get providers error:', error);
       throw error;
     }
@@ -206,7 +210,11 @@ export function useSupabase() {
     try {
       const data = await apiRequest('/services', 'GET');
       return data;
-    } catch (error) {
+    } catch (error: any) {
+      // If backend is unavailable, silently return empty array
+      if (error?.message === 'BACKEND_UNAVAILABLE') {
+        return [];
+      }
       console.error('Get services error:', error);
       throw error;
     }
@@ -247,7 +255,11 @@ export function useSupabase() {
     try {
       const data = await apiRequest('/contracts', 'GET');
       return data;
-    } catch (error) {
+    } catch (error: any) {
+      // If backend is unavailable, silently return empty array
+      if (error?.message === 'BACKEND_UNAVAILABLE') {
+        return [];
+      }
       console.error('Get contracts error:', error);
       throw error;
     }
@@ -286,7 +298,11 @@ export function useSupabase() {
     try {
       const data = await apiRequest('/reviews', 'GET');
       return data;
-    } catch (error) {
+    } catch (error: any) {
+      // If backend is unavailable, silently return empty array
+      if (error?.message === 'BACKEND_UNAVAILABLE') {
+        return [];
+      }
       console.error('Get reviews error:', error);
       throw error;
     }
@@ -307,7 +323,11 @@ export function useSupabase() {
     try {
       const data = await apiRequest('/bookings', 'GET');
       return data;
-    } catch (error) {
+    } catch (error: any) {
+      // If backend is unavailable, silently return empty array
+      if (error?.message === 'BACKEND_UNAVAILABLE') {
+        return [];
+      }
       console.error('Get bookings error:', error);
       throw error;
     }
@@ -319,6 +339,51 @@ export function useSupabase() {
       return data;
     } catch (error) {
       console.error('Update booking error:', error);
+      throw error;
+    }
+  };
+
+  // Event functions
+  const createEvent = async (eventData: any) => {
+    try {
+      const data = await apiRequest('/events', 'POST', eventData, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Create event error:', error);
+      throw error;
+    }
+  };
+
+  const getEvents = async () => {
+    try {
+      const data = await apiRequest('/events', 'GET');
+      return data;
+    } catch (error: any) {
+      // If backend is unavailable, silently return empty array
+      if (error?.message === 'BACKEND_UNAVAILABLE') {
+        return [];
+      }
+      console.error('Get events error:', error);
+      throw error;
+    }
+  };
+
+  const updateEvent = async (eventId: string, updates: any) => {
+    try {
+      const data = await apiRequest(`/events/${eventId}`, 'PUT', updates, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Update event error:', error);
+      throw error;
+    }
+  };
+
+  const deleteEvent = async (eventId: string) => {
+    try {
+      const data = await apiRequest(`/events/${eventId}`, 'DELETE', undefined, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Delete event error:', error);
       throw error;
     }
   };
@@ -345,6 +410,10 @@ export function useSupabase() {
     getReviews,
     createBooking,
     getBookings,
-    updateBooking
+    updateBooking,
+    createEvent,
+    getEvents,
+    updateEvent,
+    deleteEvent
   };
 }

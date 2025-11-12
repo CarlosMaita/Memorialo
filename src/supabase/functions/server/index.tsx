@@ -545,4 +545,110 @@ app.put("/make-server-5d78aefb/bookings/:id", async (c) => {
   }
 });
 
+// ==================== EVENT ROUTES ====================
+
+// Create event
+app.post("/make-server-5d78aefb/events", async (c) => {
+  const authResult = await verifyAuth(c.req.header('Authorization'));
+  
+  if (!authResult) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  try {
+    const eventData = await c.req.json();
+    
+    const event = {
+      ...eventData,
+      id: eventData.id || `event-${Date.now()}`,
+      userId: authResult.user.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    await kv.set(`event:${event.id}`, event);
+
+    return c.json(event);
+  } catch (error) {
+    console.error('Create event error:', error);
+    return c.json({ error: 'Failed to create event' }, 500);
+  }
+});
+
+// Get all events
+app.get("/make-server-5d78aefb/events", async (c) => {
+  try {
+    const events = await kv.getByPrefix('event:');
+    return c.json(events);
+  } catch (error) {
+    console.error('Get events error:', error);
+    return c.json({ error: 'Failed to get events' }, 500);
+  }
+});
+
+// Update event
+app.put("/make-server-5d78aefb/events/:id", async (c) => {
+  const authResult = await verifyAuth(c.req.header('Authorization'));
+  
+  if (!authResult) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  try {
+    const eventId = c.req.param('id');
+    const updates = await c.req.json();
+    
+    const currentEvent = await kv.get(`event:${eventId}`);
+    
+    if (!currentEvent) {
+      return c.json({ error: 'Event not found' }, 404);
+    }
+
+    if (currentEvent.userId !== authResult.user.id) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+
+    const updatedEvent = { 
+      ...currentEvent, 
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    await kv.set(`event:${eventId}`, updatedEvent);
+
+    return c.json(updatedEvent);
+  } catch (error) {
+    console.error('Update event error:', error);
+    return c.json({ error: 'Failed to update event' }, 500);
+  }
+});
+
+// Delete event
+app.delete("/make-server-5d78aefb/events/:id", async (c) => {
+  const authResult = await verifyAuth(c.req.header('Authorization'));
+  
+  if (!authResult) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  try {
+    const eventId = c.req.param('id');
+    const event = await kv.get(`event:${eventId}`);
+    
+    if (!event) {
+      return c.json({ error: 'Event not found' }, 404);
+    }
+
+    if (event.userId !== authResult.user.id) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+
+    await kv.del(`event:${eventId}`);
+
+    return c.json({ message: 'Event deleted' });
+  } catch (error) {
+    console.error('Delete event error:', error);
+    return c.json({ error: 'Failed to delete event' }, 500);
+  }
+});
+
 Deno.serve(app.fetch);

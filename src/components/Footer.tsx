@@ -2,6 +2,7 @@ import { Music, Mail, Phone, MapPin, Facebook, Instagram, Twitter, Linkedin } fr
 
 interface FooterProps {
   onAboutClick?: () => void;
+  onHowItWorksClick?: () => void;
   onForProvidersClick?: () => void;
   onForClientsClick?: () => void;
   onTermsClick?: () => void;
@@ -12,7 +13,8 @@ interface FooterProps {
 }
 
 export function Footer({ 
-  onAboutClick, 
+  onAboutClick,
+  onHowItWorksClick,
   onForProvidersClick, 
   onForClientsClick,
   onTermsClick,
@@ -78,9 +80,12 @@ export function Footer({
                 </button>
               </li>
               <li>
-                <a href="#" className="opacity-80 hover:opacity-100 transition-opacity">
+                <button
+                  onClick={onHowItWorksClick}
+                  className="opacity-80 hover:opacity-100 transition-opacity text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
+                >
                   Cómo Funciona
-                </a>
+                </button>
               </li>
               <li>
                 <button 

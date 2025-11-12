@@ -223,7 +223,7 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-96 p-4" align="start">
-            <div className="space-y-4">
+            {!category ? (
               <div>
                 <Label className="text-xs font-semibold text-gray-900 mb-3 block">Categoría Principal</Label>
                 <div className="space-y-2">
@@ -234,12 +234,7 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
                         setCategory(cat);
                         setSubcategory('');
                       }}
-                      className={`w-full px-4 py-3 rounded-lg text-left transition-all flex items-center gap-3 ${
-                        category === cat
-                          ? 'bg-gradient-to-r from-blue-50 to-gold-50 border-2'
-                          : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
-                      }`}
-                      style={category === cat ? { borderColor: 'var(--gold)' } : {}}
+                      className="w-full px-4 py-3 rounded-lg text-left transition-all flex items-center gap-3 bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
                     >
                       <span className="text-2xl">{data.icon}</span>
                       <span className="text-sm font-medium">{capitalizeCategory(cat)}</span>
@@ -247,35 +242,49 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
                   ))}
                 </div>
               </div>
-
-              {category && (
-                <div>
-                  <Label className="text-xs font-semibold text-gray-900 mb-3 block">Subcategoría</Label>
-                  <div className="space-y-2">
-                    {SERVICE_CATEGORIES[category as keyof typeof SERVICE_CATEGORIES].subcategories.map((sub) => (
-                      <button
-                        key={sub}
-                        onClick={() => {
-                          setSubcategory(sub);
-                          setCategoryOpen(false);
-                        }}
-                        className={`w-full px-4 py-2 rounded-lg text-left text-sm transition-all ${
-                          subcategory === sub
-                            ? 'font-semibold'
-                            : 'hover:bg-gray-100'
-                        }`}
-                        style={subcategory === sub ? { 
-                          backgroundColor: 'var(--gold)', 
-                          color: 'var(--navy-blue)' 
-                        } : {}}
-                      >
-                        {sub}
-                      </button>
-                    ))}
+            ) : (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{SERVICE_CATEGORIES[category as keyof typeof SERVICE_CATEGORIES].icon}</span>
+                    <Label className="text-xs font-semibold text-gray-900">{capitalizeCategory(category)}</Label>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setCategory('');
+                      setSubcategory('');
+                    }}
+                    className="text-xs h-8"
+                  >
+                    ← Cambiar
+                  </Button>
                 </div>
-              )}
-            </div>
+                <div className="space-y-2">
+                  {SERVICE_CATEGORIES[category as keyof typeof SERVICE_CATEGORIES].subcategories.map((sub) => (
+                    <button
+                      key={sub}
+                      onClick={() => {
+                        setSubcategory(sub);
+                        setCategoryOpen(false);
+                      }}
+                      className={`w-full px-4 py-3 rounded-lg text-left text-sm transition-all ${
+                        subcategory === sub
+                          ? 'font-semibold'
+                          : 'hover:bg-gray-100 bg-gray-50'
+                      }`}
+                      style={subcategory === sub ? { 
+                        backgroundColor: 'var(--gold)', 
+                        color: 'var(--navy-blue)' 
+                      } : {}}
+                    >
+                      {sub}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </PopoverContent>
         </Popover>
 
@@ -458,33 +467,44 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
                   </div>
                 )}
                 
-                <div>
-                  <Label className="text-xs text-gray-600 mb-2 block">Categoría Principal</Label>
-                  <div className="space-y-2">
-                    {Object.entries(SERVICE_CATEGORIES).map(([cat, data]) => (
-                      <button
-                        key={cat}
+                {!category ? (
+                  <div>
+                    <Label className="text-xs text-gray-600 mb-2 block">Categoría Principal</Label>
+                    <div className="space-y-2">
+                      {Object.entries(SERVICE_CATEGORIES).map(([cat, data]) => (
+                        <button
+                          key={cat}
+                          onClick={() => {
+                            setCategory(cat);
+                            setSubcategory('');
+                          }}
+                          className="w-full px-4 py-3 rounded-lg text-left transition-all flex items-center gap-3 bg-gray-50 hover:bg-gray-100 border-2 border-transparent"
+                        >
+                          <span className="text-xl">{data.icon}</span>
+                          <span className="text-sm font-medium">{capitalizeCategory(cat)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{SERVICE_CATEGORIES[category as keyof typeof SERVICE_CATEGORIES].icon}</span>
+                        <Label className="text-xs font-semibold text-gray-900">{capitalizeCategory(category)}</Label>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => {
-                          setCategory(cat);
+                          setCategory('');
                           setSubcategory('');
                         }}
-                        className={`w-full px-4 py-3 rounded-lg text-left transition-all flex items-center gap-3 ${
-                          category === cat
-                            ? 'bg-gradient-to-r from-blue-50 to-gold-50 border-2'
-                            : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
-                        }`}
-                        style={category === cat ? { borderColor: 'var(--gold)' } : {}}
+                        className="text-xs h-8"
                       >
-                        <span className="text-xl">{data.icon}</span>
-                        <span className="text-sm font-medium">{capitalizeCategory(cat)}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {category && (
-                  <div className="mt-4">
-                    <Label className="text-xs text-gray-600 mb-2 block">Subcategoría</Label>
+                        ← Cambiar
+                      </Button>
+                    </div>
                     <div className="space-y-2">
                       {SERVICE_CATEGORIES[category as keyof typeof SERVICE_CATEGORIES].subcategories.map((sub) => (
                         <button
@@ -494,10 +514,10 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
                             // Avanzar automáticamente al siguiente paso
                             setTimeout(() => setMobileStep('price'), 300);
                           }}
-                          className={`w-full px-4 py-2 rounded-lg text-left text-sm transition-all ${
+                          className={`w-full px-4 py-3 rounded-lg text-left text-sm transition-all ${
                             subcategory === sub
                               ? 'font-semibold'
-                              : 'hover:bg-gray-100'
+                              : 'hover:bg-gray-100 bg-gray-50'
                           }`}
                           style={subcategory === sub ? { 
                             backgroundColor: 'var(--gold)', 

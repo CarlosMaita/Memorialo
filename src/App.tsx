@@ -17,6 +17,7 @@ import { UserProfile } from './components/UserProfile';
 import { ReviewDialog } from './components/ReviewDialog';
 import { Footer } from './components/Footer';
 import { AboutPage } from './components/AboutPage';
+import { HowItWorksPage } from './components/HowItWorksPage';
 import { ForProvidersPage } from './components/ForProvidersPage';
 import { ForClientsPage } from './components/ForClientsPage';
 import { TermsConditions } from './components/legal/TermsConditions';
@@ -40,6 +41,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('client');
   const [dashboardView, setDashboardView] = useState<DashboardView>('provider');
   const [artists, setArtists] = useState<Artist[]>([]);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const [searchCriteria, setSearchCriteria] = useState<SearchCriteria>({
     city: '',
     category: '',
@@ -57,6 +59,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [showAbout, setShowAbout] = useState(false);
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [showForProviders, setShowForProviders] = useState(false);
   const [showForClients, setShowForClients] = useState(false);
   const [currentRoute, setCurrentRoute] = useState(window.location.pathname);
@@ -118,11 +121,14 @@ export default function App() {
       // Load services (artists) - use mock data as fallback
       const servicesData = await supabase.getServices();
       let loadedArtists: Artist[] = [];
+      let usingMockData = false;
+      
       if (servicesData && servicesData.length > 0) {
         loadedArtists = servicesData;
       } else {
         // If no data in DB, use mock data
         loadedArtists = mockArtists;
+        usingMockData = true;
       }
 
       // Load contracts - use mock data as fallback
@@ -131,6 +137,7 @@ export default function App() {
         setContracts(contractsData);
       } else {
         setContracts(mockContracts);
+        usingMockData = true;
       }
 
       // Load reviews - use mock data as fallback
@@ -140,6 +147,7 @@ export default function App() {
         loadedReviews = reviewsData;
       } else {
         loadedReviews = mockReviews;
+        usingMockData = true;
       }
       setReviews(loadedReviews);
 
@@ -165,21 +173,39 @@ export default function App() {
 
       // Load bookings
       const bookingsData = await supabase.getBookings();
-      if (bookingsData) {
+      if (bookingsData && bookingsData.length > 0) {
         setBookings(bookingsData);
       }
 
       // Load providers
       const providersData = await supabase.getProviders();
-      if (providersData) {
+      if (providersData && providersData.length > 0) {
         setProviders(providersData);
       }
 
-      // Load mock events for now (will be replaced with Supabase later)
-      setEvents(mockEvents);
-    } catch (error) {
+      // Load events
+      const eventsData = await supabase.getEvents();
+      if (eventsData && eventsData.length > 0) {
+        setEvents(eventsData);
+      } else {
+        setEvents(mockEvents);
+        usingMockData = true;
+      }
+      
+      // If using mock data, enable demo mode and notify user (only once)
+      if (usingMockData) {
+        setIsDemoMode(true);
+        console.log('📦 Backend no disponible - Usando datos de demostración');
+        toast.info('Modo de demostración - Datos de ejemplo', {
+          duration: 4000,
+        });
+      }
+    } catch (error: any) {
       console.error('Error loading data:', error);
+      
+      setIsDemoMode(true);
       toast.error('Error al cargar datos. Usando datos de ejemplo.');
+      
       // Fallback to mock data
       setArtists(mockArtists);
       setReviews(mockReviews);
@@ -444,30 +470,33 @@ export default function App() {
   };
 
   // Event management functions
-  const handleCreateEvent = (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleCreateEvent = async (eventData: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!currentUser) {
       toast.error('Debes iniciar sesión para crear un evento');
       return;
     }
 
-    const newEvent: Event = {
-      ...eventData,
-      id: `event-${Date.now()}`,
-      userId: currentUser.id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    setEvents(prev => [...prev, newEvent]);
-    toast.success('Evento creado exitosamente');
+    try {
+      const createdEvent = await supabase.createEvent(eventData);
+      setEvents(prev => [...prev, createdEvent]);
+      toast.success('Evento creado exitosamente');
+    } catch (error) {
+      console.error('Error creating event:', error);
+      toast.error('Error al crear evento');
+    }
   };
 
-  const handleUpdateEvent = (eventId: string, updates: Partial<Event>) => {
-    setEvents(prev => prev.map(event => 
-      event.id === eventId 
-        ? { ...event, ...updates, updatedAt: new Date().toISOString() }
-        : event
-    ));
+  const handleUpdateEvent = async (eventId: string, updates: Partial<Event>) => {
+    try {
+      const updatedEvent = await supabase.updateEvent(eventId, updates);
+      setEvents(prev => prev.map(event => 
+        event.id === eventId ? updatedEvent : event
+      ));
+      toast.success('Evento actualizado');
+    } catch (error) {
+      console.error('Error updating event:', error);
+      toast.error('Error al actualizar evento');
+    }
   };
 
   // Navigation function
@@ -478,50 +507,69 @@ export default function App() {
     setShowForProviders(false);
     setShowForClients(false);
     window.scrollTo(0, 0);
-    toast.success('Evento actualizado');
   };
 
-  const handleDeleteEvent = (eventId: string) => {
-    // Remove event from all contracts
-    setContracts(prev => prev.map(contract => 
-      contract.eventId === eventId 
-        ? { ...contract, eventId: undefined }
-        : contract
-    ));
-    
-    setEvents(prev => prev.filter(event => event.id !== eventId));
-    toast.success('Evento eliminado');
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      await supabase.deleteEvent(eventId);
+      
+      // Remove event from all contracts
+      setContracts(prev => prev.map(contract => 
+        contract.eventId === eventId 
+          ? { ...contract, eventId: undefined }
+          : contract
+      ));
+      
+      setEvents(prev => prev.filter(event => event.id !== eventId));
+      toast.success('Evento eliminado');
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      toast.error('Error al eliminar evento');
+    }
   };
 
-  const handleAssignContractToEvent = (contractId: string, eventId: string | null) => {
-    setContracts(prev => prev.map(contract => 
-      contract.id === contractId 
-        ? { ...contract, eventId: eventId || undefined }
-        : contract
-    ));
+  const handleAssignContractToEvent = async (contractId: string, eventId: string | null) => {
+    try {
+      // Update contract with new eventId
+      const contract = contracts.find(c => c.id === contractId);
+      if (contract) {
+        await handleContractUpdate({
+          ...contract,
+          eventId: eventId || undefined
+        });
+      }
 
-    // Update event's contract list
-    if (eventId) {
-      setEvents(prev => prev.map(event => {
-        if (event.id === eventId) {
+      // Update event's contract list
+      if (eventId) {
+        const event = events.find(e => e.id === eventId);
+        if (event) {
           const contractIds = new Set(event.contractIds);
           contractIds.add(contractId);
-          return { ...event, contractIds: Array.from(contractIds) };
+          await handleUpdateEvent(eventId, { contractIds: Array.from(contractIds) });
         }
+        
         // Remove from other events
-        return {
-          ...event,
-          contractIds: event.contractIds.filter(id => id !== contractId)
-        };
-      }));
-      toast.success('Reserva asignada al evento');
-    } else {
-      // Remove from all events
-      setEvents(prev => prev.map(event => ({
-        ...event,
-        contractIds: event.contractIds.filter(id => id !== contractId)
-      })));
-      toast.success('Reserva removida del evento');
+        const otherEvents = events.filter(e => e.id !== eventId && e.contractIds.includes(contractId));
+        for (const otherEvent of otherEvents) {
+          await handleUpdateEvent(otherEvent.id, {
+            contractIds: otherEvent.contractIds.filter(id => id !== contractId)
+          });
+        }
+        
+        toast.success('Reserva asignada al evento');
+      } else {
+        // Remove from all events
+        const eventsWithContract = events.filter(e => e.contractIds.includes(contractId));
+        for (const event of eventsWithContract) {
+          await handleUpdateEvent(event.id, {
+            contractIds: event.contractIds.filter(id => id !== contractId)
+          });
+        }
+        toast.success('Reserva removida del evento');
+      }
+    } catch (error) {
+      console.error('Error assigning contract to event:', error);
+      toast.error('Error al asignar reserva al evento');
     }
   };
 
@@ -729,6 +777,12 @@ export default function App() {
       
       {/* Header */}
       <header className="sticky top-0 z-40 shadow-sm" style={{ backgroundColor: 'var(--navy-blue)' }}>
+        {/* Demo Mode Banner */}
+        {isDemoMode && (
+          <div className="bg-yellow-500 text-yellow-900 px-4 py-2 text-center text-sm">
+            <strong>Modo Demostración:</strong> El servidor backend no está disponible. Estás viendo datos de ejemplo.
+          </div>
+        )}
         <div className="max-w-[1400px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <button 
@@ -900,6 +954,16 @@ export default function App() {
                 className="w-full text-white hover:text-white hover:bg-white/10"
               >
                 Sobre Nosotros
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowHowItWorks(true);
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full text-white hover:text-white hover:bg-white/10"
+              >
+                Cómo Funciona
               </Button>
               <Button
                 variant={viewMode === 'client' ? 'secondary' : 'ghost'}
@@ -1359,9 +1423,26 @@ export default function App() {
         />
       )}
 
+      {/* How It Works Page */}
+      {showHowItWorks && (
+        <HowItWorksPage
+          onClose={() => setShowHowItWorks(false)}
+          onGetStarted={() => {
+            setShowHowItWorks(false);
+            if (!currentUser) {
+              setShowAuthDialog(true);
+            } else {
+              setViewMode('client');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+          }}
+        />
+      )}
+
       {/* Footer */}
       <Footer 
         onAboutClick={() => setShowAbout(true)}
+        onHowItWorksClick={() => setShowHowItWorks(true)}
         onForProvidersClick={() => setShowForProviders(true)}
         onForClientsClick={() => setShowForClients(true)}
         onTermsClick={() => navigateTo('/terminos-condiciones')}

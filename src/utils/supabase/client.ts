@@ -39,6 +39,7 @@ export async function apiRequest(
   const options: RequestInit = {
     method,
     headers,
+    mode: 'cors',
   };
 
   if (body && method !== 'GET') {
@@ -46,7 +47,9 @@ export async function apiRequest(
   }
 
   try {
-    const response = await fetch(`${serverUrl}${path}`, options);
+    const url = `${serverUrl}${path}`;
+    
+    const response = await fetch(url, options);
     
     if (!response.ok) {
       let errorMessage = `Request failed with status ${response.status}`;
@@ -64,6 +67,11 @@ export async function apiRequest(
     return data;
   } catch (error) {
     if (error instanceof Error) {
+      // Check if it's a network error
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+        // Silently throw BACKEND_UNAVAILABLE - will be handled by caller
+        throw new Error('BACKEND_UNAVAILABLE');
+      }
       console.error(`Error calling ${method} ${path}:`, error.message);
       throw error;
     }
