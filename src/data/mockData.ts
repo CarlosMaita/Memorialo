@@ -566,5 +566,19 @@ export const mockEvents: Event[] = [
     contractIds: [],
     createdAt: '2025-09-20T09:15:00Z',
     updatedAt: '2025-11-05T16:20:00Z'
+  },
+  {
+    id: 'event-4',
+    userId: 'user-1',
+    name: 'Fiesta Corporativa Cancelada',
+    description: 'Evento empresarial que fue cancelado',
+    eventDate: '2025-12-15',
+    eventType: 'Fiesta Corporativa',
+    location: 'Hotel Eurobuilding, Caracas',
+    budget: 10000,
+    status: 'cancelled',
+    contractIds: [],
+    createdAt: '2025-10-01T11:00:00Z',
+    updatedAt: '2025-11-10T09:30:00Z'
   }
 ];

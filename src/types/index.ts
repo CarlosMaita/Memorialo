@@ -143,6 +143,7 @@ export interface Event {
   location?: string;
   budget?: number;
   status: 'planning' | 'confirmed' | 'completed' | 'cancelled';
+  archived?: boolean; // Si el evento está archivado (oculto por defecto)
   contractIds: string[]; // List of contract IDs associated with this event
   createdAt: string;
   updatedAt: string;

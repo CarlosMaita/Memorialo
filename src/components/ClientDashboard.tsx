@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, Clock, DollarSign, FileText, Star, CheckCircle, XCircle, AlertCircle, MessageSquare, FolderOpen, Package, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Clock, DollarSign, FileText, Star, CheckCircle, XCircle, AlertCircle, MessageSquare, FolderOpen, Package, Edit2, ChevronDown, ChevronUp, Eye, Archive } from 'lucide-react';
 import { Contract, User, Review, Event } from '../types';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Button } from './ui/button';
@@ -11,6 +11,7 @@ import { EventManager } from './EventManager';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Label } from './ui/label';
+import { Checkbox } from './ui/checkbox';
 
 interface ClientDashboardProps {
   contracts: Contract[];
@@ -40,16 +41,24 @@ export function ClientDashboard({
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [showContractView, setShowContractView] = useState(false);
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
+  const [expandedContracts, setExpandedContracts] = useState<Set<string>>(new Set());
+  const [showArchived, setShowArchived] = useState(false);
 
   // Filter contracts where current user is the client
   const userContracts = contracts.filter(c => c.clientId === user.id);
-  const userEvents = events.filter(e => e.userId === user.id);
+  const allUserEvents = events.filter(e => e.userId === user.id);
+  
+  // Filter events based on archived status
+  const userEvents = showArchived 
+    ? allUserEvents 
+    : allUserEvents.filter(e => !e.archived);
   
   // Debug logging
   console.log('ClientDashboard - User ID:', user.id);
   console.log('ClientDashboard - All contracts:', contracts);
   console.log('ClientDashboard - Filtered user contracts:', userContracts);
   console.log('ClientDashboard - User events:', userEvents);
+  console.log('ClientDashboard - Show archived:', showArchived);
 
   // Group contracts by event
   const contractsByEvent = new Map<string | null, Contract[]>();
@@ -73,6 +82,16 @@ export function ClientDashboard({
       newExpanded.add(eventId);
     }
     setExpandedEvents(newExpanded);
+  };
+
+  const toggleContractExpanded = (contractId: string) => {
+    const newExpanded = new Set(expandedContracts);
+    if (newExpanded.has(contractId)) {
+      newExpanded.delete(contractId);
+    } else {
+      newExpanded.add(contractId);
+    }
+    setExpandedContracts(newExpanded);
   };
 
   const getStatusBadge = (status: Contract['status']) => {
@@ -121,6 +140,10 @@ export function ClientDashboard({
   const hasReviewed = (contractId: string): boolean => {
     // Verificar si ya existe una reseña para este contrato específico
     return reviews.some(r => r.contractId === contractId);
+  };
+
+  const handleArchiveEvent = (eventId: string, archived: boolean) => {
+    onUpdateEvent(eventId, { archived });
   };
 
   const ContractCard = ({ contract, showEventSelector = false }: { contract: Contract, showEventSelector?: boolean }) => {
@@ -293,6 +316,23 @@ export function ClientDashboard({
     const totalSpent = eventContracts.reduce((sum, c) => sum + c.terms.price, 0);
     const isExpanded = expandedEvents.has(event.id);
 
+    const getStatusIcon = (status: Contract['status']) => {
+      switch (status) {
+        case 'active':
+          return <CheckCircle className="w-4 h-4 text-green-600" />;
+        case 'pending_client':
+          return <AlertCircle className="w-4 h-4 text-yellow-600" />;
+        case 'pending_artist':
+          return <Clock className="w-4 h-4 text-blue-600" />;
+        case 'completed':
+          return <CheckCircle className="w-4 h-4 text-gray-600" />;
+        case 'cancelled':
+          return <XCircle className="w-4 h-4 text-red-600" />;
+        default:
+          return <AlertCircle className="w-4 h-4 text-gray-600" />;
+      }
+    };
+
     return (
       <Card className="mb-4">
         <CardHeader>
@@ -303,6 +343,12 @@ export function ClientDashboard({
                   <FolderOpen className="w-5 h-5 text-[#D4AF37]" />
                   <h3 className="text-sm">{event.name}</h3>
                   {getEventStatusBadge(event.status)}
+                  {event.archived && (
+                    <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-300">
+                      <Archive className="w-3 h-3 mr-1" />
+                      Archivado
+                    </Badge>
+                  )}
                   <Badge variant="outline" className="ml-auto">
                     {eventContracts.length} {eventContracts.length === 1 ? 'servicio' : 'servicios'}
                   </Badge>
@@ -370,17 +416,104 @@ export function ClientDashboard({
             <CollapsibleContent className="mt-4 space-y-2">
               <Separator />
               <div className="pt-2">
-                <p className="text-sm mb-3">Servicios contratados:</p>
                 {eventContracts.length === 0 ? (
                   <p className="text-sm text-gray-500 text-center py-4">
                     No hay servicios asignados a este evento todavía
                   </p>
                 ) : (
-                  eventContracts.map(contract => (
-                    <ContractCard key={contract.id} contract={contract} showEventSelector={true} />
-                  ))
+                  <div className="space-y-2">
+                    {eventContracts.map(contract => {
+                      const isContractExpanded = expandedContracts.has(contract.id);
+                      
+                      return (
+                        <div key={contract.id}>
+                          {/* Simple Service Row */}
+                          <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-200">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              {getStatusIcon(contract.status)}
+                              <span className="text-sm font-medium truncate">{contract.artistName}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-[#0A1F44] whitespace-nowrap mr-2">
+                                ${contract.terms.price.toFixed(2)}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedContract(contract);
+                                  setShowContractView(true);
+                                }}
+                                className="h-8 w-8 p-0"
+                                title="Ver contrato"
+                              >
+                                <FileText className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleContractExpanded(contract.id)}
+                                className="h-8 w-8 p-0"
+                                title="Ver detalles"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              {canReview(contract) && !hasReviewed(contract.id) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => onReviewCreate(contract.id)}
+                                  className="h-8 w-8 p-0 text-[#D4AF37] hover:text-[#D4AF37]"
+                                  title="Dejar reseña"
+                                >
+                                  <Star className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Expanded Contract Details */}
+                          {isContractExpanded && (
+                            <div className="mt-2 ml-4">
+                              <ContractCard contract={contract} showEventSelector={true} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
+              
+              {/* Archive Button for Cancelled Events */}
+              {event.status === 'cancelled' && !event.archived && (
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleArchiveEvent(event.id, true)}
+                    className="w-full text-gray-600 hover:text-gray-800"
+                  >
+                    <Archive className="w-4 h-4 mr-2" />
+                    Archivar evento
+                  </Button>
+                </div>
+              )}
+              
+              {/* Unarchive Button for Archived Events */}
+              {event.archived && (
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleArchiveEvent(event.id, false)}
+                    className="w-full text-blue-600 hover:text-blue-800"
+                  >
+                    <Archive className="w-4 h-4 mr-2" />
+                    Desarchivar evento
+                  </Button>
+                </div>
+              )}
             </CollapsibleContent>
           </Collapsible>
         </CardHeader>
@@ -396,7 +529,7 @@ export function ClientDashboard({
           <p className="text-gray-600">Organiza tus reservas por eventos</p>
         </div>
         <EventManager
-          events={userEvents}
+          events={allUserEvents}
           onCreateEvent={onCreateEvent}
           onUpdateEvent={onUpdateEvent}
           onDeleteEvent={onDeleteEvent}
@@ -404,14 +537,28 @@ export function ClientDashboard({
       </div>
 
       <Tabs defaultValue="events" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="events">
-            Por Eventos ({userEvents.length})
-          </TabsTrigger>
-          <TabsTrigger value="all">
-            Todas las Reservas ({userContracts.length})
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="events">
+              Por Eventos ({userEvents.length})
+            </TabsTrigger>
+            <TabsTrigger value="all">
+              Todas las Reservas ({userContracts.length})
+            </TabsTrigger>
+          </TabsList>
+          
+          {/* Show Archived Toggle */}
+          <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border">
+            <Checkbox 
+              id="show-archived" 
+              checked={showArchived}
+              onCheckedChange={(checked) => setShowArchived(checked as boolean)}
+            />
+            <Label htmlFor="show-archived" className="text-sm cursor-pointer">
+              Mostrar archivados
+            </Label>
+          </div>
+        </div>
 
         <TabsContent value="events" className="space-y-4">
           {/* Events */}

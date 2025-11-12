@@ -7,8 +7,9 @@
   --gold: #D4AF37;
   --copper: #B8860B;
   --cream-white: #FEFDFB;
+  --bg-gray: #EDEBF5;
   
-  --background: var(--cream-white);
+  --background: var(--bg-gray);
   --foreground: var(--navy-blue);
   --card: #ffffff;
   --card-foreground: var(--navy-blue);

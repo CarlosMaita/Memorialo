@@ -133,7 +133,7 @@ export function ArtistProfile({
           <h3>Especialidades</h3>
           <div className="flex flex-wrap gap-2">
             {artist.specialties.map((specialty, index) => (
-              <Badge key={index} variant="outline">
+              <Badge key={index} variant="outline" className="bg-white">
                 {specialty}
               </Badge>
             ))}
@@ -289,7 +289,7 @@ export function ArtistProfile({
                 {artistReviews.slice(0, 5).map((review) => (
                   <div
                     key={review.id}
-                    className="border rounded-lg p-4"
+                    className="bg-white border rounded-lg p-4"
                   >
                     <div className="flex items-start gap-3 mb-2">
                       <Avatar className="w-10 h-10">

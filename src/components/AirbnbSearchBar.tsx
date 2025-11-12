@@ -195,6 +195,13 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
                       onSelect={(value) => {
                         setCity(value);
                         setCityOpen(false);
+                        // Búsqueda reactiva inmediata
+                        onSearch({
+                          city: value,
+                          category,
+                          subcategory,
+                          priceRange
+                        });
                       }}
                     >
                       <MapPin className="w-4 h-4 mr-2" />
@@ -255,6 +262,13 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
                     onClick={() => {
                       setCategory('');
                       setSubcategory('');
+                      // Búsqueda reactiva al limpiar categoría
+                      onSearch({
+                        city,
+                        category: '',
+                        subcategory: '',
+                        priceRange
+                      });
                     }}
                     className="text-xs h-8"
                   >
@@ -268,6 +282,13 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
                       onClick={() => {
                         setSubcategory(sub);
                         setCategoryOpen(false);
+                        // Búsqueda reactiva inmediata
+                        onSearch({
+                          city,
+                          category,
+                          subcategory: sub,
+                          priceRange
+                        });
                       }}
                       className={`w-full px-4 py-3 rounded-lg text-left text-sm transition-all ${
                         subcategory === sub
@@ -312,7 +333,16 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
                   max={5000}
                   step={100}
                   value={priceRange}
-                  onValueChange={(value) => setPriceRange(value as [number, number])}
+                  onValueChange={(value) => {
+                    setPriceRange(value as [number, number]);
+                    // Búsqueda reactiva con el nuevo rango de precio
+                    onSearch({
+                      city,
+                      category,
+                      subcategory,
+                      priceRange: value as [number, number]
+                    });
+                  }}
                 />
                 <div className="flex justify-between mt-4 text-sm">
                   <div className="text-gray-700">
@@ -336,6 +366,7 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
               background: 'linear-gradient(135deg, var(--gold) 0%, var(--copper) 100%)',
               color: 'white'
             }}
+            title="Buscar"
           >
             <Search className="w-5 h-5" />
           </Button>
@@ -638,7 +669,19 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
             <div className="px-3 py-1 bg-white rounded-full text-sm border border-gray-200 flex items-center gap-2">
               <MapPin className="w-3 h-3" />
               {city}
-              <button onClick={() => setCity('')} className="hover:bg-gray-100 rounded-full p-0.5">
+              <button 
+                onClick={() => {
+                  setCity('');
+                  // Búsqueda reactiva al remover ciudad
+                  onSearch({
+                    city: '',
+                    category,
+                    subcategory,
+                    priceRange
+                  });
+                }} 
+                className="hover:bg-gray-100 rounded-full p-0.5"
+              >
                 <X className="w-3 h-3" />
               </button>
             </div>
@@ -647,7 +690,20 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
             <div className="px-3 py-1 bg-white rounded-full text-sm border border-gray-200 flex items-center gap-2">
               <Sparkles className="w-3 h-3" />
               {subcategory}
-              <button onClick={() => { setSubcategory(''); setCategory(''); }} className="hover:bg-gray-100 rounded-full p-0.5">
+              <button 
+                onClick={() => { 
+                  setSubcategory(''); 
+                  setCategory('');
+                  // Búsqueda reactiva al remover subcategoría
+                  onSearch({
+                    city,
+                    category: '',
+                    subcategory: '',
+                    priceRange
+                  });
+                }} 
+                className="hover:bg-gray-100 rounded-full p-0.5"
+              >
                 <X className="w-3 h-3" />
               </button>
             </div>
@@ -656,7 +712,19 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
             <div className="px-3 py-1 bg-white rounded-full text-sm border border-gray-200 flex items-center gap-2">
               <DollarSign className="w-3 h-3" />
               ${priceRange[0].toLocaleString()} - ${priceRange[1].toLocaleString()}
-              <button onClick={() => setPriceRange([0, 5000])} className="hover:bg-gray-100 rounded-full p-0.5">
+              <button 
+                onClick={() => {
+                  setPriceRange([0, 5000]);
+                  // Búsqueda reactiva al restablecer precio
+                  onSearch({
+                    city,
+                    category,
+                    subcategory,
+                    priceRange: [0, 5000]
+                  });
+                }} 
+                className="hover:bg-gray-100 rounded-full p-0.5"
+              >
                 <X className="w-3 h-3" />
               </button>
             </div>

@@ -264,6 +264,18 @@ export default function App() {
     try {
       const createdContract = await supabase.createContract(contract);
       setContracts(prev => [...prev, createdContract]);
+      
+      // If contract has an eventId, add it to the event's contract list
+      if (createdContract.eventId) {
+        const event = events.find(e => e.id === createdContract.eventId);
+        if (event) {
+          const contractIds = new Set(event.contractIds);
+          contractIds.add(createdContract.id);
+          await handleUpdateEvent(createdContract.eventId, { 
+            contractIds: Array.from(contractIds) 
+          }, true); // silent = true para no mostrar toast
+        }
+      }
     } catch (error) {
       console.error('Error creating contract:', error);
       toast.error('Error al crear el contrato');
@@ -486,13 +498,15 @@ export default function App() {
     }
   };
 
-  const handleUpdateEvent = async (eventId: string, updates: Partial<Event>) => {
+  const handleUpdateEvent = async (eventId: string, updates: Partial<Event>, silent = false) => {
     try {
       const updatedEvent = await supabase.updateEvent(eventId, updates);
       setEvents(prev => prev.map(event => 
         event.id === eventId ? updatedEvent : event
       ));
-      toast.success('Evento actualizado');
+      if (!silent) {
+        toast.success('Evento actualizado');
+      }
     } catch (error) {
       console.error('Error updating event:', error);
       toast.error('Error al actualizar evento');
@@ -545,7 +559,7 @@ export default function App() {
         if (event) {
           const contractIds = new Set(event.contractIds);
           contractIds.add(contractId);
-          await handleUpdateEvent(eventId, { contractIds: Array.from(contractIds) });
+          await handleUpdateEvent(eventId, { contractIds: Array.from(contractIds) }, true);
         }
         
         // Remove from other events
@@ -553,7 +567,7 @@ export default function App() {
         for (const otherEvent of otherEvents) {
           await handleUpdateEvent(otherEvent.id, {
             contractIds: otherEvent.contractIds.filter(id => id !== contractId)
-          });
+          }, true);
         }
         
         toast.success('Reserva asignada al evento');
@@ -563,7 +577,7 @@ export default function App() {
         for (const event of eventsWithContract) {
           await handleUpdateEvent(event.id, {
             contractIds: event.contractIds.filter(id => id !== contractId)
-          });
+          }, true);
         }
         toast.success('Reserva removida del evento');
       }
@@ -772,7 +786,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--cream-white)' }}>
+    <div className="min-h-screen bg-background">
       <Toaster />
       
       {/* Header */}
@@ -1339,6 +1353,7 @@ export default function App() {
         onBookingUpdate={handleBookingUpdate}
         user={currentUser}
         onLoginRequired={() => setShowAuthDialog(true)}
+        events={events}
       />
 
       <CompareView

@@ -58,6 +58,7 @@ export function ReviewDialog({ open, onClose, booking, user, onReviewSubmit }: R
     };
 
     onReviewSubmit(newReview);
+    onClose(); // Cerrar el diálogo después de enviar
   };
 
   return (

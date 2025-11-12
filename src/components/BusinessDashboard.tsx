@@ -6,9 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Artist, Contract, User, Provider, Booking } from '../types';
 import { ServiceEditor } from './ServiceEditor';
 import { ContractView } from './ContractView';
+import { ClientDashboard } from './ClientDashboard';
 import { 
   Plus, 
   Edit, 
@@ -23,7 +25,8 @@ import {
   XCircle,
   CalendarPlus,
   BarChart3,
-  AlertCircle
+  AlertCircle,
+  Search
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -41,6 +44,13 @@ interface BusinessDashboardProps {
   onBookingCreate: (booking: Booking) => void;
   onBookingUpdate: (booking: Booking) => void;
   onProviderCreate?: (provider: Provider) => void;
+  reviews?: any[];
+  events?: any[];
+  onCreateEvent?: (event: any) => void;
+  onUpdateEvent?: (eventId: string, updates: any) => void;
+  onDeleteEvent?: (eventId: string) => void;
+  onAssignContractToEvent?: (contractId: string, eventId: string | null) => void;
+  onReviewCreate?: (contractId: string) => void;
 }
 
 const categories = [
@@ -68,7 +78,14 @@ export function BusinessDashboard({
   onContractUpdate,
   onBookingCreate,
   onBookingUpdate,
-  onProviderCreate
+  onProviderCreate,
+  reviews = [],
+  events = [],
+  onCreateEvent,
+  onUpdateEvent,
+  onDeleteEvent,
+  onAssignContractToEvent,
+  onReviewCreate
 }: BusinessDashboardProps) {
   const [showServiceEditor, setShowServiceEditor] = useState(false);
   const [editingService, setEditingService] = useState<Artist | null>(null);
@@ -79,12 +96,15 @@ export function BusinessDashboard({
   const [creatingBookingContract, setCreatingBookingContract] = useState<Contract | null>(null);
   const [showMetricsModal, setShowMetricsModal] = useState(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [activeTab, setActiveTab] = useState('services');
+  const [expandedContractId, setExpandedContractId] = useState<string | null>(null);
+  const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
   const [showEditBookingDialog, setShowEditBookingDialog] = useState(false);
-
-  // Debug logging
-  console.log('BusinessDashboard - User ID:', user.id);
-  console.log('BusinessDashboard - Services received:', services);
-  console.log('BusinessDashboard - Services count:', services.length);
+  
+  // Search states
+  const [searchService, setSearchService] = useState('');
+  const [searchContract, setSearchContract] = useState('');
+  const [searchBooking, setSearchBooking] = useState('');
 
   // Setup Provider Profile
   const [providerForm, setProviderForm] = useState({
@@ -142,6 +162,13 @@ export function BusinessDashboard({
     services.some(service => service.id === booking.artistId)
   );
 
+  // Debug logging
+  console.log('BusinessDashboard - User ID:', user.id);
+  console.log('BusinessDashboard - Services count:', services.length);
+  console.log('BusinessDashboard - Total contracts passed:', contracts.length);
+  console.log('BusinessDashboard - Provider contracts:', providerContracts.length);
+  console.log('BusinessDashboard - Provider contracts data:', providerContracts);
+
   // Contracts that are signed by both parties
   const signedContracts = providerContracts.filter(c => 
     c.clientSignature && c.artistSignature
@@ -184,6 +211,19 @@ export function BusinessDashboard({
     };
     return (statusOrder[a.status] || 5) - (statusOrder[b.status] || 5);
   });
+
+  // Filtered lists based on search
+  const filteredServices = services.filter(service => 
+    service.name.toLowerCase().includes(searchService.toLowerCase())
+  );
+
+  const filteredContracts = sortedContracts.filter(contract => 
+    contract.clientName.toLowerCase().includes(searchContract.toLowerCase())
+  );
+
+  const filteredBookings = sortedBookings.filter(booking => 
+    booking.clientName.toLowerCase().includes(searchBooking.toLowerCase())
+  );
 
   const handleEditService = (service: Artist) => {
     setEditingService(service);
@@ -447,100 +487,100 @@ export function BusinessDashboard({
       </div>
 
       {/* Stats - Desktop Grid */}
-      <div className="hidden md:grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
+      <div className="hidden md:grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Servicios</p>
-                <p className="text-2xl mt-1">{services.length}</p>
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="bg-blue-100 p-2 rounded-lg">
+                <Eye className="w-4 h-4 text-blue-600" />
               </div>
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <Eye className="w-6 h-6 text-blue-600" />
+              <div>
+                <p className="text-xs text-gray-600">Servicios</p>
+                <p className="text-lg">{services.length}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Contratos</p>
-                <p className="text-2xl mt-1">{providerContracts.length}</p>
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="bg-green-100 p-2 rounded-lg">
+                <FileText className="w-4 h-4 text-green-600" />
               </div>
-              <div className="bg-green-100 p-3 rounded-lg">
-                <FileText className="w-6 h-6 text-green-600" />
+              <div>
+                <p className="text-xs text-gray-600">Contratos</p>
+                <p className="text-lg">{providerContracts.length}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Ingresos</p>
-                <p className="text-2xl mt-1">${totalRevenue.toLocaleString()}</p>
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="bg-purple-100 p-2 rounded-lg">
+                <DollarSign className="w-4 h-4 text-purple-600" />
               </div>
-              <div className="bg-purple-100 p-3 rounded-lg">
-                <DollarSign className="w-6 h-6 text-purple-600" />
+              <div>
+                <p className="text-xs text-gray-600">Ingresos</p>
+                <p className="text-lg">${totalRevenue.toLocaleString()}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Reservas Totales</p>
-                <p className="text-2xl mt-1">{totalBookings}</p>
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="bg-indigo-100 p-2 rounded-lg">
+                <Calendar className="w-4 h-4 text-indigo-600" />
               </div>
-              <div className="bg-indigo-100 p-3 rounded-lg">
-                <Calendar className="w-6 h-6 text-indigo-600" />
+              <div>
+                <p className="text-xs text-gray-600">Reservas</p>
+                <p className="text-lg">{totalBookings}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Pendientes</p>
-                <p className="text-2xl mt-1">{pendingBookings}</p>
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="bg-yellow-100 p-2 rounded-lg">
+                <Clock className="w-4 h-4 text-yellow-600" />
               </div>
-              <div className="bg-yellow-100 p-3 rounded-lg">
-                <Clock className="w-6 h-6 text-yellow-600" />
+              <div>
+                <p className="text-xs text-gray-600">Pendientes</p>
+                <p className="text-lg">{pendingBookings}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Confirmadas</p>
-                <p className="text-2xl mt-1">{confirmedBookings}</p>
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="bg-blue-100 p-2 rounded-lg">
+                <CheckCircle2 className="w-4 h-4 text-blue-600" />
               </div>
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <CheckCircle2 className="w-6 h-6 text-blue-600" />
+              <div>
+                <p className="text-xs text-gray-600">Confirmadas</p>
+                <p className="text-lg">{confirmedBookings}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Completadas</p>
-                <p className="text-2xl mt-1">{completedBookings}</p>
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="bg-green-100 p-2 rounded-lg">
+                <CheckCircle2 className="w-4 h-4 text-green-600" />
               </div>
-              <div className="bg-green-100 p-3 rounded-lg">
-                <CheckCircle2 className="w-6 h-6 text-green-600" />
+              <div>
+                <p className="text-xs text-gray-600">Completadas</p>
+                <p className="text-lg">{completedBookings}</p>
               </div>
             </div>
           </CardContent>
@@ -646,8 +686,48 @@ export function BusinessDashboard({
       </Dialog>
 
       {/* Main Content */}
-      <Tabs defaultValue="services" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {/* Mobile Tab Selector */}
+        <div className="md:hidden mb-4">
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full border-2 border-gray-300">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="services">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-4 h-4" />
+                  <span>Mis Servicios</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="contracts">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  <span>Contratos</span>
+                  {pendingContracts.length > 0 && (
+                    <Badge className="ml-2 bg-orange-500 text-xs">
+                      {pendingContracts.length}
+                    </Badge>
+                  )}
+                </div>
+              </SelectItem>
+              <SelectItem value="bookings">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  <span>Reservas</span>
+                  {pendingBookings > 0 && (
+                    <Badge className="ml-2 bg-yellow-500 text-xs">
+                      {pendingBookings}
+                    </Badge>
+                  )}
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Desktop Tab List */}
+        <TabsList className="hidden md:grid w-full grid-cols-3">
           <TabsTrigger value="services">Mis Servicios</TabsTrigger>
           <TabsTrigger value="contracts">
             Contratos
@@ -668,18 +748,31 @@ export function BusinessDashboard({
         </TabsList>
 
         {/* Services Tab */}
-        <TabsContent value="services" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-600">
-              {services.length} servicio{services.length !== 1 ? 's' : ''} publicado{services.length !== 1 ? 's' : ''}
-            </p>
-            <Button onClick={() => {
-              setEditingService(null);
-              setShowServiceEditor(true);
-            }}>
-              <Plus className="w-4 h-4 mr-2" />
-              Crear Servicio
-            </Button>
+        <TabsContent value="services" className="space-y-4 mt-3 md:mt-6">
+          <div className="space-y-3">
+            <div className="relative w-full md:max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" style={{ color: '#D4AF37' }} />
+              <Input
+                type="text"
+                placeholder="Buscar por nombre de servicio..."
+                value={searchService}
+                onChange={(e) => setSearchService(e.target.value)}
+                className="h-10 pl-10 border-2 border-gray-300 focus:border-[#D4AF37]"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                {filteredServices.length} de {services.length} servicio{services.length !== 1 ? 's' : ''}
+              </p>
+              <Button onClick={() => {
+                setEditingService(null);
+                setShowServiceEditor(true);
+              }}>
+                <Plus className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Crear Servicio</span>
+                <span className="sm:hidden">Crear</span>
+              </Button>
+            </div>
           </div>
 
           {services.length === 0 ? (
@@ -698,9 +791,19 @@ export function BusinessDashboard({
                 </Button>
               </CardContent>
             </Card>
+          ) : filteredServices.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Search className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="text-gray-500">No se encontraron servicios</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Intenta con otro término de búsqueda
+                </p>
+              </CardContent>
+            </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {services.map((service) => (
+              {filteredServices.map((service) => (
                 <Card key={service.id}>
                   <CardContent className="p-4">
                     <div className="aspect-video rounded-lg overflow-hidden mb-3">
@@ -758,7 +861,25 @@ export function BusinessDashboard({
         </TabsContent>
 
         {/* Contracts Tab */}
-        <TabsContent value="contracts" className="space-y-4">
+        <TabsContent value="contracts" className="space-y-4 mt-3 md:mt-6">
+          {providerContracts.length > 0 && (
+            <div className="relative w-full md:max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" style={{ color: '#D4AF37' }} />
+              <Input
+                type="text"
+                placeholder="Buscar por nombre de cliente..."
+                value={searchContract}
+                onChange={(e) => setSearchContract(e.target.value)}
+                className="h-10 pl-10 border-2 border-gray-300 focus:border-[#D4AF37]"
+              />
+              {searchContract && (
+                <p className="text-sm text-gray-600 mt-2">
+                  {filteredContracts.length} de {sortedContracts.length} contrato{sortedContracts.length !== 1 ? 's' : ''}
+                </p>
+              )}
+            </div>
+          )}
+          
           {providerContracts.length === 0 ? (
             <Card>
               <CardContent className="p-12 text-center">
@@ -769,99 +890,133 @@ export function BusinessDashboard({
                 </p>
               </CardContent>
             </Card>
+          ) : filteredContracts.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Search className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="text-gray-500">No se encontraron contratos</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Intenta con otro nombre de cliente
+                </p>
+              </CardContent>
+            </Card>
           ) : (
-            <div className="space-y-3">
-              {sortedContracts.map((contract) => {
+            <div className="space-y-2">
+              {filteredContracts.map((contract) => {
                 const isSigned = contract.clientSignature && contract.artistSignature;
                 const contractHasBooking = hasBooking(contract.id);
                 const needsProviderSignature = contract.status === 'pending_artist' && contract.clientSignature && !contract.artistSignature;
+                const isExpanded = expandedContractId === contract.id;
                 
                 return (
                   <Card key={contract.id} className={needsProviderSignature ? 'border-2 border-orange-400 bg-orange-50/30' : ''}>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3">
                       {needsProviderSignature && (
-                        <div className="mb-3 flex items-start gap-2 bg-orange-100 border border-orange-300 rounded-lg p-3">
-                          <AlertCircle className="w-5 h-5 text-orange-700 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-sm text-orange-900">
-                              <strong>Acción requerida:</strong> El cliente ha firmado el contrato. 
-                              Revisa los términos y firma para confirmar la reserva.
-                            </p>
-                          </div>
+                        <div className="mb-2 flex items-start gap-2 bg-orange-100 border border-orange-300 rounded-lg p-2">
+                          <AlertCircle className="w-4 h-4 text-orange-700 flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-orange-900">
+                            <strong>Acción requerida:</strong> El cliente firmó. Revisa y firma el contrato.
+                          </p>
                         </div>
                       )}
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="text-base">Contrato con {contract.clientName}</h4>
+                      
+                      {/* Compact View */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="text-sm truncate">{contract.clientName}</h4>
                             <Badge 
-                              className={getStatusBadge(contract.status)}
+                              className={`${getStatusBadge(contract.status)} text-xs`}
                               variant={contract.status.includes('pending') ? 'outline' : 'default'}
                             >
                               {getStatusText(contract.status)}
                             </Badge>
                           </div>
-                          <p className="text-sm text-gray-600">
-                            {contract.terms.serviceDescription.split('\n')[0]}
-                          </p>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-gray-600">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {new Date(contract.terms.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                            </span>
+                            <span className="text-green-600">${contract.terms.price}</span>
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm">
-                        <div>
-                          <p className="text-gray-600">Fecha</p>
-                          <p className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            {new Date(contract.terms.date).toLocaleDateString('es-ES')}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-gray-600">{contract.terms.startTime ? 'Hora y Duración' : 'Duración'}</p>
-                          <p className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {contract.terms.startTime && `${contract.terms.startTime} • `}
-                            {contract.terms.duration}h
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-gray-600">Precio</p>
-                          <p className="text-green-600">${contract.terms.price}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-600">Ubicación</p>
-                          <p>{contract.terms.location}</p>
+                        
+                        {/* Action Icons */}
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setExpandedContractId(isExpanded ? null : contract.id)}
+                            className="h-8 w-8 p-0"
+                            title="Ver detalles"
+                          >
+                            <Eye className="w-4 h-4 text-gray-900" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleViewContract(contract)}
+                            className="h-8 w-8 p-0"
+                            title="Ver contrato"
+                          >
+                            <FileText className="w-4 h-4 text-gray-900" />
+                          </Button>
                         </div>
                       </div>
 
-                      <div className="flex flex-col md:flex-row gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleViewContract(contract)}
-                          className="w-full md:flex-1"
-                        >
-                          <FileText className="w-4 h-4 mr-2" />
-                          Ver Contrato
-                        </Button>
-                        
-                        {isSigned && !contractHasBooking && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleCreateBooking(contract)}
-                            className="w-full md:w-auto"
-                          >
-                            <CalendarPlus className="w-4 h-4 mr-2" />
-                            Crear Reserva
-                          </Button>
-                        )}
-                        
-                        {contractHasBooking && (
-                          <Badge variant="outline" className="text-green-700 border-green-300 w-full md:w-auto justify-center">
-                            <CheckCircle2 className="w-3 h-3 mr-1" />
-                            Reserva creada
-                          </Badge>
-                        )}
-                      </div>
+                      {/* Expanded Details */}
+                      {isExpanded && (
+                        <div className="mt-3 pt-3 border-t space-y-3">
+                          <p className="text-sm text-gray-600">
+                            {contract.terms.serviceDescription.split('\n')[0]}
+                          </p>
+                          
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <p className="text-gray-500">Fecha</p>
+                              <p className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {new Date(contract.terms.date).toLocaleDateString('es-ES')}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Hora y Duración</p>
+                              <p className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {contract.terms.startTime || 'N/A'} • {contract.terms.duration}h
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Precio</p>
+                              <p className="text-green-600">${contract.terms.price}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Ubicación</p>
+                              <p className="truncate">{contract.terms.location}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            {isSigned && !contractHasBooking && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleCreateBooking(contract)}
+                                className="flex-1"
+                              >
+                                <CalendarPlus className="w-4 h-4 mr-1" />
+                                Crear Reserva
+                              </Button>
+                            )}
+                            
+                            {contractHasBooking && (
+                              <Badge variant="outline" className="text-green-700 border-green-300">
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                Reserva creada
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 );
@@ -871,7 +1026,25 @@ export function BusinessDashboard({
         </TabsContent>
 
         {/* Bookings Tab */}
-        <TabsContent value="bookings" className="space-y-4">
+        <TabsContent value="bookings" className="space-y-4 mt-3 md:mt-6">
+          {providerBookings.length > 0 && (
+            <div className="relative w-full md:max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" style={{ color: '#D4AF37' }} />
+              <Input
+                type="text"
+                placeholder="Buscar por nombre de cliente..."
+                value={searchBooking}
+                onChange={(e) => setSearchBooking(e.target.value)}
+                className="h-10 pl-10 border-2 border-gray-300 focus:border-[#D4AF37]"
+              />
+              {searchBooking && (
+                <p className="text-sm text-gray-600 mt-2">
+                  {filteredBookings.length} de {providerBookings.length} reserva{providerBookings.length !== 1 ? 's' : ''}
+                </p>
+              )}
+            </div>
+          )}
+          
           {providerBookings.length === 0 ? (
             <Card>
               <CardContent className="p-12 text-center">
@@ -882,125 +1055,150 @@ export function BusinessDashboard({
                 </p>
               </CardContent>
             </Card>
+          ) : filteredBookings.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Search className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="text-gray-500">No se encontraron reservas</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Intenta con otro nombre de cliente
+                </p>
+              </CardContent>
+            </Card>
           ) : (
-            <div className="space-y-3">
-              {sortedBookings.map((booking) => {
+            <div className="space-y-2">
+              {filteredBookings.map((booking) => {
                 // Check if this booking has a contract pending provider signature
                 const isPendingProviderSignature = hasContractPendingProvider(booking);
                 const displayStatus = isPendingProviderSignature ? 'pending' : booking.status;
+                const isExpanded = expandedBookingId === booking.id;
                 
                 return (
                   <Card key={booking.id} className={booking.status === 'pending' ? 'border-2 border-yellow-400 bg-yellow-50/30' : ''}>
-                  <CardContent className="p-4">
+                  <CardContent className="p-3">
                     {isPendingProviderSignature && (
-                      <div className="mb-3 flex items-start gap-2 bg-yellow-100 border border-yellow-300 rounded-lg p-3">
-                        <Clock className="w-5 h-5 text-yellow-700 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-sm text-yellow-900">
-                            <strong>Reserva pendiente:</strong> Esta reserva se confirmará automáticamente cuando firmes el contrato asociado. 
-                            Puedes editar la fecha/hora antes de firmar.
-                          </p>
-                        </div>
+                      <div className="mb-2 flex items-start gap-2 bg-yellow-100 border border-yellow-300 rounded-lg p-2">
+                        <Clock className="w-4 h-4 text-yellow-700 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-yellow-900">
+                          <strong>Pendiente:</strong> Se confirmará al firmar el contrato. Puedes editar antes de firmar.
+                        </p>
                       </div>
                     )}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="text-base">{booking.clientName}</h4>
-                          <Badge className={getStatusBadge(displayStatus)}>
+                    
+                    {/* Compact View */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-sm truncate">{booking.clientName}</h4>
+                          <Badge className={`${getStatusBadge(displayStatus)} text-xs`}>
                             <span className="flex items-center gap-1">
                               {getStatusIcon(displayStatus)}
                               {getStatusText(displayStatus)}
                             </span>
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-600">{booking.eventType}</p>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-gray-600">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(booking.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {booking.startTime || 'N/A'}
+                          </span>
+                          <span className="text-green-600">${booking.totalPrice}</span>
+                        </div>
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3 text-sm">
-                      <div>
-                        <p className="text-gray-600">Fecha</p>
-                        <p className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          {new Date(booking.date).toLocaleDateString('es-ES')}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Hora</p>
-                        <p className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
-                          {booking.startTime || 'N/A'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Duración</p>
-                        <p>{booking.duration} horas</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Ubicación</p>
-                        <p>{booking.location}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Precio</p>
-                        <p className="text-green-600">${booking.totalPrice}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 pt-3 border-t">
-                      {displayStatus === 'pending' && (
-                        <>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleEditBooking(booking)}
+                      
+                      {/* Action Icons */}
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setExpandedBookingId(isExpanded ? null : booking.id)}
+                          className="h-8 w-8 p-0"
+                          title="Ver detalles"
+                        >
+                          <Eye className="w-4 h-4 text-gray-900" />
+                        </Button>
+                        {booking.contractId && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              const contract = providerContracts.find(c => c.id === booking.contractId);
+                              if (contract) {
+                                handleViewContract(contract);
+                              }
+                            }}
+                            className="h-8 w-8 p-0"
+                            title="Ver contrato"
                           >
-                            <Calendar className="w-4 h-4 mr-1" />
-                            Editar Fecha/Hora
+                            <FileText className="w-4 h-4 text-gray-900" />
                           </Button>
-                          {booking.contractId && (
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Expanded Details */}
+                    {isExpanded && (
+                      <div className="mt-3 pt-3 border-t space-y-3">
+                        <p className="text-sm text-gray-600">{booking.eventType}</p>
+                        
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <p className="text-gray-500">Fecha</p>
+                            <p className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {new Date(booking.date).toLocaleDateString('es-ES')}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Hora</p>
+                            <p className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {booking.startTime || 'N/A'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Duración</p>
+                            <p>{booking.duration} horas</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Ubicación</p>
+                            <p className="truncate">{booking.location}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Precio</p>
+                            <p className="text-green-600">${booking.totalPrice}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {displayStatus === 'pending' && (
                             <Button 
-                              size="sm"
+                              size="sm" 
                               variant="outline"
-                              onClick={() => {
-                                const contract = providerContracts.find(c => c.id === booking.contractId);
-                                if (contract) {
-                                  handleViewContract(contract);
-                                }
-                              }}
+                              onClick={() => handleEditBooking(booking)}
+                              className="flex-1"
                             >
-                              <FileText className="w-4 h-4 mr-1" />
-                              Ver Contrato
+                              <Calendar className="w-4 h-4 mr-1" />
+                              Editar Fecha/Hora
                             </Button>
                           )}
-                        </>
-                      )}
-                      
-                      {displayStatus === 'confirmed' && (
-                        <Button 
-                          size="sm"
-                          onClick={() => handleUpdateBookingStatus(booking.id, 'completed')}
-                        >
-                          Marcar como Completada
-                        </Button>
-                      )}
-                      
-                      {displayStatus === 'completed' && booking.contractId && (
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            const contract = providerContracts.find(c => c.id === booking.contractId);
-                            if (contract) {
-                              handleViewContract(contract);
-                            }
-                          }}
-                        >
-                          <FileText className="w-4 h-4 mr-1" />
-                          Ver Contrato
-                        </Button>
-                      )}
-                    </div>
+                          
+                          {displayStatus === 'confirmed' && (
+                            <Button 
+                              size="sm"
+                              onClick={() => handleUpdateBookingStatus(booking.id, 'completed')}
+                              className="flex-1"
+                            >
+                              Marcar como Completada
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
                 );

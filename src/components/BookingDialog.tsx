@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, DollarSign, Check, FileText } from 'lucide-react';
-import { Artist, ServicePlan, Contract, User, Booking } from '../types';
+import { Calendar, Clock, DollarSign, Check, FileText, FolderOpen } from 'lucide-react';
+import { Artist, ServicePlan, Contract, User, Booking, Event } from '../types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -21,9 +21,11 @@ interface BookingDialogProps {
   onBookingUpdate?: (booking: Booking) => void;
   user: User | null;
   onLoginRequired?: () => void;
+  events?: Event[]; // Lista de eventos del usuario
 }
 
-export function BookingDialog({ artist, selectedPlan, open, onClose, onContractCreated, onBookingCreated, onBookingUpdate, user, onLoginRequired }: BookingDialogProps) {
+export function BookingDialog({ artist, selectedPlan, open, onClose, onContractCreated, onBookingCreated, onBookingUpdate, user, onLoginRequired, events = [] }: BookingDialogProps) {
+  const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [formData, setFormData] = useState({
     clientName: user?.name || '',
     clientEmail: user?.email || '',
@@ -62,10 +64,40 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     }
   }, [user]);
 
+  // Mapear el tipo de evento del Event a los valores del select
+  const mapEventType = (eventType?: string): string => {
+    if (!eventType) return '';
+    const type = eventType.toLowerCase();
+    if (type.includes('boda')) return 'wedding';
+    if (type.includes('corporativ')) return 'corporate';
+    if (type.includes('cumpleaños') || type.includes('birthday')) return 'birthday';
+    if (type.includes('quinceañera') || type.includes('quince')) return 'quinceanera';
+    if (type.includes('concierto') || type.includes('concert')) return 'concert';
+    if (type.includes('privada') || type.includes('private')) return 'private';
+    return 'other';
+  };
+
+  // Auto-llenar campos cuando se selecciona un evento
+  useEffect(() => {
+    if (selectedEventId && selectedEventId !== 'new') {
+      const selectedEvent = events.find(e => e.id === selectedEventId);
+      if (selectedEvent) {
+        setFormData(prev => ({
+          ...prev,
+          date: selectedEvent.eventDate || prev.date,
+          eventType: mapEventType(selectedEvent.eventType) || prev.eventType,
+          location: selectedEvent.location || prev.location
+        }));
+      }
+    }
+  }, [selectedEventId, events]);
+
   if (!artist) return null;
 
   const selectedServicePlan = selectedPlan || (formData.planId ? artist.servicePlans?.find(p => p.id === formData.planId) : null);
   const totalPrice = selectedServicePlan ? selectedServicePlan.price : artist.pricePerHour * parseInt(formData.duration || '0');
+  const isEventSelected = selectedEventId && selectedEventId !== 'new';
+  const userEvents = events.filter(e => e.userId === user?.id && e.status !== 'cancelled');
 
   const generateContract = (): Contract => {
     const bookingId = `BK-${Date.now()}`;
@@ -82,6 +114,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
       artistName: artist.name,
       clientId: user?.id,
       clientName: formData.clientName,
+      eventId: isEventSelected ? selectedEventId : undefined,
       createdAt: new Date().toISOString(),
       terms: {
         serviceDescription,
@@ -115,6 +148,13 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
       if (onLoginRequired) {
         onLoginRequired();
       }
+      return;
+    }
+    
+    // Check if user is trying to book their own service
+    if (artist.userId === user.id) {
+      toast.error('No puedes reservar tu propia publicación');
+      onClose();
       return;
     }
     
@@ -162,6 +202,10 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     // It will be confirmed only when provider signs the contract
     
     toast.success('¡Contrato firmado! El proveedor revisará tu solicitud y confirmará la reserva.');
+    
+    // Cerrar ambos modales después de firmar
+    setShowContract(false);
+    onClose();
   };
 
 
@@ -294,10 +338,44 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
           {/* Event Details */}
           <div className="space-y-3 pt-4 border-t">
             <h3 className="text-sm">Detalles del Evento</h3>
+
+            {/* Event Selection */}
+            {userEvents.length > 0 && (
+              <div>
+                <Label htmlFor="eventSelect">Asociar a un Evento (Opcional)</Label>
+                <div className="relative">
+                  <FolderOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                  <Select 
+                    value={selectedEventId || 'new'} 
+                    onValueChange={(value) => setSelectedEventId(value === 'new' ? '' : value)}
+                  >
+                    <SelectTrigger className="pl-10">
+                      <SelectValue placeholder="Nueva reserva independiente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="new">Nueva reserva independiente</SelectItem>
+                      {userEvents.map((event) => (
+                        <SelectItem key={event.id} value={event.id}>
+                          {event.name} {event.eventDate ? `- ${new Date(event.eventDate).toLocaleDateString('es-ES')}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {isEventSelected && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    Los campos de fecha, tipo de evento y ubicación se tomarán del evento seleccionado
+                  </p>
+                )}
+              </div>
+            )}
             
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="date">Fecha del Evento *</Label>
+                <Label htmlFor="date">
+                  Fecha del Evento *
+                  {isEventSelected && <Badge variant="secondary" className="ml-2 text-xs">Del evento</Badge>}
+                </Label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
@@ -308,12 +386,13 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     className="pl-10"
                     min={new Date().toISOString().split('T')[0]}
+                    disabled={isEventSelected}
                   />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="startTime">Hora de Inicio *</Label>
+                <Label htmlFor="startTime">Hora de inicio del servicio *</Label>
                 <div className="relative">
                   <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
@@ -352,10 +431,14 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
             </div>
 
             <div>
-              <Label htmlFor="eventType">Tipo de Evento *</Label>
+              <Label htmlFor="eventType">
+                Tipo de Evento *
+                {isEventSelected && <Badge variant="secondary" className="ml-2 text-xs">Del evento</Badge>}
+              </Label>
               <Select 
                 value={formData.eventType} 
                 onValueChange={(value) => setFormData({ ...formData, eventType: value })}
+                disabled={isEventSelected}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona el tipo de evento" />
@@ -373,13 +456,17 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
             </div>
 
             <div>
-              <Label htmlFor="location">Ubicación del Evento *</Label>
+              <Label htmlFor="location">
+                Ubicación del Evento *
+                {isEventSelected && <Badge variant="secondary" className="ml-2 text-xs">Del evento</Badge>}
+              </Label>
               <Input
                 id="location"
                 required
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 placeholder="Ciudad, Estado o Dirección Completa"
+                disabled={isEventSelected}
               />
             </div>
 
