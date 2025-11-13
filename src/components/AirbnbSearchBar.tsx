@@ -6,6 +6,8 @@ import { Label } from './ui/label';
 import { Slider } from './ui/slider';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
+import { VENEZUELAN_CITIES } from '../data/cities';
+import { SERVICE_CATEGORIES } from '../data/serviceCategories';
 
 export interface SearchCriteria {
   city: string;
@@ -26,73 +28,6 @@ const capitalizeCategory = (text: string): string => {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
 };
-
-// Definición de categorías y subcategorías
-const SERVICE_CATEGORIES = {
-  'ESPACIOS Y LOCACIONES': {
-    icon: '🏛️',
-    subcategories: [
-      'Salones y Banquetes',
-      'Lugares Únicos',
-      'Espacios al Aire Libre'
-    ]
-  },
-  'TALENTO Y ENTRETENIMIENTO': {
-    icon: '🎭',
-    subcategories: [
-      'Música y DJs',
-      'Artistas en Vivo',
-      'Cultura y Ceremonia'
-    ]
-  },
-  'GASTRONOMÍA Y SERVICIOS': {
-    icon: '🍽️',
-    subcategories: [
-      'Catering y Banquetería',
-      'Bebidas y Coctelería',
-      'Pastelería y Repostería'
-    ]
-  },
-  'AMBIENTACIÓN Y DECORACIÓN': {
-    icon: '✨',
-    subcategories: [
-      'Decoración y Mobiliario',
-      'Diseño Gráfico y Papelería',
-      'Producción Técnica'
-    ]
-  },
-  'DETALLES Y LOGÍSTICA': {
-    icon: '📋',
-    subcategories: [
-      'Indumentaria y Estilismo',
-      'Fotografía y Video',
-      'Coordinación y Logística'
-    ]
-  }
-};
-
-const VENEZUELAN_CITIES = [
-  'Caracas',
-  'Maracaibo',
-  'Valencia',
-  'Barquisimeto',
-  'Maracay',
-  'Ciudad Guayana',
-  'Barcelona',
-  'Maturín',
-  'Puerto La Cruz',
-  'San Cristóbal',
-  'Mérida',
-  'Cumaná',
-  'Punto Fijo',
-  'Los Teques',
-  'Guarenas',
-  'Cabimas',
-  'Barinas',
-  'Turmero',
-  'Valencia del Rey',
-  'Porlamar'
-];
 
 export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarProps) {
   const [city, setCity] = useState('');

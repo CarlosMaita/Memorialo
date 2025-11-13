@@ -152,8 +152,15 @@ export function useSupabase() {
   const updateUser = async (userId: string, updates: Partial<User>) => {
     try {
       const data = await apiRequest(`/users/${userId}`, 'PUT', updates, accessToken || undefined);
-      setCurrentUser(data);
-      return data;
+      console.log('updateUser: Received updated user from server:', { 
+        id: data.id, 
+        isProvider: data.isProvider,
+        providerId: data.providerId 
+      });
+      // Force a new object to ensure React detects the change
+      const newUserObject = { ...data };
+      setCurrentUser(newUserObject);
+      return newUserObject;
     } catch (error) {
       console.error('Update user error:', error);
       throw error;
@@ -313,8 +320,12 @@ export function useSupabase() {
     try {
       const data = await apiRequest('/bookings', 'POST', bookingData, accessToken || undefined);
       return data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Create booking error:', error);
+      // Provide a more helpful error message when backend is unavailable
+      if (error?.message === 'BACKEND_UNAVAILABLE') {
+        throw new Error('El servidor no está disponible en este momento. Por favor, intenta de nuevo más tarde.');
+      }
       throw error;
     }
   };
@@ -337,8 +348,12 @@ export function useSupabase() {
     try {
       const data = await apiRequest(`/bookings/${bookingId}`, 'PUT', updates, accessToken || undefined);
       return data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Update booking error:', error);
+      // Provide a more helpful error message when backend is unavailable
+      if (error?.message === 'BACKEND_UNAVAILABLE') {
+        throw new Error('El servidor no está disponible en este momento. Por favor, intenta de nuevo más tarde.');
+      }
       throw error;
     }
   };
@@ -388,6 +403,46 @@ export function useSupabase() {
     }
   };
 
+  // Image upload function
+  const uploadImage = async (file: File): Promise<string> => {
+    try {
+      if (!accessToken) {
+        throw new Error('You must be logged in to upload images');
+      }
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        throw new Error('El archivo debe ser una imagen');
+      }
+
+      // Validate file size (5MB max)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        throw new Error('La imagen no debe superar los 5MB');
+      }
+
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Upload to backend
+      const data = await apiRequest('/upload-image', 'POST', {
+        imageData: base64,
+        fileName: file.name,
+        contentType: file.type
+      }, accessToken);
+
+      return data.url;
+    } catch (error) {
+      console.error('Upload image error:', error);
+      throw error;
+    }
+  };
+
   return {
     currentUser,
     accessToken,
@@ -414,6 +469,7 @@ export function useSupabase() {
     createEvent,
     getEvents,
     updateEvent,
-    deleteEvent
+    deleteEvent,
+    uploadImage
   };
 }

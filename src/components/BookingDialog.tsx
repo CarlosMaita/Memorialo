@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from './ui/badge';
 import { ContractView } from './ContractView';
 import { toast } from 'sonner@2.0.3';
+import { projectId, publicAnonKey } from '../utils/supabase/info';
 
 interface BookingDialogProps {
   artist: Artist | null;
@@ -112,8 +113,12 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
       bookingId,
       artistId: artist.id,
       artistName: artist.name,
+      artistEmail: artist.email,
+      artistWhatsapp: artist.whatsappNumber,
       clientId: user?.id,
       clientName: formData.clientName,
+      clientEmail: formData.clientEmail,
+      clientWhatsapp: user?.whatsappNumber || formData.clientPhone,
       eventId: isEventSelected ? selectedEventId : undefined,
       createdAt: new Date().toISOString(),
       terms: {
@@ -193,9 +198,33 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     setShowContract(true);
   };
 
-  const handleContractSigned = (signedContract: Contract) => {
+  const handleContractSigned = async (signedContract: Contract) => {
     if (onContractCreated) {
       onContractCreated(signedContract);
+    }
+    
+    // Send notification to provider when client signs
+    if (signedContract.clientSignature && signedContract.artistEmail) {
+      try {
+        await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-5d78aefb/notifications/contract-signed`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${publicAnonKey}`
+          },
+          body: JSON.stringify({
+            recipientEmail: signedContract.artistEmail,
+            recipientName: signedContract.artistName,
+            signerName: signedContract.clientName,
+            serviceName: artist.name,
+            eventDate: new Date(signedContract.terms.date).toLocaleDateString('es-ES'),
+            contractId: signedContract.id,
+            bothPartiesSigned: false
+          })
+        });
+      } catch (error) {
+        console.error('Error sending notification:', error);
+      }
     }
     
     // Booking stays in 'pending' status when client signs

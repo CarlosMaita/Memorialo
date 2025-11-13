@@ -24,6 +24,8 @@ interface ClientDashboardProps {
   onDeleteEvent: (eventId: string) => void;
   onAssignContractToEvent: (contractId: string, eventId: string | null) => void;
   onContractUpdate: (contract: Contract) => void;
+  bookings?: any[]; // Optional for now to maintain compatibility
+  onBookingUpdate?: (booking: any) => void; // Optional for now to maintain compatibility
 }
 
 export function ClientDashboard({ 
@@ -36,13 +38,16 @@ export function ClientDashboard({
   onUpdateEvent,
   onDeleteEvent,
   onAssignContractToEvent,
-  onContractUpdate
+  onContractUpdate,
+  bookings = [],
+  onBookingUpdate
 }: ClientDashboardProps) {
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [showContractView, setShowContractView] = useState(false);
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
   const [expandedContracts, setExpandedContracts] = useState<Set<string>>(new Set());
   const [showArchived, setShowArchived] = useState(false);
+  const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
 
   // Filter contracts where current user is the client
   const userContracts = contracts.filter(c => c.clientId === user.id);
@@ -144,6 +149,14 @@ export function ClientDashboard({
 
   const handleArchiveEvent = (eventId: string, archived: boolean) => {
     onUpdateEvent(eventId, { archived });
+  };
+
+  const handleEditEvent = (event: Event) => {
+    setEventToEdit(event);
+  };
+
+  const handleEditComplete = () => {
+    setEventToEdit(null);
   };
 
   const ContractCard = ({ contract, showEventSelector = false }: { contract: Contract, showEventSelector?: boolean }) => {
@@ -360,11 +373,22 @@ export function ClientDashboard({
                   <p className="text-sm text-gray-500 line-clamp-2">{event.description}</p>
                 )}
               </div>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="ml-2">
-                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleEditEvent(event)}
+                  className="h-8 w-8 p-0"
+                  title="Editar evento"
+                >
+                  <Edit2 className="w-4 h-4" />
                 </Button>
-              </CollapsibleTrigger>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
@@ -533,6 +557,8 @@ export function ClientDashboard({
           onCreateEvent={onCreateEvent}
           onUpdateEvent={onUpdateEvent}
           onDeleteEvent={onDeleteEvent}
+          eventToEdit={eventToEdit}
+          onEditComplete={handleEditComplete}
         />
       </div>
 
@@ -622,6 +648,20 @@ export function ClientDashboard({
           }}
           onSign={(signedContract) => {
             onContractUpdate(signedContract);
+            
+            // When client signs and contract becomes active (both parties signed), 
+            // update the associated booking to 'confirmed'
+            if (onBookingUpdate && bookings) {
+              const associatedBooking = bookings.find(b => b.contractId === signedContract.id);
+              if (associatedBooking && signedContract.status === 'active') {
+                const updatedBooking = {
+                  ...associatedBooking,
+                  status: 'confirmed' as const
+                };
+                onBookingUpdate(updatedBooking);
+              }
+            }
+            
             setShowContractView(false);
             setSelectedContract(null);
           }}

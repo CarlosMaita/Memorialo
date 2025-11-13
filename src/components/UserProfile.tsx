@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
-import { Calendar, FileText, Star, User as UserIcon, Mail, Phone, MessageSquare } from 'lucide-react';
+import { Calendar, FileText, Star, User as UserIcon, Mail, Phone, MessageSquare, Briefcase } from 'lucide-react';
 
 interface UserProfileProps {
   user: User;
@@ -15,9 +15,10 @@ interface UserProfileProps {
   bookings: Booking[];
   contracts: Contract[];
   reviews: Review[];
+  onBecomeProvider?: () => void;
 }
 
-export function UserProfile({ user, open, onClose, bookings, contracts, reviews }: UserProfileProps) {
+export function UserProfile({ user, open, onClose, bookings, contracts, reviews, onBecomeProvider }: UserProfileProps) {
   // Don't render if no user
   if (!user) return null;
 
@@ -98,6 +99,32 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews 
             })}</p>
           </div>
         </div>
+
+        {/* Become Provider Button - Only show if user is NOT a provider */}
+        {!user.isProvider && onBecomeProvider && (
+          <div className="bg-gradient-to-r from-[#0A1F44]/5 to-[#D4AF37]/10 border-2 border-[#D4AF37]/30 rounded-lg p-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="flex-shrink-0">
+                <div className="w-12 h-12 bg-gradient-to-br from-[#0A1F44] to-[#0A1F44]/80 rounded-full flex items-center justify-center shadow-md">
+                  <Briefcase className="w-6 h-6 text-[#D4AF37]" />
+                </div>
+              </div>
+              <div className="flex-1 text-center sm:text-left">
+                <h3 className="text-sm sm:text-base mb-1 text-[#0A1F44]">¿Ofreces servicios?</h3>
+                <p className="text-xs sm:text-sm text-gray-600">
+                  Convierte tu cuenta en un perfil de proveedor y comienza a ofrecer tus servicios profesionales
+                </p>
+              </div>
+              <Button 
+                onClick={onBecomeProvider}
+                className="bg-[#0A1F44] hover:bg-[#0A1F44]/90 text-white whitespace-nowrap shadow-md hover:shadow-lg transition-all"
+              >
+                <Briefcase className="w-4 h-4 mr-2" />
+                Ofrecer Servicios
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2 sm:gap-4">

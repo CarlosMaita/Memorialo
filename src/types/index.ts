@@ -13,6 +13,7 @@ export interface Artist {
   userId?: string; // ID of the user who created this service
   name: string;
   category: string;
+  subcategory?: string; // Subcategoría específica para filtrado
   image: string;
   rating: number;
   reviews: number;
@@ -26,6 +27,8 @@ export interface Artist {
   responseTime: string;
   bookingsCompleted: number;
   servicePlans: ServicePlan[];
+  whatsappNumber?: string; // WhatsApp Business para contacto post-contrato
+  email?: string; // Email para notificaciones
 }
 
 export interface ContractSignature {
@@ -39,8 +42,12 @@ export interface Contract {
   bookingId: string;
   artistId: string;
   artistName: string;
+  artistEmail?: string; // Email del proveedor para notificaciones
+  artistWhatsapp?: string; // WhatsApp del proveedor (visible solo cuando contrato activo)
   clientId?: string; // User ID of client
   clientName: string;
+  clientEmail?: string; // Email del cliente para notificaciones
+  clientWhatsapp?: string; // WhatsApp del cliente (visible solo cuando contrato activo)
   eventId?: string; // ID of the event this contract belongs to
   createdAt: string;
   terms: {
@@ -96,6 +103,7 @@ export interface User {
   email: string;
   name: string;
   phone?: string;
+  whatsappNumber?: string; // WhatsApp para comunicación post-contrato
   createdAt: string;
   avatar?: string;
   isProvider: boolean; // If true, user is a service provider

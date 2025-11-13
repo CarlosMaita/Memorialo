@@ -18,7 +18,14 @@ interface SearchFiltersProps {
   onSortChange: (value: string) => void;
 }
 
-const categories = ['Todos', 'Músico', 'DJ', 'Mariachi', 'Animador'];
+const categories = [
+  'Todos',
+  'Espacios Y Locaciones',
+  'Talento Y Entretenimiento',
+  'Gastronomía Y Servicios',
+  'Ambientación Y Decoración',
+  'Detalles Y Logística'
+];
 
 export function SearchFilters({
   searchQuery,

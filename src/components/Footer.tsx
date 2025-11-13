@@ -167,10 +167,6 @@ export function Footer({
                 <span className="opacity-80">contacto@memorialo.com</span>
               </li>
               <li className="flex items-start gap-2">
-                <Phone className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
-                <span className="opacity-80">+52 (55) 1234-5678</span>
-              </li>
-              <li className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
                 <span className="opacity-80">Venezuela</span>
               </li>

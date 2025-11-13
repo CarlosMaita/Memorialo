@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Artist, Contract, User, Provider, Booking } from '../types';
 import { ServiceEditor } from './ServiceEditor';
 import { ContractView } from './ContractView';
@@ -30,6 +31,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface BusinessDashboardProps {
   user: User;
@@ -54,16 +56,11 @@ interface BusinessDashboardProps {
 }
 
 const categories = [
-  'Músicos',
-  'DJs',
-  'Mariachis',
-  'Bandas',
-  'Cantantes',
-  'Animadores',
-  'Magos',
-  'Payasos',
-  'Fotógrafos',
-  'Videógrafos'
+  'Espacios Y Locaciones',
+  'Talento Y Entretenimiento',
+  'Gastronomía Y Servicios',
+  'Ambientación Y Decoración',
+  'Detalles Y Logística'
 ];
 
 export function BusinessDashboard({ 
@@ -100,6 +97,8 @@ export function BusinessDashboard({
   const [expandedContractId, setExpandedContractId] = useState<string | null>(null);
   const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
   const [showEditBookingDialog, setShowEditBookingDialog] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
   
   // Search states
   const [searchService, setSearchService] = useState('');
@@ -226,14 +225,21 @@ export function BusinessDashboard({
   );
 
   const handleEditService = (service: Artist) => {
+    console.log('BusinessDashboard - handleEditService called with:', service);
     setEditingService(service);
     setShowServiceEditor(true);
   };
 
-  const handleDeleteService = (serviceId: string) => {
-    if (confirm('¿Estás seguro de que quieres eliminar este servicio?')) {
-      onServiceDelete(serviceId);
+  const handleDeleteServiceClick = (serviceId: string) => {
+    setServiceToDelete(serviceId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteServiceConfirmed = () => {
+    if (serviceToDelete) {
+      onServiceDelete(serviceToDelete);
       toast.success('Servicio eliminado');
+      setServiceToDelete(null);
     }
   };
 
@@ -847,7 +853,7 @@ export function BusinessDashboard({
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleDeleteService(service.id)}
+                        onClick={() => handleDeleteServiceClick(service.id)}
                         className="text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1245,15 +1251,19 @@ export function BusinessDashboard({
           onSign={(signedContract) => {
             onContractUpdate(signedContract);
             
-            // When provider signs, update the associated booking to 'confirmed'
+            // When provider signs and contract becomes active (both parties signed), 
+            // update the associated booking to 'confirmed'
             const associatedBooking = providerBookings.find(b => b.contractId === signedContract.id);
-            if (associatedBooking && associatedBooking.status === 'pending') {
+            if (associatedBooking && signedContract.status === 'active') {
               const updatedBooking = {
                 ...associatedBooking,
                 status: 'confirmed' as const
               };
               onBookingUpdate(updatedBooking);
-              toast.success('¡Contrato firmado y reserva confirmada!');
+              toast.success('¡Contrato completamente firmado y reserva confirmada!');
+            } else if (associatedBooking && associatedBooking.status === 'pending') {
+              // Provider signed but waiting for client signature
+              toast.success('¡Contrato firmado! Esperando firma del cliente para confirmar la reserva.');
             }
             
             setShowContractView(false);
@@ -1421,6 +1431,18 @@ export function BusinessDashboard({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Service Confirmation */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        onConfirm={handleDeleteServiceConfirmed}
+        title="¿Eliminar este servicio?"
+        description="¿Estás seguro de que quieres eliminar este servicio? Esta acción no se puede deshacer."
+        confirmText="Sí, eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+      />
     </div>
   );
 }

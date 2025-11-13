@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface ProviderDashboardProps {
   user: User;
@@ -34,16 +35,11 @@ interface ProviderDashboardProps {
 }
 
 const categories = [
-  'Músicos',
-  'DJs',
-  'Mariachis',
-  'Bandas',
-  'Cantantes',
-  'Animadores',
-  'Magos',
-  'Payasos',
-  'Fotógrafos',
-  'Videógrafos'
+  'Espacios Y Locaciones',
+  'Talento Y Entretenimiento',
+  'Gastronomía Y Servicios',
+  'Ambientación Y Decoración',
+  'Detalles Y Logística'
 ];
 
 export function ProviderDashboard({ 
@@ -62,6 +58,8 @@ export function ProviderDashboard({
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [showContractView, setShowContractView] = useState(false);
   const [showProviderSetup, setShowProviderSetup] = useState(!provider);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
 
   // Setup Provider Profile
   const [providerForm, setProviderForm] = useState({
@@ -118,10 +116,16 @@ export function ProviderDashboard({
     setShowServiceEditor(true);
   };
 
-  const handleDeleteService = (serviceId: string) => {
-    if (confirm('¿Estás seguro de que quieres eliminar este servicio?')) {
-      onServiceDelete(serviceId);
+  const handleDeleteServiceClick = (serviceId: string) => {
+    setServiceToDelete(serviceId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteServiceConfirmed = () => {
+    if (serviceToDelete) {
+      onServiceDelete(serviceToDelete);
       toast.success('Servicio eliminado');
+      setServiceToDelete(null);
     }
   };
 
@@ -499,6 +503,18 @@ export function ProviderDashboard({
           userType="artist"
         />
       )}
+
+      {/* Delete Service Confirmation */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        onConfirm={handleDeleteServiceConfirmed}
+        title="¿Eliminar este servicio?"
+        description="¿Estás seguro de que quieres eliminar este servicio? Esta acción no se puede deshacer."
+        confirmText="Sí, eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+      />
     </div>
   );
 }

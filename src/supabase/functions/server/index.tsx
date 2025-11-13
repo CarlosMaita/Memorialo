@@ -12,6 +12,49 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
 
+// Storage bucket name
+const IMAGES_BUCKET = 'make-5d78aefb-service-images';
+
+// Initialize storage bucket on startup
+async function initializeStorage() {
+  try {
+    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+    
+    if (listError) {
+      console.error('Error listing storage buckets:', listError);
+      return;
+    }
+    
+    const bucketExists = buckets?.some(bucket => bucket.name === IMAGES_BUCKET);
+    
+    if (!bucketExists) {
+      console.log(`Creating storage bucket: ${IMAGES_BUCKET}`);
+      const { error } = await supabase.storage.createBucket(IMAGES_BUCKET, {
+        public: false,
+        fileSizeLimit: 5242880 // 5MB limit
+      });
+      
+      if (error) {
+        // Check if error is because bucket already exists (race condition)
+        if (error.message?.includes('already exists') || error.statusCode === '409') {
+          console.log(`Storage bucket ${IMAGES_BUCKET} already exists (created by another instance)`);
+        } else {
+          console.error('Error creating storage bucket:', error);
+        }
+      } else {
+        console.log(`Storage bucket ${IMAGES_BUCKET} created successfully`);
+      }
+    } else {
+      console.log(`Storage bucket ${IMAGES_BUCKET} already exists`);
+    }
+  } catch (error) {
+    console.error('Error initializing storage:', error);
+  }
+}
+
+// Initialize storage on startup
+initializeStorage();
+
 // Enable logger
 app.use('*', logger(console.log));
 
@@ -246,13 +289,15 @@ app.get("/make-server-5d78aefb/providers/user/:userId", async (c) => {
     const providers = await kv.getByPrefix('provider:');
     const provider = providers.find((p: any) => p.userId === userId);
     
+    // Return null if not found instead of 404 error
+    // This is expected behavior when a user has isProvider=true but hasn't created their provider profile yet
     if (!provider) {
-      return c.json({ error: 'Provider not found' }, 404);
+      return c.json(null);
     }
 
     return c.json(provider);
   } catch (error) {
-    console.error('Get provider error:', error);
+    console.error('Get provider by userId error:', error);
     return c.json({ error: 'Failed to get provider' }, 500);
   }
 });
@@ -542,6 +587,196 @@ app.put("/make-server-5d78aefb/bookings/:id", async (c) => {
   } catch (error) {
     console.error('Update booking error:', error);
     return c.json({ error: 'Failed to update booking' }, 500);
+  }
+});
+
+// ==================== IMAGE UPLOAD ROUTES ====================
+
+// Upload image to Supabase Storage
+app.post("/make-server-5d78aefb/upload-image", async (c) => {
+  const authResult = await verifyAuth(c.req.header('Authorization'));
+  
+  if (!authResult) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  try {
+    const { imageData, fileName, contentType } = await c.req.json();
+    
+    if (!imageData || !fileName) {
+      return c.json({ error: 'Image data and filename are required' }, 400);
+    }
+
+    // Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
+    const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+    
+    // Convert base64 to Uint8Array
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // Generate unique filename
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(7);
+    const ext = fileName.split('.').pop();
+    const uniqueFileName = `${authResult.user.id}/${timestamp}-${randomStr}.${ext}`;
+
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from(IMAGES_BUCKET)
+      .upload(uniqueFileName, bytes, {
+        contentType: contentType || 'image/jpeg',
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return c.json({ error: `Failed to upload image: ${uploadError.message}` }, 500);
+    }
+
+    // Generate signed URL that expires in 10 years (essentially permanent for our use case)
+    const { data: urlData, error: urlError } = await supabase.storage
+      .from(IMAGES_BUCKET)
+      .createSignedUrl(uniqueFileName, 315360000); // 10 years in seconds
+
+    if (urlError) {
+      console.error('URL generation error:', urlError);
+      return c.json({ error: 'Failed to generate image URL' }, 500);
+    }
+
+    console.log(`Image uploaded successfully: ${uniqueFileName}`);
+    return c.json({ 
+      url: urlData.signedUrl,
+      path: uniqueFileName 
+    });
+  } catch (error) {
+    console.error('Image upload error:', error);
+    return c.json({ error: 'Failed to upload image' }, 500);
+  }
+});
+
+// ==================== EMAIL NOTIFICATION ROUTES ====================
+
+// Helper function to send email notifications
+async function sendEmailNotification(to: string, subject: string, body: string) {
+  // For MVP, we'll log emails to console
+  // In production, integrate with services like Resend, SendGrid, or AWS SES
+  console.log('===== EMAIL NOTIFICATION =====');
+  console.log(`To: ${to}`);
+  console.log(`Subject: ${subject}`);
+  console.log(`Body:\n${body}`);
+  console.log('==============================');
+  
+  // TODO: Integrate with email service provider
+  // Example with Resend:
+  // const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+  // await resend.emails.send({ from: 'noreply@memorialo.com', to, subject, html: body });
+  
+  return true;
+}
+
+// Send booking notification to provider
+app.post("/make-server-5d78aefb/notifications/booking-created", async (c) => {
+  try {
+    const { artistEmail, artistName, clientName, serviceName, eventDate, bookingId } = await c.req.json();
+    
+    if (!artistEmail) {
+      return c.json({ error: 'Artist email is required' }, 400);
+    }
+
+    const subject = '🎉 Nueva Reserva en Memorialo';
+    const body = `
+      Hola ${artistName},
+      
+      ¡Tienes una nueva solicitud de reserva!
+      
+      Cliente: ${clientName}
+      Servicio: ${serviceName}
+      Fecha del Evento: ${eventDate}
+      
+      Por favor, inicia sesión en Memorialo para revisar los detalles y firmar el contrato.
+      
+      https://memorialo.com
+      
+      ¡Gracias por usar Memorialo!
+      
+      ---
+      ID de Reserva: ${bookingId}
+    `;
+
+    await sendEmailNotification(artistEmail, subject, body);
+    
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Send booking notification error:', error);
+    return c.json({ error: 'Failed to send notification' }, 500);
+  }
+});
+
+// Send contract signature notification
+app.post("/make-server-5d78aefb/notifications/contract-signed", async (c) => {
+  try {
+    const { 
+      recipientEmail, 
+      recipientName, 
+      signerName, 
+      serviceName, 
+      eventDate, 
+      contractId,
+      bothPartiesSigned 
+    } = await c.req.json();
+    
+    if (!recipientEmail) {
+      return c.json({ error: 'Recipient email is required' }, 400);
+    }
+
+    const subject = bothPartiesSigned 
+      ? '✅ Contrato Completamente Firmado - Memorialo' 
+      : '📝 Nueva Firma de Contrato - Memorialo';
+    
+    const body = bothPartiesSigned
+      ? `
+        Hola ${recipientName},
+        
+        ¡Excelentes noticias! El contrato ha sido firmado por ambas partes.
+        
+        Servicio: ${serviceName}
+        Fecha del Evento: ${eventDate}
+        
+        Ahora puedes contactar a la otra parte usando la información disponible en el contrato.
+        Inicia sesión en Memorialo para ver los detalles de contacto.
+        
+        https://memorialo.com
+        
+        ¡Que tengas un evento exitoso!
+        
+        ---
+        ID de Contrato: ${contractId}
+      `
+      : `
+        Hola ${recipientName},
+        
+        ${signerName} ha firmado el contrato del servicio.
+        
+        Servicio: ${serviceName}
+        Fecha del Evento: ${eventDate}
+        
+        Por favor, inicia sesión en Memorialo para revisar y firmar el contrato.
+        
+        https://memorialo.com
+        
+        ---
+        ID de Contrato: ${contractId}
+      `;
+
+    await sendEmailNotification(recipientEmail, subject, body);
+    
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Send contract signature notification error:', error);
+    return c.json({ error: 'Failed to send notification' }, 500);
   }
 });
 

@@ -89,9 +89,18 @@ export default function App() {
 
   // Load provider when user changes
   useEffect(() => {
+    console.log('currentUser changed:', {
+      userId: currentUser?.id,
+      email: currentUser?.email,
+      isProvider: currentUser?.isProvider,
+      providerId: currentUser?.providerId
+    });
+    
     if (currentUser?.isProvider) {
-      loadCurrentProvider();
+      console.log('User is provider, loading provider data...');
+      loadCurrentProvider(currentUser.id);
     } else {
+      console.log('User is not provider, clearing provider data');
       setCurrentProvider(null);
     }
   }, [currentUser]);
@@ -121,14 +130,14 @@ export default function App() {
       // Load services (artists) - use mock data as fallback
       const servicesData = await supabase.getServices();
       let loadedArtists: Artist[] = [];
-      let usingMockData = false;
+      let hasEmptyTables = false;
       
       if (servicesData && servicesData.length > 0) {
         loadedArtists = servicesData;
       } else {
         // If no data in DB, use mock data
         loadedArtists = mockArtists;
-        usingMockData = true;
+        hasEmptyTables = true;
       }
 
       // Load contracts - use mock data as fallback
@@ -137,7 +146,7 @@ export default function App() {
         setContracts(contractsData);
       } else {
         setContracts(mockContracts);
-        usingMockData = true;
+        hasEmptyTables = true;
       }
 
       // Load reviews - use mock data as fallback
@@ -147,7 +156,7 @@ export default function App() {
         loadedReviews = reviewsData;
       } else {
         loadedReviews = mockReviews;
-        usingMockData = true;
+        hasEmptyTables = true;
       }
       setReviews(loadedReviews);
 
@@ -189,22 +198,24 @@ export default function App() {
         setEvents(eventsData);
       } else {
         setEvents(mockEvents);
-        usingMockData = true;
+        hasEmptyTables = true;
       }
       
-      // If using mock data, enable demo mode and notify user (only once)
-      if (usingMockData) {
+      // If database is empty, enable demo mode silently
+      if (hasEmptyTables) {
         setIsDemoMode(true);
-        console.log('📦 Backend no disponible - Usando datos de demostración');
-        toast.info('Modo de demostración - Datos de ejemplo', {
-          duration: 4000,
-        });
+        console.log('📊 Base de datos vacía - Mostrando datos de ejemplo');
+        // No mostramos toast para no molestar al usuario
+      } else {
+        console.log('✅ Datos cargados desde la base de datos');
       }
     } catch (error: any) {
-      console.error('Error loading data:', error);
+      console.error('❌ Error de conexión al backend:', error);
       
       setIsDemoMode(true);
-      toast.error('Error al cargar datos. Usando datos de ejemplo.');
+      toast.error('Backend no disponible - Usando datos de ejemplo', {
+        duration: 5000,
+      });
       
       // Fallback to mock data
       setArtists(mockArtists);
@@ -214,11 +225,14 @@ export default function App() {
     }
   };
 
-  const loadCurrentProvider = async () => {
-    if (!currentUser) return;
+  const loadCurrentProvider = async (userId?: string) => {
+    const userIdToUse = userId || currentUser?.id;
+    if (!userIdToUse) return;
     
     try {
-      const provider = await supabase.getProviderByUserId(currentUser.id);
+      console.log('Loading provider for user:', userIdToUse);
+      const provider = await supabase.getProviderByUserId(userIdToUse);
+      console.log('Provider loaded:', provider);
       setCurrentProvider(provider);
     } catch (error) {
       console.error('Error loading provider:', error);
@@ -346,6 +360,61 @@ export default function App() {
     } catch (error) {
       console.error('Error creating provider:', error);
       toast.error('Error al crear perfil de proveedor');
+    }
+  };
+
+  const handleBecomeProvider = async () => {
+    if (!currentUser) {
+      toast.error('Debes iniciar sesión para convertirte en proveedor');
+      return;
+    }
+
+    try {
+      console.log('Converting user to provider...', currentUser.email);
+      
+      // Create provider profile with basic info
+      const provider = await supabase.createProvider({
+        businessName: currentUser.name,
+        category: 'General',
+        description: 'Proveedor de servicios profesionales'
+      });
+      
+      console.log('Provider created:', provider.id);
+      setProviders([...providers, provider]);
+      setCurrentProvider(provider);
+      
+      // Update user to mark as provider - this will automatically update currentUser in the hook
+      const updatedUser = await supabase.updateUser(currentUser.id, { 
+        isProvider: true, 
+        providerId: provider.id 
+      });
+      
+      console.log('User updated successfully:', {
+        userId: updatedUser.id,
+        isProvider: updatedUser.isProvider,
+        providerId: updatedUser.providerId
+      });
+      
+      // The useEffect should trigger automatically when currentUser updates,
+      // but we already have the provider loaded in setCurrentProvider above
+      
+      // Close user profile dialog
+      setShowUserProfile(false);
+      
+      // Switch to business view immediately
+      setViewMode('business');
+      setDashboardView('provider');
+      
+      toast.success('¡Cuenta convertida a proveedor! Ahora puedes ofrecer tus servicios');
+    } catch (error: any) {
+      console.error('Error becoming provider:', error);
+      
+      // Show more friendly error message
+      if (error?.message?.includes('BACKEND_UNAVAILABLE')) {
+        toast.error('El servidor no está disponible. Por favor, intenta de nuevo más tarde.');
+      } else {
+        toast.error('Error al convertir cuenta a proveedor');
+      }
     }
   };
 
@@ -683,6 +752,7 @@ export default function App() {
     // Filter by category/subcategory
     if (searchCriteria.subcategory) {
       filtered = filtered.filter(artist => 
+        artist.subcategory?.toLowerCase().includes(searchCriteria.subcategory.toLowerCase()) ||
         artist.category.toLowerCase().includes(searchCriteria.subcategory.toLowerCase()) ||
         artist.specialties.some(s => s.toLowerCase().includes(searchCriteria.subcategory.toLowerCase()))
       );
@@ -791,12 +861,6 @@ export default function App() {
       
       {/* Header */}
       <header className="sticky top-0 z-40 shadow-sm" style={{ backgroundColor: 'var(--navy-blue)' }}>
-        {/* Demo Mode Banner */}
-        {isDemoMode && (
-          <div className="bg-yellow-500 text-yellow-900 px-4 py-2 text-center text-sm">
-            <strong>Modo Demostración:</strong> El servidor backend no está disponible. Estás viendo datos de ejemplo.
-          </div>
-        )}
         <div className="max-w-[1400px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <button 
@@ -959,26 +1023,6 @@ export default function App() {
           {/* Mobile Navigation */}
           {mobileMenuOpen && (
             <div className="md:hidden mt-4 pt-4 border-t border-white/20 space-y-2">
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setShowAbout(true);
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full text-white hover:text-white hover:bg-white/10"
-              >
-                Sobre Nosotros
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setShowHowItWorks(true);
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full text-white hover:text-white hover:bg-white/10"
-              >
-                Cómo Funciona
-              </Button>
               <Button
                 variant={viewMode === 'client' ? 'secondary' : 'ghost'}
                 onClick={() => {
@@ -1385,6 +1429,7 @@ export default function App() {
           bookings={userBookings}
           contracts={userContracts}
           reviews={userReviews}
+          onBecomeProvider={handleBecomeProvider}
         />
       )}
 

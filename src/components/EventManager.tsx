@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Calendar, MapPin, DollarSign, Edit2, Trash2, FolderPlus } from 'lucide-react';
 import { Event } from '../types';
 import { Button } from './ui/button';
@@ -7,12 +7,15 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface EventManagerProps {
   events: Event[];
   onCreateEvent: (event: Omit<Event, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onUpdateEvent: (eventId: string, updates: Partial<Event>) => void;
   onDeleteEvent: (eventId: string) => void;
+  eventToEdit?: Event | null;
+  onEditComplete?: () => void;
 }
 
 const EVENT_TYPES = [
@@ -28,9 +31,11 @@ const EVENT_TYPES = [
   'Otro'
 ];
 
-export function EventManager({ events, onCreateEvent, onUpdateEvent, onDeleteEvent }: EventManagerProps) {
+export function EventManager({ events, onCreateEvent, onUpdateEvent, onDeleteEvent, eventToEdit, onEditComplete }: EventManagerProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -55,11 +60,28 @@ export function EventManager({ events, onCreateEvent, onUpdateEvent, onDeleteEve
     setEditingEvent(null);
   };
 
+  // Handle external event edit request
+  useEffect(() => {
+    if (eventToEdit) {
+      setEditingEvent(eventToEdit);
+      setFormData({
+        name: eventToEdit.name,
+        description: eventToEdit.description || '',
+        eventDate: eventToEdit.eventDate || '',
+        eventType: eventToEdit.eventType || '',
+        location: eventToEdit.location || '',
+        budget: eventToEdit.budget?.toString() || '',
+        status: eventToEdit.status
+      });
+      setIsDialogOpen(true);
+    }
+  }, [eventToEdit]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     const eventData = {
-      userId: 'current-user-id', // This should come from props
+      ...(editingEvent ? {} : { userId: 'current-user-id' }), // Only include userId when creating new event
       name: formData.name,
       description: formData.description || undefined,
       eventDate: formData.eventDate || undefined,
@@ -78,6 +100,9 @@ export function EventManager({ events, onCreateEvent, onUpdateEvent, onDeleteEve
 
     setIsDialogOpen(false);
     resetForm();
+    if (onEditComplete) {
+      onEditComplete();
+    }
   };
 
   const handleEdit = (event: Event) => {
@@ -94,9 +119,15 @@ export function EventManager({ events, onCreateEvent, onUpdateEvent, onDeleteEve
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (eventId: string) => {
-    if (confirm('¿Estás seguro de que deseas eliminar este evento? Las reservas no se eliminarán, solo se desagruparán.')) {
-      onDeleteEvent(eventId);
+  const handleDeleteClick = (eventId: string) => {
+    setEventToDelete(eventId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirmed = () => {
+    if (eventToDelete) {
+      onDeleteEvent(eventToDelete);
+      setEventToDelete(null);
     }
   };
 
@@ -104,7 +135,12 @@ export function EventManager({ events, onCreateEvent, onUpdateEvent, onDeleteEve
     <div>
       <Dialog open={isDialogOpen} onOpenChange={(open) => {
         setIsDialogOpen(open);
-        if (!open) resetForm();
+        if (!open) {
+          resetForm();
+          if (onEditComplete) {
+            onEditComplete();
+          }
+        }
       }}>
         <DialogTrigger asChild>
           <Button>
@@ -159,6 +195,7 @@ export function EventManager({ events, onCreateEvent, onUpdateEvent, onDeleteEve
                 type="date"
                 value={formData.eventDate}
                 onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
+                className="[color-scheme:light] text-[#0A1F44]"
               />
             </div>
 
@@ -228,6 +265,17 @@ export function EventManager({ events, onCreateEvent, onUpdateEvent, onDeleteEve
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        onConfirm={handleDeleteConfirmed}
+        title="¿Eliminar este evento?"
+        description="¿Estás seguro de que deseas eliminar este evento? Las reservas no se eliminarán, solo se desagruparán del evento."
+        confirmText="Sí, eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+      />
     </div>
   );
 }

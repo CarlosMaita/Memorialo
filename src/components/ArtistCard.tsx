@@ -27,7 +27,7 @@ export function ArtistCard({ artist, onViewProfile, onCompare, isComparing }: Ar
           </div>
         )}
         <div className="absolute top-2 left-2">
-          <Badge variant="secondary">{artist.category}</Badge>
+          <Badge variant="secondary">{artist.subcategory || artist.category}</Badge>
         </div>
       </div>
       

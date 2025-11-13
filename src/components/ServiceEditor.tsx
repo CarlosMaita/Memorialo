@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -7,10 +7,15 @@ import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
+import { Checkbox } from './ui/checkbox';
 import { ServicePlan } from '../types';
-import { Plus, Trash2, DollarSign, Clock, Check, Image, X } from 'lucide-react';
+import { Plus, Trash2, DollarSign, Clock, Check, Image, X, Upload, Star, Edit, XCircle } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { useSupabase } from '../utils/useSupabase';
+import { Progress } from './ui/progress';
+import { VENEZUELAN_CITIES } from '../data/cities';
+import { SERVICE_CATEGORIES } from '../data/serviceCategories';
 
 interface ServiceEditorProps {
   open: boolean;
@@ -21,9 +26,12 @@ interface ServiceEditorProps {
 }
 
 export function ServiceEditor({ open, onClose, onSave, existingService, categories }: ServiceEditorProps) {
+  const { uploadImage } = useSupabase();
+  
   const [formData, setFormData] = useState({
     name: '',
     category: '',
+    subcategory: '',
     description: '',
     location: '',
     pricePerHour: '',
@@ -37,58 +45,180 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     price: '',
     duration: '',
     description: '',
-    includes: ['']
+    includes: [''],
+    popular: false
   });
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
   const [specialties, setSpecialties] = useState<string[]>(['']);
   const [availability, setAvailability] = useState<string[]>([]);
   const [mainImage, setMainImage] = useState('');
   const [portfolioImages, setPortfolioImages] = useState<string[]>(['']);
+  
+  // Upload states
+  const [uploadingMain, setUploadingMain] = useState(false);
+  const [uploadingPortfolio, setUploadingPortfolio] = useState<{ [key: number]: boolean }>({});
 
+  // Ref para rastrear si ya cargamos los datos
+  const hasLoadedDataRef = useRef(false);
+  const previousOpenRef = useRef(false);
+  const loadedServiceIdRef = useRef<string | null>(null);
+
+  // Función para mapear categorías antiguas a nuevas
+  const normalizeCategoryToNew = (category: string): string => {
+    const categoryMap: { [key: string]: string } = {
+      'Música y DJs': 'TALENTO Y ENTRETENIMIENTO',
+      'Artistas en Vivo': 'TALENTO Y ENTRETENIMIENTO',
+      'Cultura y Ceremonia': 'TALENTO Y ENTRETENIMIENTO',
+      'Salones y Banquetes': 'ESPACIOS Y LOCACIONES',
+      'Lugares Únicos': 'ESPACIOS Y LOCACIONES',
+      'Espacios al Aire Libre': 'ESPACIOS Y LOCACIONES',
+      'Catering y Banquetería': 'GASTRONOMÍA Y SERVICIOS',
+      'Decoración y Flores': 'AMBIENTACIÓN Y DECORACIÓN',
+      'Iluminación y Sonido': 'AMBIENTACIÓN Y DECORACIÓN',
+      'Diseño de Eventos': 'AMBIENTACIÓN Y DECORACIÓN',
+      'Fotografía y Video': 'DETALLES Y LOGÍSTICA',
+      'Invitaciones y Papelería': 'DETALLES Y LOGÍSTICA',
+      'Transporte y Logística': 'DETALLES Y LOGÍSTICA'
+    };
+
+    // Si la categoría ya está en el formato correcto, devolverla
+    if (Object.keys(SERVICE_CATEGORIES).includes(category)) {
+      return category;
+    }
+
+    // Si es una subcategoría, buscar la categoría principal
+    return categoryMap[category] || category;
+  };
+
+  // Cargar datos cuando se abre el modal
   useEffect(() => {
-    if (open) {
-      if (existingService) {
-        // Cargar datos del servicio existente
-        setFormData({
-          name: existingService.name,
-          category: existingService.category,
-          description: existingService.bio,
-          location: existingService.location,
-          pricePerHour: existingService.pricePerHour.toString(),
-          responseTime: existingService.responseTime,
-          bio: existingService.bio
-        });
-        setServicePlans(existingService.servicePlans || []);
-        setSpecialties(existingService.specialties || ['']);
-        setAvailability(existingService.availability || []);
-        setMainImage(existingService.image || '');
-        setPortfolioImages(existingService.portfolio && existingService.portfolio.length > 0 ? existingService.portfolio : ['']);
-      } else {
-        // Resetear formulario para nuevo servicio
-        setFormData({
-          name: '',
-          category: '',
-          description: '',
-          location: '',
-          pricePerHour: '',
-          responseTime: '24 horas',
-          bio: ''
-        });
-        setServicePlans([]);
-        setCurrentPlan({
-          name: '',
-          price: '',
-          duration: '',
-          description: '',
-          includes: ['']
-        });
-        setSpecialties(['']);
-        setAvailability([]);
-        setMainImage('');
-        setPortfolioImages(['']);
+    // Detectar si el modal acaba de abrirse (transición de false a true)
+    const justOpened = open && !previousOpenRef.current;
+    previousOpenRef.current = open;
+    
+    // Si el modal se acaba de cerrar, limpiar el flag
+    if (!open) {
+      hasLoadedDataRef.current = false;
+      loadedServiceIdRef.current = null;
+      console.log('Modal closed, cleaning form');
+      setFormData({
+        name: '',
+        category: '',
+        subcategory: '',
+        description: '',
+        location: '',
+        pricePerHour: '',
+        responseTime: '24 horas',
+        bio: ''
+      });
+      setServicePlans([]);
+      setCurrentPlan({
+        name: '',
+        price: '',
+        duration: '',
+        description: '',
+        includes: [''],
+        popular: false
+      });
+      setSpecialties(['']);
+      setAvailability([]);
+      setMainImage('');
+      setPortfolioImages([''])
+      setEditingPlanId(null);
+      return;
+    }
+
+    // Solo cargar si el modal se acaba de abrir
+    if (!justOpened) {
+      return;
+    }
+
+    if (existingService) {
+      // Verificar si ya cargamos este servicio específico
+      if (loadedServiceIdRef.current === existingService.id) {
+        console.log('Service already loaded, skipping');
+        return;
       }
+      
+      // Marcar que cargamos este servicio
+      hasLoadedDataRef.current = true;
+      loadedServiceIdRef.current = existingService.id;
+      
+      // Cargar datos del servicio existente
+      console.log('Loading existing service (ONCE):', existingService);
+      
+      // Normalizar categoría
+      const normalizedCategory = normalizeCategoryToNew(existingService.category || '');
+      
+      // Si category es una subcategoría válida, buscar en qué categoría principal está
+      let mainCategory = normalizedCategory;
+      let subCategory = existingService.subcategory || '';
+      
+      // Verificar si existingService.category es realmente una subcategoría
+      for (const [catKey, catValue] of Object.entries(SERVICE_CATEGORIES)) {
+        if (catValue.subcategories.includes(existingService.category)) {
+          mainCategory = catKey;
+          subCategory = existingService.category;
+          break;
+        }
+      }
+      
+      console.log('Normalized category:', { 
+        original: existingService.category, 
+        mainCategory, 
+        subCategory 
+      });
+      
+      // Normalizar responseTime
+      let normalizedResponseTime = existingService.responseTime || '24 horas';
+      if (normalizedResponseTime.includes('1 hour') || normalizedResponseTime.includes('< 1')) {
+        normalizedResponseTime = '1 hora';
+      } else if (normalizedResponseTime.includes('24')) {
+        normalizedResponseTime = '24 horas';
+      } else if (normalizedResponseTime.includes('48')) {
+        normalizedResponseTime = '48 horas';
+      }
+      
+      const loadedFormData = {
+        name: existingService.name || '',
+        category: mainCategory,
+        subcategory: subCategory,
+        description: existingService.bio || '',
+        location: existingService.location || '',
+        pricePerHour: existingService.pricePerHour ? existingService.pricePerHour.toString() : '',
+        responseTime: normalizedResponseTime,
+        bio: existingService.bio || ''
+      };
+      
+      console.log('Setting form data:', loadedFormData);
+      setFormData(loadedFormData);
+      setServicePlans(existingService.servicePlans || []);
+      setSpecialties(existingService.specialties && existingService.specialties.length > 0 ? existingService.specialties : ['']);
+      setAvailability(existingService.availability || []);
+      setMainImage(existingService.image || '');
+      setPortfolioImages(existingService.portfolio && existingService.portfolio.length > 0 ? existingService.portfolio : ['']);
+      setEditingPlanId(null);
+      setCurrentPlan({
+        name: '',
+        price: '',
+        duration: '',
+        description: '',
+        includes: [''],
+        popular: false
+      });
+    } else {
+      // Formulario para nuevo servicio (ya está limpio por el cierre del modal)
+      console.log('No existing service - form is ready for new service');
     }
   }, [open, existingService]);
+
+  // Log para debugging - ver cuando cambia formData
+  useEffect(() => {
+    if (open) {
+      console.log('FormData state updated:', formData);
+    }
+  }, [formData, open]);
 
   const handleAddSpecialty = () => {
     setSpecialties([...specialties, '']);
@@ -124,6 +254,44 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     setPortfolioImages(updated);
   };
 
+  // Handle main image file upload
+  const handleMainImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingMain(true);
+      const url = await uploadImage(file);
+      setMainImage(url);
+      toast.success('Imagen principal subida exitosamente');
+    } catch (error: any) {
+      console.error('Error uploading main image:', error);
+      toast.error(error.message || 'Error al subir la imagen');
+    } finally {
+      setUploadingMain(false);
+    }
+  };
+
+  // Handle portfolio image file upload
+  const handlePortfolioImageUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingPortfolio({ ...uploadingPortfolio, [index]: true });
+      const url = await uploadImage(file);
+      const updated = [...portfolioImages];
+      updated[index] = url;
+      setPortfolioImages(updated);
+      toast.success('Imagen de galería subida exitosamente');
+    } catch (error: any) {
+      console.error('Error uploading portfolio image:', error);
+      toast.error(error.message || 'Error al subir la imagen');
+    } finally {
+      setUploadingPortfolio({ ...uploadingPortfolio, [index]: false });
+    }
+  };
+
   const handleAddInclude = () => {
     setCurrentPlan({
       ...currentPlan,
@@ -150,28 +318,81 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
       return;
     }
 
-    const newPlan: ServicePlan = {
-      id: `plan-${Date.now()}`,
-      name: currentPlan.name,
-      price: parseFloat(currentPlan.price),
-      duration: parseFloat(currentPlan.duration),
-      description: currentPlan.description,
-      includes: currentPlan.includes.filter(i => i.trim() !== '')
-    };
+    if (editingPlanId) {
+      // Actualizar plan existente
+      const updatedPlans = servicePlans.map(plan => 
+        plan.id === editingPlanId 
+          ? {
+              ...plan,
+              name: currentPlan.name,
+              price: parseFloat(currentPlan.price),
+              duration: parseFloat(currentPlan.duration),
+              description: currentPlan.description,
+              includes: currentPlan.includes.filter(i => i.trim() !== ''),
+              popular: currentPlan.popular
+            }
+          : plan
+      );
+      setServicePlans(updatedPlans);
+      toast.success('Plan actualizado exitosamente');
+    } else {
+      // Agregar nuevo plan
+      const newPlan: ServicePlan = {
+        id: `plan-${Date.now()}`,
+        name: currentPlan.name,
+        price: parseFloat(currentPlan.price),
+        duration: parseFloat(currentPlan.duration),
+        description: currentPlan.description,
+        includes: currentPlan.includes.filter(i => i.trim() !== ''),
+        popular: currentPlan.popular
+      };
+      setServicePlans([...servicePlans, newPlan]);
+      toast.success('Plan agregado exitosamente');
+    }
 
-    setServicePlans([...servicePlans, newPlan]);
+    // Resetear formulario
     setCurrentPlan({
       name: '',
       price: '',
       duration: '',
       description: '',
-      includes: ['']
+      includes: [''],
+      popular: false
     });
-    toast.success('Plan agregado exitosamente');
+    setEditingPlanId(null);
+  };
+
+  const handleEditPlan = (plan: ServicePlan) => {
+    setCurrentPlan({
+      name: plan.name,
+      price: plan.price.toString(),
+      duration: plan.duration.toString(),
+      description: plan.description,
+      includes: plan.includes.length > 0 ? plan.includes : [''],
+      popular: plan.popular || false
+    });
+    setEditingPlanId(plan.id);
+    toast.info('Editando plan - modifica los campos y presiona "Actualizar Plan"');
+  };
+
+  const handleCancelEditPlan = () => {
+    setCurrentPlan({
+      name: '',
+      price: '',
+      duration: '',
+      description: '',
+      includes: [''],
+      popular: false
+    });
+    setEditingPlanId(null);
   };
 
   const handleRemovePlan = (planId: string) => {
     setServicePlans(servicePlans.filter(p => p.id !== planId));
+    // Si estamos editando este plan, cancelar la edición
+    if (editingPlanId === planId) {
+      handleCancelEditPlan();
+    }
   };
 
   const handleToggleAvailability = (day: string) => {
@@ -185,7 +406,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.category || !formData.location) {
+    if (!formData.name || !formData.category || !formData.subcategory || !formData.location) {
       toast.error('Por favor completa todos los campos obligatorios');
       return;
     }
@@ -201,6 +422,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
       id: existingService?.id || `service-${Date.now()}`,
       name: formData.name,
       category: formData.category,
+      subcategory: formData.subcategory,
       bio: formData.bio || formData.description,
       location: formData.location,
       pricePerHour: parseFloat(formData.pricePerHour) || servicePlans[0].price / servicePlans[0].duration,
@@ -218,13 +440,18 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
 
     onSave(service);
     toast.success(existingService ? 'Servicio actualizado' : 'Servicio creado exitosamente');
-    onClose();
+    handleClose();
   };
 
   const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
+  const handleClose = () => {
+    console.log('ServiceEditor handleClose called');
+    onClose();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -254,18 +481,19 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                   />
                 </div>
                 <div>
-                  <Label htmlFor="category">Categoría *</Label>
+                  <Label htmlFor="location">Ubicación *</Label>
                   <Select
-                    value={formData.category}
-                    onValueChange={(value) => setFormData({ ...formData, category: value })}
+                    value={formData.location}
+                    onValueChange={(value) => setFormData({ ...formData, location: value })}
+                    required
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona categoría" />
+                    <SelectTrigger id="location">
+                      <SelectValue placeholder="Seleccionar ciudad" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {cat}
+                    <SelectContent className="max-h-[300px]">
+                      {VENEZUELAN_CITIES.map((city) => (
+                        <SelectItem key={city} value={city}>
+                          {city}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -275,15 +503,52 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="location">Ubicación *</Label>
-                  <Input
-                    id="location"
-                    required
-                    value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    placeholder="Ciudad, Estado"
-                  />
+                  <Label htmlFor="category">Categoría Principal *</Label>
+                  <Select
+                    value={formData.category}
+                    onValueChange={(value) => {
+                      setFormData({ ...formData, category: value, subcategory: '' });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona categoría principal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.keys(SERVICE_CATEGORIES).map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {SERVICE_CATEGORIES[cat as keyof typeof SERVICE_CATEGORIES].icon} {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+                <div>
+                  <Label htmlFor="subcategory">Subcategoría *</Label>
+                  <Select
+                    value={formData.subcategory}
+                    onValueChange={(value) => setFormData({ ...formData, subcategory: value })}
+                    disabled={!formData.category}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={formData.category ? "Selecciona subcategoría" : "Primero selecciona categoría"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {formData.category && SERVICE_CATEGORIES[formData.category as keyof typeof SERVICE_CATEGORIES]?.subcategories.map((subcat) => (
+                        <SelectItem key={subcat} value={subcat}>
+                          {subcat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formData.category && !formData.subcategory && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Esta subcategoría se usa para el filtrado de búsqueda
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="pricePerHour">Precio Base por Hora</Label>
                   <Input
@@ -293,6 +558,22 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                     onChange={(e) => setFormData({ ...formData, pricePerHour: e.target.value })}
                     placeholder="100"
                   />
+                </div>
+                <div>
+                  <Label htmlFor="responseTime">Tiempo de Respuesta</Label>
+                  <Select
+                    value={formData.responseTime}
+                    onValueChange={(value) => setFormData({ ...formData, responseTime: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1 hora">1 hora</SelectItem>
+                      <SelectItem value="24 horas">24 horas</SelectItem>
+                      <SelectItem value="48 horas">48 horas</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -305,23 +586,6 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                   placeholder="Describe tu servicio, experiencia y qué te hace especial..."
                   rows={4}
                 />
-              </div>
-
-              <div>
-                <Label htmlFor="responseTime">Tiempo de Respuesta</Label>
-                <Select
-                  value={formData.responseTime}
-                  onValueChange={(value) => setFormData({ ...formData, responseTime: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1 hora">1 hora</SelectItem>
-                    <SelectItem value="24 horas">24 horas</SelectItem>
-                    <SelectItem value="48 horas">48 horas</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </CardContent>
           </Card>
@@ -395,15 +659,51 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
               <div>
                 <Label htmlFor="mainImage">Imagen Principal *</Label>
                 <p className="text-xs text-gray-500 mb-2">Esta imagen se mostrará en la tarjeta de tu servicio</p>
-                <Input
-                  id="mainImage"
-                  value={mainImage}
-                  onChange={(e) => setMainImage(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  💡 Puedes usar URLs de Unsplash, Imgur, o cualquier servicio de imágenes
-                </p>
+                
+                <div className="space-y-3">
+                  {/* Upload Button */}
+                  <div className="flex gap-2">
+                    <label htmlFor="mainImageFile" className="flex-1">
+                      <div className={`flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${uploadingMain ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
+                        <Upload className="w-4 h-4" />
+                        <span className="text-sm">
+                          {uploadingMain ? 'Subiendo...' : 'Subir imagen desde tu computadora'}
+                        </span>
+                      </div>
+                      <input
+                        id="mainImageFile"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleMainImageUpload}
+                        disabled={uploadingMain}
+                      />
+                    </label>
+                  </div>
+                  
+                  {uploadingMain && (
+                    <Progress value={50} className="w-full" />
+                  )}
+
+                  {/* URL Input - Alternative method */}
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white px-2 text-gray-500">O pega una URL</span>
+                    </div>
+                  </div>
+
+                  <Input
+                    id="mainImage"
+                    value={mainImage}
+                    onChange={(e) => setMainImage(e.target.value)}
+                    placeholder="https://images.unsplash.com/..."
+                    disabled={uploadingMain}
+                  />
+                </div>
+
                 {mainImage && (
                   <div className="mt-3 relative w-full h-48 rounded-lg overflow-hidden border">
                     <ImageWithFallback
@@ -422,12 +722,24 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                 <div className="space-y-3">
                   {portfolioImages.map((img, index) => (
                     <div key={index} className="space-y-2">
+                      {/* Upload Button */}
                       <div className="flex gap-2">
-                        <Input
-                          value={img}
-                          onChange={(e) => handlePortfolioImageChange(index, e.target.value)}
-                          placeholder={`URL de imagen ${index + 1}`}
-                        />
+                        <label htmlFor={`portfolioFile${index}`} className="flex-1">
+                          <div className={`flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${uploadingPortfolio[index] ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
+                            <Upload className="w-4 h-4" />
+                            <span className="text-sm">
+                              {uploadingPortfolio[index] ? 'Subiendo...' : `Subir imagen ${index + 1}`}
+                            </span>
+                          </div>
+                          <input
+                            id={`portfolioFile${index}`}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handlePortfolioImageUpload(index, e)}
+                            disabled={uploadingPortfolio[index]}
+                          />
+                        </label>
                         {portfolioImages.length > 1 && (
                           <Button
                             type="button"
@@ -439,6 +751,19 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                           </Button>
                         )}
                       </div>
+
+                      {uploadingPortfolio[index] && (
+                        <Progress value={50} className="w-full" />
+                      )}
+
+                      {/* URL Input */}
+                      <Input
+                        value={img}
+                        onChange={(e) => handlePortfolioImageChange(index, e.target.value)}
+                        placeholder={`O pega URL de imagen ${index + 1}`}
+                        disabled={uploadingPortfolio[index]}
+                      />
+
                       {img && (
                         <div className="relative w-full h-32 rounded-lg overflow-hidden border">
                           <ImageWithFallback
@@ -477,9 +802,28 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                 <div className="space-y-2">
                   <p className="text-sm text-gray-600">Planes agregados:</p>
                   {servicePlans.map((plan) => (
-                    <div key={plan.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div 
+                      key={plan.id} 
+                      className={`flex items-center justify-between p-3 border rounded-lg ${
+                        editingPlanId === plan.id ? 'border-blue-500 bg-blue-50' :
+                        plan.popular ? 'border-gold bg-gold/5' : ''
+                      }`}
+                    >
                       <div className="flex-1">
-                        <p className="font-medium">{plan.name}</p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium">{plan.name}</p>
+                          {plan.popular && (
+                            <Badge variant="secondary" className="text-xs" style={{ background: 'var(--gold)', color: 'var(--navy-blue)' }}>
+                              <Star className="w-3 h-3 mr-1" />
+                              Popular
+                            </Badge>
+                          )}
+                          {editingPlanId === plan.id && (
+                            <Badge variant="secondary" className="text-xs bg-blue-500 text-white">
+                              Editando
+                            </Badge>
+                          )}
+                        </div>
                         <div className="flex gap-4 text-sm text-gray-600">
                           <span className="flex items-center gap-1">
                             <DollarSign className="w-3 h-3" />
@@ -492,22 +836,48 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                           <span>{plan.includes.length} incluidos</span>
                         </div>
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemovePlan(plan.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditPlan(plan)}
+                          title="Editar plan"
+                        >
+                          <Edit className="w-4 h-4 text-blue-500" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemovePlan(plan.id)}
+                          title="Eliminar plan"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Add New Plan */}
+              {/* Add/Edit Plan */}
               <div className="border-t pt-4 space-y-3">
-                <p className="text-sm">Agregar nuevo plan:</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm">{editingPlanId ? 'Editar plan:' : 'Agregar nuevo plan:'}</p>
+                  {editingPlanId && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelEditPlan}
+                      className="text-gray-600"
+                    >
+                      <XCircle className="w-4 h-4 mr-1" />
+                      Cancelar
+                    </Button>
+                  )}
+                </div>
                 <div className="grid grid-cols-3 gap-3">
                   <Input
                     placeholder="Nombre del plan"
@@ -564,21 +934,62 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                     Agregar Item
                   </Button>
                 </div>
-                <Button
-                  type="button"
-                  onClick={handleAddPlan}
-                  className="w-full"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Agregar Plan
-                </Button>
+                
+                {/* Opción de marcar como popular */}
+                <div className="flex items-center space-x-2 p-3 rounded-lg border border-gold/20 bg-gold/5">
+                  <Checkbox
+                    id="popular-plan"
+                    checked={currentPlan.popular}
+                    onCheckedChange={(checked) => 
+                      setCurrentPlan({ ...currentPlan, popular: checked as boolean })
+                    }
+                  />
+                  <div className="flex items-center gap-2">
+                    <Star className="w-4 h-4" style={{ color: 'var(--gold)' }} />
+                    <Label
+                      htmlFor="popular-plan"
+                      className="text-sm cursor-pointer select-none"
+                    >
+                      Marcar como Plan Popular (Destacado)
+                    </Label>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={handleAddPlan}
+                    className="flex-1"
+                  >
+                    {editingPlanId ? (
+                      <>
+                        <Check className="w-4 h-4 mr-2" />
+                        Actualizar Plan
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Agregar Plan
+                      </>
+                    )}
+                  </Button>
+                  {editingPlanId && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleCancelEditPlan}
+                    >
+                      Cancelar
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Actions */}
           <div className="flex gap-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+            <Button type="button" variant="outline" onClick={handleClose} className="flex-1">
               Cancelar
             </Button>
             <Button type="submit" className="flex-1">

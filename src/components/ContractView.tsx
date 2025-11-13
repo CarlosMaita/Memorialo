@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, CheckCircle, AlertCircle, Calendar, DollarSign, Clock, MapPin, User } from 'lucide-react';
+import { FileText, CheckCircle, AlertCircle, Calendar, DollarSign, Clock, MapPin, User, MessageCircle, Mail } from 'lucide-react';
 import { Contract } from '../types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
@@ -9,6 +9,7 @@ import { Separator } from './ui/separator';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { toast } from 'sonner@2.0.3';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface ContractViewProps {
   contract: Contract | null;
@@ -23,6 +24,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [signing, setSigning] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
 
   if (!contract) return null;
 
@@ -81,11 +83,11 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     }, 1500);
   };
 
-  const handleReject = () => {
-    if (!confirm('¿Estás seguro de que deseas rechazar este contrato? Esta acción no se puede deshacer.')) {
-      return;
-    }
+  const handleRejectClick = () => {
+    setShowRejectConfirm(true);
+  };
 
+  const handleRejectConfirmed = () => {
     setRejecting(true);
     
     setTimeout(() => {
@@ -161,6 +163,20 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                       Firmado el {new Date(contract.artistSignature.signedAt).toLocaleDateString('es-ES')}
                     </div>
                   )}
+                  {/* Mostrar contacto solo si contrato está activo y el usuario es el cliente */}
+                  {bothPartiesSigned && userType === 'client' && contract.artistWhatsapp && (
+                    <div className="mt-2 space-y-1">
+                      <a 
+                        href={`https://wa.me/${contract.artistWhatsapp.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-green-600 hover:text-green-700 hover:underline"
+                      >
+                        <MessageCircle className="w-3 h-3" />
+                        Contactar por WhatsApp
+                      </a>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -172,6 +188,31 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                     <div className="flex items-center gap-1 mt-1 text-green-600 text-xs">
                       <CheckCircle className="w-3 h-3" />
                       Firmado el {new Date(contract.clientSignature.signedAt).toLocaleDateString('es-ES')}
+                    </div>
+                  )}
+                  {/* Mostrar contacto solo si contrato está activo y el usuario es el proveedor */}
+                  {bothPartiesSigned && userType === 'artist' && (
+                    <div className="mt-2 space-y-1">
+                      {contract.clientWhatsapp && (
+                        <a 
+                          href={`https://wa.me/${contract.clientWhatsapp.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs text-green-600 hover:text-green-700 hover:underline"
+                        >
+                          <MessageCircle className="w-3 h-3" />
+                          Contactar por WhatsApp
+                        </a>
+                      )}
+                      {contract.clientEmail && (
+                        <a 
+                          href={`mailto:${contract.clientEmail}`}
+                          className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                        >
+                          <Mail className="w-3 h-3" />
+                          {contract.clientEmail}
+                        </a>
+                      )}
                     </div>
                   )}
                 </div>
@@ -278,8 +319,8 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
             </CardContent>
           </Card>
 
-          {/* Signature Section */}
-          {!bothPartiesSigned && canSign && (
+          {/* Signature Section - Solo mostrar si el contrato no está completado, confirmado o cancelado */}
+          {!bothPartiesSigned && canSign && contract.status !== 'completed' && contract.status !== 'active' && contract.status !== 'cancelled' && (
             <Card className="border-primary">
               <CardHeader>
                 <CardTitle className="text-sm">Firma del Contrato</CardTitle>
@@ -320,7 +361,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                   {userType === 'artist' && (
                     <Button 
                       variant="outline" 
-                      onClick={handleReject}
+                      onClick={handleRejectClick}
                       disabled={signing || rejecting}
                       className="flex-1 sm:flex-initial border-red-600 text-red-600 hover:bg-red-50"
                     >
@@ -351,6 +392,14 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                     <p className="text-sm">
                       Este contrato ha sido firmado por ambas partes y es legalmente vinculante.
                     </p>
+                    <p className="text-sm mt-2">
+                      {userType === 'client' && contract.artistWhatsapp && (
+                        <>Ahora puedes contactar al proveedor usando la información de contacto mostrada arriba.</>
+                      )}
+                      {userType === 'artist' && (contract.clientWhatsapp || contract.clientEmail) && (
+                        <>Ahora puedes contactar al cliente usando la información de contacto mostrada arriba.</>
+                      )}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -364,6 +413,17 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
           </Button>
         </div>
       </DialogContent>
+
+      <ConfirmDialog
+        open={showRejectConfirm}
+        onOpenChange={setShowRejectConfirm}
+        onConfirm={handleRejectConfirmed}
+        title="¿Rechazar este contrato?"
+        description="¿Estás seguro de que deseas rechazar este contrato? Esta acción no se puede deshacer y el contrato será cancelado permanentemente."
+        confirmText="Sí, rechazar"
+        cancelText="No, volver"
+        variant="danger"
+      />
     </Dialog>
   );
 }
