@@ -460,6 +460,21 @@ app.put("/make-server-5d78aefb/contracts/:id", async (c) => {
     const updatedContract = { ...currentContract, ...updates };
     await kv.set(`contract:${contractId}`, updatedContract);
 
+    // Send notification when provider signs the contract
+    if (updates.artistSignature && !currentContract.artistSignature) {
+      const bothPartiesSigned = updatedContract.clientSignature && updatedContract.artistSignature;
+      
+      if (updatedContract.clientEmail) {
+        await sendEmailNotification(
+          updatedContract.clientEmail,
+          bothPartiesSigned ? '✅ Contrato Completamente Firmado - Memorialo' : '📝 El proveedor firmó tu contrato - Memorialo',
+          bothPartiesSigned
+            ? `Hola ${updatedContract.clientName},\n\n¡Excelentes noticias! El proveedor ha firmado el contrato.\n\nServicio: ${updatedContract.artistName}\nFecha del Evento: ${new Date(updatedContract.terms.date).toLocaleDateString('es-ES')}\n\nAhora puedes contactar al proveedor usando la información disponible en el contrato.\nInicia sesión en Memorialo para ver los detalles de contacto.\n\nhttps://memorialo.com\n\n¡Que tengas un evento exitoso!\n\n---\nID de Contrato: ${updatedContract.id}`
+            : `Hola ${updatedContract.clientName},\n\n${updatedContract.artistName} ha firmado el contrato del servicio.\n\nServicio: ${updatedContract.artistName}\nFecha del Evento: ${new Date(updatedContract.terms.date).toLocaleDateString('es-ES')}\n\nAhora puedes contactar al proveedor para los detalles finales.\nInicia sesión en Memorialo para ver la información de contacto.\n\nhttps://memorialo.com\n\n---\nID de Contrato: ${updatedContract.id}`
+        );
+      }
+    }
+
     // If contract is being marked as completed, increment artist's bookingsCompleted
     if (updates.status === 'completed' && currentContract.status !== 'completed') {
       console.log(`Contract ${contractId} marked as completed, updating artist bookingsCompleted`);

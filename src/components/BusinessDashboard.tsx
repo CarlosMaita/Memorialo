@@ -21,6 +21,7 @@ import {
   DollarSign,
   Star,
   Eye,
+  EyeOff,
   CheckCircle2,
   Clock,
   XCircle,
@@ -161,13 +162,6 @@ export function BusinessDashboard({
     services.some(service => service.id === booking.artistId)
   );
 
-  // Debug logging
-  console.log('BusinessDashboard - User ID:', user.id);
-  console.log('BusinessDashboard - Services count:', services.length);
-  console.log('BusinessDashboard - Total contracts passed:', contracts.length);
-  console.log('BusinessDashboard - Provider contracts:', providerContracts.length);
-  console.log('BusinessDashboard - Provider contracts data:', providerContracts);
-
   // Contracts that are signed by both parties
   const signedContracts = providerContracts.filter(c => 
     c.clientSignature && c.artistSignature
@@ -212,8 +206,12 @@ export function BusinessDashboard({
   });
 
   // Filtered lists based on search
-  const filteredServices = services.filter(service => 
-    service.name.toLowerCase().includes(searchService.toLowerCase())
+  const activeServices = services.filter(service => 
+    !service.isArchived && service.name.toLowerCase().includes(searchService.toLowerCase())
+  );
+  
+  const archivedServices = services.filter(service =>
+    service.isArchived && service.name.toLowerCase().includes(searchService.toLowerCase())
   );
 
   const filteredContracts = sortedContracts.filter(contract => 
@@ -225,7 +223,6 @@ export function BusinessDashboard({
   );
 
   const handleEditService = (service: Artist) => {
-    console.log('BusinessDashboard - handleEditService called with:', service);
     setEditingService(service);
     setShowServiceEditor(true);
   };
@@ -237,8 +234,13 @@ export function BusinessDashboard({
 
   const handleDeleteServiceConfirmed = () => {
     if (serviceToDelete) {
-      onServiceDelete(serviceToDelete);
-      toast.success('Servicio eliminado');
+      // Soft delete - marcar como archivado en lugar de eliminar
+      const service = services.find(s => s.id === serviceToDelete);
+      if (service) {
+        const archivedService = { ...service, isArchived: true };
+        onServiceUpdate(archivedService);
+        toast.success('Servicio archivado. Los contratos y reservas existentes se conservaron.');
+      }
       setServiceToDelete(null);
     }
   };
@@ -768,7 +770,7 @@ export function BusinessDashboard({
             </div>
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600">
-                {filteredServices.length} de {services.length} servicio{services.length !== 1 ? 's' : ''}
+                {activeServices.length} activo{activeServices.length !== 1 ? 's' : ''} • {archivedServices.length} archivado{archivedServices.length !== 1 ? 's' : ''}
               </p>
               <Button onClick={() => {
                 setEditingService(null);
@@ -797,7 +799,7 @@ export function BusinessDashboard({
                 </Button>
               </CardContent>
             </Card>
-          ) : filteredServices.length === 0 ? (
+          ) : activeServices.length === 0 && archivedServices.length === 0 ? (
             <Card>
               <CardContent className="p-12 text-center">
                 <Search className="w-12 h-12 mx-auto mb-3 text-gray-300" />
@@ -808,60 +810,139 @@ export function BusinessDashboard({
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredServices.map((service) => (
-                <Card key={service.id}>
-                  <CardContent className="p-4">
-                    <div className="aspect-video rounded-lg overflow-hidden mb-3">
-                      <ImageWithFallback
-                        src={service.image}
-                        alt={service.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <h3 className="text-base mb-1">{service.name}</h3>
-                        <p className="text-sm text-gray-600">{service.category}</p>
-                      </div>
-                      {service.verified && (
-                        <CheckCircle2 className="w-5 h-5 text-blue-500 ml-2" />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mb-3 text-sm">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                        <span>{service.rating}</span>
-                      </div>
-                      <span className="text-gray-400">•</span>
-                      <span className="text-gray-600">{service.reviews} reseñas</span>
-                    </div>
-                    <div className="text-sm text-gray-600 mb-3">
-                      <p>{service.servicePlans.length} planes disponibles</p>
-                      <p>Desde ${Math.min(...service.servicePlans.map(p => p.price))}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEditService(service)}
-                        className="flex-1"
-                      >
-                        <Edit className="w-4 h-4 mr-1" />
-                        Editar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeleteServiceClick(service.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="space-y-6">
+              {/* Active Services */}
+              {activeServices.length > 0 && (
+                <div>
+                  <h3 className="text-sm mb-3 text-gray-500 uppercase tracking-wide">
+                    Servicios Activos ({activeServices.length})
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {activeServices.map((service) => (
+                      <Card key={service.id}>
+                        <CardContent className="p-4">
+                          <div className="aspect-video rounded-lg overflow-hidden mb-3 relative">
+                            <ImageWithFallback
+                              src={service.image}
+                              alt={service.name}
+                              className="w-full h-full object-cover"
+                            />
+                            {!service.isPublished && (
+                              <div className="absolute top-2 right-2">
+                                <Badge className="bg-yellow-500 text-white">
+                                  <EyeOff className="w-3 h-3 mr-1" />
+                                  Oculto
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <h3 className="text-base mb-1">{service.name}</h3>
+                              <p className="text-sm text-gray-600">{service.category}</p>
+                            </div>
+                            {service.verified && (
+                              <CheckCircle2 className="w-5 h-5 text-blue-500 ml-2" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mb-3 text-sm">
+                            <div className="flex items-center gap-1">
+                              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                              <span>{service.rating}</span>
+                            </div>
+                            <span className="text-gray-400">•</span>
+                            <span className="text-gray-600">{service.reviews} reseñas</span>
+                            {!service.isPublished && (
+                              <>
+                                <span className="text-gray-400">•</span>
+                                <span className="text-yellow-600 text-xs">No visible</span>
+                              </>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-600 mb-3">
+                            <p>{service.servicePlans.length} planes disponibles</p>
+                            <p>Desde ${Math.min(...service.servicePlans.map(p => p.price))}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditService(service)}
+                              className="flex-1"
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Editar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteServiceClick(service.id)}
+                              className="text-red-600 hover:text-red-700"
+                              title="Archivar servicio"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Archived Services */}
+              {archivedServices.length > 0 && (
+                <div>
+                  <h3 className="text-sm mb-3 text-gray-500 uppercase tracking-wide">
+                    Servicios Archivados ({archivedServices.length})
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {archivedServices.map((service) => (
+                      <Card key={service.id} className="opacity-60 border-dashed">
+                        <CardContent className="p-4">
+                          <div className="aspect-video rounded-lg overflow-hidden mb-3 relative">
+                            <ImageWithFallback
+                              src={service.image}
+                              alt={service.name}
+                              className="w-full h-full object-cover grayscale"
+                            />
+                            <div className="absolute top-2 right-2">
+                              <Badge className="bg-gray-600 text-white">
+                                Archivado
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <h3 className="text-base mb-1">{service.name}</h3>
+                              <p className="text-sm text-gray-600">{service.category}</p>
+                            </div>
+                          </div>
+                          <div className="text-sm text-gray-600 mb-3">
+                            <p className="italic">Este servicio está archivado</p>
+                            <p className="text-xs mt-1">Los contratos y reservas existentes se conservaron</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const restoredService = { ...service, isArchived: false };
+                                onServiceUpdate(restoredService);
+                                toast.success('Servicio restaurado');
+                              }}
+                              className="flex-1"
+                            >
+                              <CheckCircle2 className="w-4 h-4 mr-1" />
+                              Restaurar
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </TabsContent>
@@ -1432,14 +1513,14 @@ export function BusinessDashboard({
         </DialogContent>
       </Dialog>
 
-      {/* Delete Service Confirmation */}
+      {/* Archive Service Confirmation */}
       <ConfirmDialog
         open={showDeleteConfirm}
         onOpenChange={setShowDeleteConfirm}
         onConfirm={handleDeleteServiceConfirmed}
-        title="¿Eliminar este servicio?"
-        description="¿Estás seguro de que quieres eliminar este servicio? Esta acción no se puede deshacer."
-        confirmText="Sí, eliminar"
+        title="¿Archivar este servicio?"
+        description="El servicio será archivado y no será visible en la búsqueda pública. Todos los contratos y reservas asociados se conservarán. Podrás restaurarlo cuando quieras."
+        confirmText="Sí, archivar"
         cancelText="Cancelar"
         variant="danger"
       />

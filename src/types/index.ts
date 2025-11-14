@@ -29,6 +29,15 @@ export interface Artist {
   servicePlans: ServicePlan[];
   whatsappNumber?: string; // WhatsApp Business para contacto post-contrato
   email?: string; // Email para notificaciones
+  // Términos y condiciones personalizables por servicio
+  customTerms?: {
+    paymentTerms: string;
+    cancellationPolicy: string;
+    additionalTerms: string[];
+  };
+  // Sistema de publicación y archivado
+  isPublished?: boolean; // Si el servicio está visible públicamente (default: true)
+  isArchived?: boolean; // Soft delete - si el servicio está archivado (default: false)
 }
 
 export interface ContractSignature {

@@ -21,7 +21,7 @@ export const VENEZUELAN_CITIES = [
   'Machiques',
   'Santa Bárbara del Zulia',
   'San Francisco',
-  'Lagunillas',
+  'Lagunillas (Zulia)',
   
   // Carabobo
   'Valencia',
@@ -75,7 +75,7 @@ export const VENEZUELAN_CITIES = [
   'Tovar',
   'El Vigía',
   'Santa Cruz de Mora',
-  'Lagunillas',
+  'Lagunillas (Mérida)',
   
   // Bolívar
   'Ciudad Guayana',

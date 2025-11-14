@@ -108,6 +108,26 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
       ? `${selectedServicePlan.name}: ${selectedServicePlan.description}\n\nIncluye:\n${selectedServicePlan.includes.map(item => `• ${item}`).join('\n')}`
       : `Servicio de ${artist.category} - ${formData.eventType || 'Evento personalizado'}`;
 
+    // Use custom terms from service, or fallback to default
+    const serviceTerms = artist.customTerms || {
+      paymentTerms: 'Se requiere un depósito del 50% para confirmar la reserva. El saldo restante debe pagarse 7 días antes del evento. Los pagos pueden realizarse mediante transferencia bancaria, tarjeta de crédito o efectivo.',
+      cancellationPolicy: 'Cancelaciones con más de 30 días de anticipación: reembolso completo del depósito. Cancelaciones entre 15-30 días: reembolso del 50%. Cancelaciones con menos de 15 días: sin reembolso. En caso de emergencia o enfermedad grave, se evaluarán excepciones caso por caso.',
+      additionalTerms: [
+        'El proveedor se compromete a llegar al lugar del evento con 30 minutos de anticipación para preparación.',
+        'El cliente debe proporcionar un espacio adecuado y acceso a electricidad si es necesario.',
+        'Cualquier solicitud especial o cambio en el servicio debe comunicarse con al menos 7 días de anticipación.',
+        'El proveedor se reserva el derecho de usar fotografías del evento para promoción, a menos que se acuerde lo contrario.',
+        'En caso de fuerza mayor (clima extremo, emergencias), ambas partes acordarán reprogramar sin penalización.',
+        'Ambas partes acuerdan resolver cualquier disputa mediante mediación antes de proceder legalmente.'
+      ]
+    };
+
+    // Build additional terms array including special requests
+    const additionalTerms = [...serviceTerms.additionalTerms];
+    if (formData.specialRequests) {
+      additionalTerms.push(`Solicitudes especiales del cliente: ${formData.specialRequests}`);
+    }
+
     return {
       id: contractId,
       bookingId,
@@ -128,17 +148,9 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
         date: formData.date,
         startTime: formData.startTime,
         location: formData.location,
-        paymentTerms: 'Se requiere un depósito del 50% para confirmar la reserva. El saldo restante debe pagarse 7 días antes del evento. Los pagos pueden realizarse mediante transferencia bancaria, tarjeta de crédito o efectivo.',
-        cancellationPolicy: 'Cancelaciones con más de 30 días de anticipación: reembolso completo del depósito. Cancelaciones entre 15-30 días: reembolso del 50%. Cancelaciones con menos de 15 días: sin reembolso. En caso de emergencia o enfermedad grave, se evaluarán excepciones caso por caso.',
-        additionalTerms: [
-          'El proveedor se compromete a llegar al lugar del evento con 30 minutos de anticipación para preparación.',
-          'El cliente debe proporcionar un espacio adecuado y acceso a electricidad si es necesario.',
-          'Cualquier solicitud especial o cambio en el servicio debe comunicarse con al menos 7 días de anticipación.',
-          'El proveedor se reserva el derecho de usar fotografías del evento para promoción, a menos que se acuerde lo contrario.',
-          'En caso de fuerza mayor (clima extremo, emergencias), ambas partes acordarán reprogramar sin penalización.',
-          'Ambas partes acuerdan resolver cualquier disputa mediante mediación antes de proceder legalmente.',
-          formData.specialRequests ? `Solicitudes especiales del cliente: ${formData.specialRequests}` : ''
-        ].filter(Boolean)
+        paymentTerms: serviceTerms.paymentTerms,
+        cancellationPolicy: serviceTerms.cancellationPolicy,
+        additionalTerms: additionalTerms
       },
       status: 'pending_client'
     };

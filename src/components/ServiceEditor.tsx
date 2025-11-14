@@ -8,14 +8,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Checkbox } from './ui/checkbox';
+import { Switch } from './ui/switch';
 import { ServicePlan } from '../types';
-import { Plus, Trash2, DollarSign, Clock, Check, Image, X, Upload, Star, Edit, XCircle } from 'lucide-react';
+import { Plus, Trash2, DollarSign, Clock, Check, Image, X, Upload, Star, Edit, XCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useSupabase } from '../utils/useSupabase';
 import { Progress } from './ui/progress';
 import { VENEZUELAN_CITIES } from '../data/cities';
 import { SERVICE_CATEGORIES } from '../data/serviceCategories';
+import { DEFAULT_TERMS } from '../data/defaultTerms';
 
 interface ServiceEditorProps {
   open: boolean;
@@ -36,7 +38,10 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     location: '',
     pricePerHour: '',
     responseTime: '24 horas',
-    bio: ''
+    bio: '',
+    whatsappNumber: '',
+    email: '',
+    isPublished: true // Por defecto los servicios están publicados
   });
 
   const [servicePlans, setServicePlans] = useState<ServicePlan[]>([]);
@@ -55,14 +60,25 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
   const [mainImage, setMainImage] = useState('');
   const [portfolioImages, setPortfolioImages] = useState<string[]>(['']);
   
+  // Terms and Conditions
+  const [customTerms, setCustomTerms] = useState({
+    paymentTerms: DEFAULT_TERMS.paymentTerms,
+    cancellationPolicy: DEFAULT_TERMS.cancellationPolicy,
+    additionalTerms: [...DEFAULT_TERMS.additionalTerms]
+  });
+  
   // Upload states
   const [uploadingMain, setUploadingMain] = useState(false);
   const [uploadingPortfolio, setUploadingPortfolio] = useState<{ [key: number]: boolean }>({});
+  
+  // Form ready state - para asegurar que los Select se rendericen con los valores
+  const [formReady, setFormReady] = useState(false);
 
   // Ref para rastrear si ya cargamos los datos
   const hasLoadedDataRef = useRef(false);
   const previousOpenRef = useRef(false);
   const loadedServiceIdRef = useRef<string | null>(null);
+  const isLoadingRef = useRef(false); // Prevent concurrent loads
 
   // Función para mapear categorías antiguas a nuevas
   const normalizeCategoryToNew = (category: string): string => {
@@ -93,15 +109,13 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
 
   // Cargar datos cuando se abre el modal
   useEffect(() => {
-    // Detectar si el modal acaba de abrirse (transición de false a true)
-    const justOpened = open && !previousOpenRef.current;
-    previousOpenRef.current = open;
-    
-    // Si el modal se acaba de cerrar, limpiar el flag
+    // Si el modal está cerrado, limpiar todo
     if (!open) {
       hasLoadedDataRef.current = false;
       loadedServiceIdRef.current = null;
-      console.log('Modal closed, cleaning form');
+      previousOpenRef.current = false;
+      isLoadingRef.current = false;
+      setFormReady(false);
       setFormData({
         name: '',
         category: '',
@@ -110,7 +124,10 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
         location: '',
         pricePerHour: '',
         responseTime: '24 horas',
-        bio: ''
+        bio: '',
+        whatsappNumber: '',
+        email: '',
+        isPublished: true
       });
       setServicePlans([]);
       setCurrentPlan({
@@ -124,101 +141,125 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
       setSpecialties(['']);
       setAvailability([]);
       setMainImage('');
-      setPortfolioImages([''])
+      setPortfolioImages(['']);
+      setCustomTerms({
+        paymentTerms: DEFAULT_TERMS.paymentTerms,
+        cancellationPolicy: DEFAULT_TERMS.cancellationPolicy,
+        additionalTerms: [...DEFAULT_TERMS.additionalTerms]
+      });
       setEditingPlanId(null);
       return;
     }
 
+    // Detectar si el modal acaba de abrirse (transición de false a true)
+    const justOpened = open && !previousOpenRef.current;
+    previousOpenRef.current = true;
+    
     // Solo cargar si el modal se acaba de abrir
     if (!justOpened) {
       return;
     }
 
-    if (existingService) {
-      // Verificar si ya cargamos este servicio específico
-      if (loadedServiceIdRef.current === existingService.id) {
-        console.log('Service already loaded, skipping');
-        return;
-      }
-      
-      // Marcar que cargamos este servicio
-      hasLoadedDataRef.current = true;
-      loadedServiceIdRef.current = existingService.id;
-      
-      // Cargar datos del servicio existente
-      console.log('Loading existing service (ONCE):', existingService);
-      
-      // Normalizar categoría
-      const normalizedCategory = normalizeCategoryToNew(existingService.category || '');
-      
-      // Si category es una subcategoría válida, buscar en qué categoría principal está
-      let mainCategory = normalizedCategory;
-      let subCategory = existingService.subcategory || '';
-      
-      // Verificar si existingService.category es realmente una subcategoría
-      for (const [catKey, catValue] of Object.entries(SERVICE_CATEGORIES)) {
-        if (catValue.subcategories.includes(existingService.category)) {
-          mainCategory = catKey;
-          subCategory = existingService.category;
-          break;
-        }
-      }
-      
-      console.log('Normalized category:', { 
-        original: existingService.category, 
-        mainCategory, 
-        subCategory 
-      });
-      
-      // Normalizar responseTime
-      let normalizedResponseTime = existingService.responseTime || '24 horas';
-      if (normalizedResponseTime.includes('1 hour') || normalizedResponseTime.includes('< 1')) {
-        normalizedResponseTime = '1 hora';
-      } else if (normalizedResponseTime.includes('24')) {
-        normalizedResponseTime = '24 horas';
-      } else if (normalizedResponseTime.includes('48')) {
-        normalizedResponseTime = '48 horas';
-      }
-      
-      const loadedFormData = {
-        name: existingService.name || '',
-        category: mainCategory,
-        subcategory: subCategory,
-        description: existingService.bio || '',
-        location: existingService.location || '',
-        pricePerHour: existingService.pricePerHour ? existingService.pricePerHour.toString() : '',
-        responseTime: normalizedResponseTime,
-        bio: existingService.bio || ''
-      };
-      
-      console.log('Setting form data:', loadedFormData);
-      setFormData(loadedFormData);
-      setServicePlans(existingService.servicePlans || []);
-      setSpecialties(existingService.specialties && existingService.specialties.length > 0 ? existingService.specialties : ['']);
-      setAvailability(existingService.availability || []);
-      setMainImage(existingService.image || '');
-      setPortfolioImages(existingService.portfolio && existingService.portfolio.length > 0 ? existingService.portfolio : ['']);
-      setEditingPlanId(null);
-      setCurrentPlan({
-        name: '',
-        price: '',
-        duration: '',
-        description: '',
-        includes: [''],
-        popular: false
-      });
-    } else {
-      // Formulario para nuevo servicio (ya está limpio por el cierre del modal)
-      console.log('No existing service - form is ready for new service');
+    // Si no hay servicio existente, es un nuevo servicio (formulario vacío)
+    if (!existingService) {
+      setFormReady(true);
+      return;
     }
-  }, [open, existingService]);
 
-  // Log para debugging - ver cuando cambia formData
-  useEffect(() => {
-    if (open) {
-      console.log('FormData state updated:', formData);
+    // Prevenir cargas concurrentes
+    if (isLoadingRef.current) {
+      return;
     }
-  }, [formData, open]);
+
+    // Verificar si ya cargamos este servicio específico
+    if (loadedServiceIdRef.current === existingService.id) {
+      setFormReady(true);
+      return;
+    }
+    
+    // Marcar que estamos cargando
+    isLoadingRef.current = true;
+    loadedServiceIdRef.current = existingService.id;
+    setFormReady(false);
+    
+    // Pequeño delay para asegurar que el DOM está listo
+    setTimeout(() => {
+      try {
+        // Normalizar categoría
+        const normalizedCategory = normalizeCategoryToNew(existingService.category || '');
+        
+        // Si category es una subcategoría válida, buscar en qué categoría principal está
+        let mainCategory = normalizedCategory;
+        let subCategory = existingService.subcategory || '';
+        
+        // Verificar si existingService.category es realmente una subcategoría
+        for (const [catKey, catValue] of Object.entries(SERVICE_CATEGORIES)) {
+          if (catValue.subcategories.includes(existingService.category)) {
+            mainCategory = catKey;
+            subCategory = existingService.category;
+            break;
+          }
+        }
+        
+        // Normalizar responseTime
+        let normalizedResponseTime = existingService.responseTime || '24 horas';
+        if (normalizedResponseTime.includes('1 hour') || normalizedResponseTime.includes('< 1')) {
+          normalizedResponseTime = '1 hora';
+        } else if (normalizedResponseTime.includes('24')) {
+          normalizedResponseTime = '24 horas';
+        } else if (normalizedResponseTime.includes('48')) {
+          normalizedResponseTime = '48 horas';
+        }
+        
+        const loadedFormData = {
+          name: existingService.name || '',
+          category: mainCategory,
+          subcategory: subCategory,
+          description: existingService.bio || '',
+          location: existingService.location || '',
+          pricePerHour: existingService.pricePerHour ? existingService.pricePerHour.toString() : '',
+          responseTime: normalizedResponseTime,
+          bio: existingService.bio || '',
+          whatsappNumber: existingService.whatsappNumber || '',
+          email: existingService.email || '',
+          isPublished: existingService.isPublished !== undefined ? existingService.isPublished : true
+        };
+        
+        setFormData(loadedFormData);
+        setServicePlans(existingService.servicePlans || []);
+        setSpecialties(existingService.specialties && existingService.specialties.length > 0 ? existingService.specialties : ['']);
+        setAvailability(existingService.availability || []);
+        setMainImage(existingService.image || '');
+        setPortfolioImages(existingService.portfolio && existingService.portfolio.length > 0 ? existingService.portfolio : ['']);
+        setCustomTerms(existingService.customTerms || {
+          paymentTerms: DEFAULT_TERMS.paymentTerms,
+          cancellationPolicy: DEFAULT_TERMS.cancellationPolicy,
+          additionalTerms: [...DEFAULT_TERMS.additionalTerms]
+        });
+        setEditingPlanId(null);
+        setCurrentPlan({
+          name: '',
+          price: '',
+          duration: '',
+          description: '',
+          includes: [''],
+          popular: false
+        });
+        
+        hasLoadedDataRef.current = true;
+        isLoadingRef.current = false;
+        
+        // Esperar un frame más para que React procese los cambios de estado
+        requestAnimationFrame(() => {
+          setFormReady(true);
+        });
+      } catch (error) {
+        console.error('Error loading service:', error);
+        isLoadingRef.current = false;
+        setFormReady(true); // Mostrar el formulario aunque haya error
+      }
+    }, 100);
+  }, [open, existingService]);
 
   const handleAddSpecialty = () => {
     setSpecialties([...specialties, '']);
@@ -403,10 +444,42 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     }
   };
 
+  const handleAddAdditionalTerm = () => {
+    setCustomTerms({
+      ...customTerms,
+      additionalTerms: [...customTerms.additionalTerms, '']
+    });
+  };
+
+  const handleRemoveAdditionalTerm = (index: number) => {
+    setCustomTerms({
+      ...customTerms,
+      additionalTerms: customTerms.additionalTerms.filter((_, i) => i !== index)
+    });
+  };
+
+  const handleUpdateAdditionalTerm = (index: number, value: string) => {
+    const newTerms = [...customTerms.additionalTerms];
+    newTerms[index] = value;
+    setCustomTerms({
+      ...customTerms,
+      additionalTerms: newTerms
+    });
+  };
+
+  const handleResetToDefaultTerms = () => {
+    setCustomTerms({
+      paymentTerms: DEFAULT_TERMS.paymentTerms,
+      cancellationPolicy: DEFAULT_TERMS.cancellationPolicy,
+      additionalTerms: [...DEFAULT_TERMS.additionalTerms]
+    });
+    toast.success('Términos restaurados a la plantilla por defecto');
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.category || !formData.subcategory || !formData.location) {
+    if (!formData.name || !formData.category || !formData.subcategory || !formData.location || !formData.whatsappNumber || !formData.email) {
       toast.error('Por favor completa todos los campos obligatorios');
       return;
     }
@@ -435,7 +508,16 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
       verified: existingService?.verified || false,
       rating: existingService?.rating || 5,
       reviews: existingService?.reviews || 0,
-      bookingsCompleted: existingService?.bookingsCompleted || 0
+      bookingsCompleted: existingService?.bookingsCompleted || 0,
+      whatsappNumber: formData.whatsappNumber,
+      email: formData.email,
+      customTerms: {
+        paymentTerms: customTerms.paymentTerms,
+        cancellationPolicy: customTerms.cancellationPolicy,
+        additionalTerms: customTerms.additionalTerms.filter(t => t.trim() !== '')
+      },
+      isPublished: formData.isPublished,
+      isArchived: existingService?.isArchived || false // Preservar estado de archivado
     };
 
     onSave(service);
@@ -446,7 +528,6 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
   const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
   const handleClose = () => {
-    console.log('ServiceEditor handleClose called');
     onClose();
   };
 
@@ -482,64 +563,103 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                 </div>
                 <div>
                   <Label htmlFor="location">Ubicación *</Label>
-                  <Select
-                    value={formData.location}
-                    onValueChange={(value) => setFormData({ ...formData, location: value })}
+                  {formReady && (
+                    <Select
+                      key={`location-${formData.location || 'empty'}`}
+                      value={formData.location}
+                      onValueChange={(value) => setFormData({ ...formData, location: value })}
+                      required
+                    >
+                      <SelectTrigger id="location">
+                        <SelectValue placeholder="Seleccionar ciudad" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        {VENEZUELAN_CITIES.map((city) => (
+                          <SelectItem key={city} value={city}>
+                            {city}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="whatsappNumber">WhatsApp Business *</Label>
+                  <Input
+                    id="whatsappNumber"
                     required
-                  >
-                    <SelectTrigger id="location">
-                      <SelectValue placeholder="Seleccionar ciudad" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px]">
-                      {VENEZUELAN_CITIES.map((city) => (
-                        <SelectItem key={city} value={city}>
-                          {city}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    value={formData.whatsappNumber}
+                    onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
+                    placeholder="Ej: +58 412 1234567"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Los clientes te contactarán después de firmar el contrato
+                  </p>
+                </div>
+                <div>
+                  <Label htmlFor="email">Correo Electrónico *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="tu@email.com"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Para notificaciones de reservas y contratos
+                  </p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="category">Categoría Principal *</Label>
-                  <Select
-                    value={formData.category}
-                    onValueChange={(value) => {
-                      setFormData({ ...formData, category: value, subcategory: '' });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona categoría principal" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.keys(SERVICE_CATEGORIES).map((cat) => (
-                        <SelectItem key={cat} value={cat}>
-                          {SERVICE_CATEGORIES[cat as keyof typeof SERVICE_CATEGORIES].icon} {cat}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {formReady && (
+                    <Select
+                      key={`category-${formData.category || 'empty'}`}
+                      value={formData.category}
+                      onValueChange={(value) => {
+                        setFormData({ ...formData, category: value, subcategory: '' });
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona categoría principal" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(SERVICE_CATEGORIES).map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {SERVICE_CATEGORIES[cat as keyof typeof SERVICE_CATEGORIES].icon} {cat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="subcategory">Subcategoría *</Label>
-                  <Select
-                    value={formData.subcategory}
-                    onValueChange={(value) => setFormData({ ...formData, subcategory: value })}
-                    disabled={!formData.category}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={formData.category ? "Selecciona subcategoría" : "Primero selecciona categoría"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {formData.category && SERVICE_CATEGORIES[formData.category as keyof typeof SERVICE_CATEGORIES]?.subcategories.map((subcat) => (
-                        <SelectItem key={subcat} value={subcat}>
-                          {subcat}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {formReady && (
+                    <Select
+                      key={`subcategory-${formData.subcategory || 'empty'}-${formData.category || 'nocat'}`}
+                      value={formData.subcategory}
+                      onValueChange={(value) => setFormData({ ...formData, subcategory: value })}
+                      disabled={!formData.category}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={formData.category ? "Selecciona subcategoría" : "Primero selecciona categoría"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {formData.category && SERVICE_CATEGORIES[formData.category as keyof typeof SERVICE_CATEGORIES]?.subcategories.map((subcat) => (
+                          <SelectItem key={subcat} value={subcat}>
+                            {subcat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   {formData.category && !formData.subcategory && (
                     <p className="text-xs text-gray-500 mt-1">
                       Esta subcategoría se usa para el filtrado de búsqueda
@@ -561,19 +681,23 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                 </div>
                 <div>
                   <Label htmlFor="responseTime">Tiempo de Respuesta</Label>
-                  <Select
-                    value={formData.responseTime}
-                    onValueChange={(value) => setFormData({ ...formData, responseTime: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1 hora">1 hora</SelectItem>
-                      <SelectItem value="24 horas">24 horas</SelectItem>
-                      <SelectItem value="48 horas">48 horas</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {formReady && (
+                    <Select
+                      key={`responsetime-${formData.responseTime || 'empty'}`}
+                      value={formData.responseTime}
+                      onValueChange={(value) => setFormData({ ...formData, responseTime: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="4 horas">4 horas</SelectItem>
+                        <SelectItem value="12 horas">12 horas</SelectItem>
+                        <SelectItem value="24 horas">24 horas</SelectItem>
+                        <SelectItem value="48 horas">48 horas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
 
@@ -585,6 +709,28 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                   onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                   placeholder="Describe tu servicio, experiencia y qué te hace especial..."
                   rows={4}
+                />
+              </div>
+
+              {/* Publication Status */}
+              <div className="flex items-center justify-between p-4 border rounded-lg" style={{ borderColor: formData.isPublished ? '#10b981' : '#f59e0b', backgroundColor: formData.isPublished ? '#f0fdf4' : '#fef3c7' }}>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    {formData.isPublished ? <Eye className="w-5 h-5 text-green-600" /> : <EyeOff className="w-5 h-5 text-yellow-600" />}
+                    <Label htmlFor="isPublished" className="text-base cursor-pointer mb-0">
+                      {formData.isPublished ? 'Servicio Publicado' : 'Servicio Oculto'}
+                    </Label>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    {formData.isPublished 
+                      ? 'Tu servicio es visible para todos los clientes en la búsqueda pública' 
+                      : 'Tu servicio está oculto y solo tú puedes verlo. Ideal para editar sin mostrarlo aún'}
+                  </p>
+                </div>
+                <Switch
+                  id="isPublished"
+                  checked={formData.isPublished}
+                  onCheckedChange={(checked) => setFormData({ ...formData, isPublished: checked })}
                 />
               </div>
             </CardContent>
@@ -982,6 +1128,107 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                       Cancelar
                     </Button>
                   )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Terms and Conditions */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">Términos y Condiciones del Contrato</CardTitle>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Personaliza los términos que se incluirán en los contratos de este servicio
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetToDefaultTerms}
+                  className="text-xs"
+                >
+                  Restaurar Plantilla
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="paymentTerms">Términos de Pago</Label>
+                <Textarea
+                  id="paymentTerms"
+                  value={customTerms.paymentTerms}
+                  onChange={(e) => setCustomTerms({ ...customTerms, paymentTerms: e.target.value })}
+                  placeholder="Describe los términos de pago (anticipos, métodos de pago, etc.)"
+                  rows={5}
+                  className="resize-y"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="cancellationPolicy">Política de Cancelación</Label>
+                <Textarea
+                  id="cancellationPolicy"
+                  value={customTerms.cancellationPolicy}
+                  onChange={(e) => setCustomTerms({ ...customTerms, cancellationPolicy: e.target.value })}
+                  placeholder="Describe la política de cancelación y reembolsos"
+                  rows={5}
+                  className="resize-y"
+                />
+              </div>
+
+              <div>
+                <Label>Términos Adicionales</Label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Agrega cláusulas adicionales específicas para tu servicio
+                </p>
+                <div className="space-y-2">
+                  {customTerms.additionalTerms.map((term, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        value={term}
+                        onChange={(e) => handleUpdateAdditionalTerm(index, e.target.value)}
+                        placeholder={`Término adicional ${index + 1}`}
+                      />
+                      {customTerms.additionalTerms.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveAdditionalTerm(index)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddAdditionalTerm}
+                    className="w-full"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Agregar Término Adicional
+                  </Button>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-start gap-2 text-blue-700">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs">
+                    <p className="mb-1">
+                      <strong>Importante:</strong> Estos términos se copiarán a los contratos cuando un cliente haga una reserva.
+                    </p>
+                    <p>
+                      Los contratos firmados son <strong>inmutables</strong> - si cambias estos términos después, 
+                      los contratos existentes mantendrán los términos originales.
+                    </p>
+                  </div>
                 </div>
               </div>
             </CardContent>

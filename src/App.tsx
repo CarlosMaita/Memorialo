@@ -742,6 +742,11 @@ export default function App() {
   const filteredArtists = useMemo(() => {
     let filtered = [...artists];
 
+    // Filter out archived and unpublished services from public view
+    filtered = filtered.filter(artist => 
+      !artist.isArchived && (artist.isPublished !== false)
+    );
+
     // Filter by city
     if (searchCriteria.city) {
       filtered = filtered.filter(artist => 
