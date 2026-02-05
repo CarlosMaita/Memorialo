@@ -58,19 +58,19 @@ export function ArtistProfile({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="sr-only">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0">
+        <DialogHeader className="sr-only">
+          <DialogTitle>
             {artist.name} Profile
           </DialogTitle>
-          <DialogDescription className="sr-only">
+          <DialogDescription>
             Perfil completo de {artist.name}, incluyendo
             servicios, planes, portafolio y reseñas
           </DialogDescription>
         </DialogHeader>
 
         {/* Hero Section */}
-        <div className="relative h-64 -mx-6 -mt-6 mb-6">
+        <div className="relative h-64 mb-6">
           <ImageWithFallback
             src={artist.image}
             alt={artist.name}
@@ -99,6 +99,8 @@ export function ArtistProfile({
           </div>
         </div>
 
+        {/* Content wrapper with padding */}
+        <div className="px-6 pb-6">
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="text-center p-3 bg-gray-50 rounded-lg">
@@ -340,15 +342,12 @@ export function ArtistProfile({
         <Separator />
 
         {/* General Pricing Info */}
-        <div className="bg-blue-50 p-4 rounded-lg">
+        <div className="bg-blue-50 p-4 rounded-lg mt-4">
           <p className="text-sm text-gray-700">
-            <strong>Precio base:</strong> ${artist.pricePerHour}
-            /hora
-          </p>
-          <p className="text-xs text-gray-600 mt-1">
             Los planes personalizados están disponibles. El
             artista responderá en {artist.responseTime}.
           </p>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

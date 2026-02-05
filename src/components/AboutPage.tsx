@@ -15,7 +15,7 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
   }, []);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--cream-white)' }}>
+    <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: 'var(--cream-white)' }}>
       {/* Hero Section */}
       <section className="relative overflow-hidden" style={{ backgroundColor: 'var(--navy-blue)' }}>
         {/* Close Button */}
@@ -74,7 +74,7 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
               </p>
               
               <p className="text-gray-700 mb-6 leading-relaxed">
-                Nuestra misión es empoderar a músicos, DJs, animadores, fotógrafos, decoradores y todos los proveedores de servicios para eventos venezolanos, brindándoles las herramientas para que puedan mostrar su talento, gestionar sus servicios y hacer crecer sus negocios, mientras facilitamos a los clientes la búsqueda, comparación y contratación de los mejores proveedores para sus eventos especiales.
+                Nuestra misión es empoderar a músicos, DJs, animadores, fotógrafos, decoradores y todos los proveedores de servicios para eventos venezolanos, brindándoles las herramientas para que puedan mostrar su talento, gestionar sus servicios y hacer crecer sus negocios, mientras facilitamos a los clientes la búsqueda y contratación de los mejores proveedores para sus eventos especiales.
               </p>
 
               <div className="flex flex-wrap gap-3">
@@ -170,7 +170,7 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
                 <ul className="space-y-3">
                   <li className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
-                    <span className="text-gray-700">Busca y compara proveedores en segundos</span>
+                    <span className="text-gray-700">Busca proveedores en segundos</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
@@ -349,8 +349,8 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
                   <li className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
                     <div>
-                      <div className="text-gray-900 mb-1">Comparación Inteligente</div>
-                      <div className="text-sm text-gray-600">Compara hasta 3 proveedores lado a lado</div>
+                      <div className="text-gray-900 mb-1">Perfiles Detallados</div>
+                      <div className="text-sm text-gray-600">Revisa fotos, videos y portafolios de cada proveedor</div>
                     </div>
                   </li>
                   <li className="flex items-start gap-3">

@@ -298,7 +298,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
           {/* Plan Selection (if no plan pre-selected) */}
           {!selectedPlan && artist.servicePlans && artist.servicePlans.length > 0 && (
             <div className="space-y-3">
-              <Label htmlFor="planSelect">Seleccionar Plan (Opcional)</Label>
+              <Label htmlFor="planSelect" className="mb-1 block">Seleccionar Plan (Opcional)</Label>
               <Select 
                 value={formData.planId || 'custom'} 
                 onValueChange={(value) => {
@@ -338,7 +338,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
             <h3 className="text-sm">Tu Información</h3>
             
             <div>
-              <Label htmlFor="name">Nombre Completo *</Label>
+              <Label htmlFor="name" className="mb-1 block">Nombre Completo *</Label>
               <Input
                 id="name"
                 required
@@ -351,7 +351,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="email">Correo Electrónico *</Label>
+                <Label htmlFor="email" className="mb-1 block">Correo Electrónico *</Label>
                 <Input
                   id="email"
                   type="email"
@@ -363,7 +363,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
                 />
               </div>
               <div>
-                <Label htmlFor="phone">Teléfono *</Label>
+                <Label htmlFor="phone" className="mb-1 block">Teléfono *</Label>
                 <Input
                   id="phone"
                   type="tel"
@@ -383,7 +383,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
             {/* Event Selection */}
             {userEvents.length > 0 && (
               <div>
-                <Label htmlFor="eventSelect">Asociar a un Evento (Opcional)</Label>
+                <Label htmlFor="eventSelect" className="mb-1 block">Asociar a un Evento (Opcional)</Label>
                 <div className="relative">
                   <FolderOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
                   <Select 
@@ -413,7 +413,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
             
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="date">
+                <Label htmlFor="date" className="mb-1 block">
                   Fecha del Evento *
                   {isEventSelected && <Badge variant="secondary" className="ml-2 text-xs">Del evento</Badge>}
                 </Label>
@@ -433,7 +433,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
               </div>
 
               <div>
-                <Label htmlFor="startTime">Hora de inicio del servicio *</Label>
+                <Label htmlFor="startTime" className="mb-1 block">Hora de inicio del servicio *</Label>
                 <div className="relative">
                   <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <Input
@@ -449,7 +449,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
             </div>
 
             <div>
-              <Label htmlFor="duration">Duración (horas) *</Label>
+              <Label htmlFor="duration" className="mb-1 block">Duración (horas) *</Label>
               <div className="relative">
                 <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Select 
@@ -472,7 +472,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
             </div>
 
             <div>
-              <Label htmlFor="eventType">
+              <Label htmlFor="eventType" className="mb-1 block">
                 Tipo de Evento *
                 {isEventSelected && <Badge variant="secondary" className="ml-2 text-xs">Del evento</Badge>}
               </Label>
@@ -497,7 +497,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
             </div>
 
             <div>
-              <Label htmlFor="location">
+              <Label htmlFor="location" className="mb-1 block">
                 Ubicación del Evento *
                 {isEventSelected && <Badge variant="secondary" className="ml-2 text-xs">Del evento</Badge>}
               </Label>
@@ -511,8 +511,8 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
               />
             </div>
 
-            <div>
-              <Label htmlFor="requests">Solicitudes Especiales (Opcional)</Label>
+            <div className="">
+              <Label htmlFor="requests" className="mb-1 block">Solicitudes Especiales (Opcional)</Label>
               <Textarea
                 id="requests"
                 value={formData.specialRequests}

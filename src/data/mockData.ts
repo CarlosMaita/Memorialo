@@ -1,4 +1,5 @@
 import { Artist, Service, Event } from '../types';
+import type { User, Provider } from '../types';
 
 export const mockArtists: Artist[] = [
   {
@@ -526,3 +527,106 @@ export const mockServices: Service[] = [
 
 // Mock events - empty by default for clean start
 export const mockEvents: Event[] = [];
+
+// Mock user data for testing - includes admin user
+export const mockUsers: User[] = [
+  {
+    id: 'admin-1',
+    email: 'admin@memorialo.com',
+    name: 'Administrador Principal',
+    phone: '+58-424-1234567',
+    whatsappNumber: '+58-424-1234567',
+    createdAt: new Date('2024-01-01').toISOString(),
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400',
+    isProvider: false,
+    role: 'admin' as const,
+    banned: false
+  },
+  {
+    id: 'user-1',
+    email: 'juan.perez@email.com',
+    name: 'Juan Pérez',
+    phone: '+58-412-9876543',
+    whatsappNumber: '+58-412-9876543',
+    createdAt: new Date('2024-02-15').toISOString(),
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
+    isProvider: false,
+    role: 'user' as const,
+    banned: false
+  },
+  {
+    id: 'provider-user-1',
+    email: 'mariachi@losgallos.com',
+    name: 'Carlos Rodríguez',
+    phone: '+58-414-5551234',
+    whatsappNumber: '+58-414-5551234',
+    createdAt: new Date('2024-01-10').toISOString(),
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+    isProvider: true,
+    providerId: '1',
+    role: 'provider' as const,
+    banned: false
+  },
+  {
+    id: 'provider-user-2',
+    email: 'dj@mikethompson.com',
+    name: 'Mike Thompson',
+    phone: '+58-416-7778888',
+    whatsappNumber: '+58-416-7778888',
+    createdAt: new Date('2024-01-20').toISOString(),
+    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
+    isProvider: true,
+    providerId: '2',
+    role: 'provider' as const,
+    banned: false
+  }
+];
+
+// Mock providers data for testing
+export const mockProviders: Provider[] = [
+  {
+    id: '1',
+    userId: 'provider-user-1',
+    businessName: 'Mariachi Los Gallos',
+    category: 'Música y DJs',
+    description: 'Banda de mariachi tradicional con más de 15 años de experiencia.',
+    verified: true,
+    verifiedAt: new Date('2024-01-15').toISOString(),
+    verifiedBy: 'admin-1',
+    createdAt: new Date('2024-01-10').toISOString(),
+    services: ['s1'],
+    totalBookings: 342,
+    rating: 4.9,
+    banned: false
+  },
+  {
+    id: '2',
+    userId: 'provider-user-2',
+    businessName: 'DJ Mike Thompson Pro',
+    category: 'Música y DJs',
+    description: 'DJ profesional especializado en bodas y eventos corporativos.',
+    verified: false, // Pendiente de verificación
+    createdAt: new Date('2024-01-20').toISOString(),
+    services: ['s2'],
+    totalBookings: 215,
+    rating: 4.8,
+    banned: false
+  },
+  {
+    id: '3',
+    userId: 'provider-user-3',
+    businessName: 'Fotógrafo Express',
+    category: 'Fotografía',
+    description: 'Servicios de fotografía profesional para eventos.',
+    verified: true,
+    verifiedAt: new Date('2024-02-01').toISOString(),
+    verifiedBy: 'admin-1',
+    createdAt: new Date('2024-01-25').toISOString(),
+    services: [],
+    totalBookings: 89,
+    rating: 4.7,
+    banned: true, // Proveedor baneado para testing
+    bannedAt: new Date('2024-11-15').toISOString(),
+    bannedReason: 'Incumplimiento repetido de contratos y quejas de clientes.'
+  }
+];

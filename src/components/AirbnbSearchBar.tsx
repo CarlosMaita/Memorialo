@@ -10,6 +10,7 @@ import { VENEZUELAN_CITIES } from '../data/cities';
 import { SERVICE_CATEGORIES } from '../data/serviceCategories';
 
 export interface SearchCriteria {
+  query?: string;
   city: string;
   category: string;
   subcategory: string;
@@ -30,6 +31,7 @@ const capitalizeCategory = (text: string): string => {
 };
 
 export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarProps) {
+  const [query, setQuery] = useState('');
   const [city, setCity] = useState('');
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
@@ -44,6 +46,7 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
   // Sincronizar estado interno con el prop searchCriteria cuando cambia desde el padre
   useEffect(() => {
     if (searchCriteria) {
+      setQuery(searchCriteria.query || '');
       setCity(searchCriteria.city);
       setCategory(searchCriteria.category);
       setSubcategory(searchCriteria.subcategory);
@@ -53,6 +56,7 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
 
   const handleSearch = () => {
     onSearch({
+      query,
       city,
       category,
       subcategory,
@@ -61,11 +65,13 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
   };
 
   const resetFilters = () => {
+    setQuery('');
     setCity('');
     setCategory('');
     setSubcategory('');
     setPriceRange([0, 5000]);
     onSearch({
+      query: '',
       city: '',
       category: '',
       subcategory: '',
@@ -73,7 +79,7 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
     });
   };
 
-  const hasActiveFilters = city || category || subcategory || priceRange[0] > 0 || priceRange[1] < 5000;
+  const hasActiveFilters = query || city || category || subcategory || priceRange[0] > 0 || priceRange[1] < 5000;
 
   return (
     <div className="w-full">
@@ -600,6 +606,27 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
       {hasActiveFilters && (
         <div className="flex items-center gap-2 mt-4 flex-wrap justify-center">
           <span className="text-sm text-gray-600">Filtros activos:</span>
+          {query && (
+            <div className="px-3 py-1 bg-white rounded-full text-sm border border-gray-200 flex items-center gap-2">
+              <Search className="w-3 h-3" />
+              "{query}"
+              <button 
+                onClick={() => {
+                  setQuery('');
+                  onSearch({
+                    query: '',
+                    city,
+                    category,
+                    subcategory,
+                    priceRange
+                  });
+                }} 
+                className="hover:bg-gray-100 rounded-full p-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
           {city && (
             <div className="px-3 py-1 bg-white rounded-full text-sm border border-gray-200 flex items-center gap-2">
               <MapPin className="w-3 h-3" />

@@ -72,7 +72,7 @@ export function TermsConditions({ onBack }: TermsConditionsProps) {
               <h3 className="mb-3 text-gray-800">4.1 Para Clientes</h3>
               <p className="text-gray-700 mb-4">Los Clientes pueden:</p>
               <ul className="list-disc list-inside space-y-2 text-gray-700 mb-4">
-                <li>Buscar y comparar Proveedores de servicios</li>
+                <li>Buscar Proveedores de servicios</li>
                 <li>Ver perfiles, precios y reseñas de Proveedores</li>
                 <li>Contactar y contratar Proveedores</li>
                 <li>Dejar reseñas sobre los servicios recibidos</li>

@@ -8,11 +8,9 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 interface ArtistCardProps {
   artist: Artist;
   onViewProfile: (artist: Artist) => void;
-  onCompare?: (artist: Artist) => void;
-  isComparing?: boolean;
 }
 
-export function ArtistCard({ artist, onViewProfile, onCompare, isComparing }: ArtistCardProps) {
+export function ArtistCard({ artist, onViewProfile }: ArtistCardProps) {
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group">
       <div className="relative h-48 overflow-hidden" onClick={() => onViewProfile(artist)}>
@@ -60,37 +58,12 @@ export function ArtistCard({ artist, onViewProfile, onCompare, isComparing }: Ar
               <p style={{ color: 'var(--gold)' }}>${artist.pricePerHour}/hr</p>
             </div>
             <div className="flex gap-2 xl:hidden">
-              {onCompare && (
-                <Button 
-                  variant={isComparing ? "secondary" : "outline"} 
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCompare(artist);
-                  }}
-                >
-                  {isComparing ? 'Agregado' : 'Comparar'}
-                </Button>
-              )}
               <Button variant="secondary" size="sm" onClick={() => onViewProfile(artist)}>
                 Ver
               </Button>
             </div>
           </div>
           <div className="hidden xl:flex gap-2 w-full">
-            {onCompare && (
-              <Button 
-                variant={isComparing ? "secondary" : "outline"} 
-                size="sm"
-                className="flex-1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCompare(artist);
-                }}
-              >
-                {isComparing ? 'Agregado' : 'Comparar'}
-              </Button>
-            )}
             <Button variant="secondary" size="sm" className="flex-1" onClick={() => onViewProfile(artist)}>
               Ver
             </Button>

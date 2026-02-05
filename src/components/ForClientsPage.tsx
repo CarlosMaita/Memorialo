@@ -97,7 +97,7 @@ export function ForClientsPage({ onClose, onGetStarted }: ForClientsPageProps) {
               <Button 
                 size="lg"
                 variant="outline"
-                className="border-white hover:bg-white/10"
+                className="border-white bg-transparent hover:bg-white/10"
                 style={{ color: 'white', borderWidth: '2px' }}
               >
                 Cómo Funciona
@@ -160,12 +160,12 @@ export function ForClientsPage({ onClose, onGetStarted }: ForClientsPageProps) {
                   className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
                   style={{ backgroundColor: 'rgba(212, 175, 55, 0.15)' }}
                 >
-                  <Users className="w-6 h-6" style={{ color: 'var(--gold)' }} />
+                  <Globe className="w-6 h-6" style={{ color: 'var(--gold)' }} />
                 </div>
-                <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Compara Proveedores</h3>
+                <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Alcance Nacional</h3>
                 <p className="text-gray-600 text-sm">
-                  Compara hasta 3 proveedores lado a lado. Precios, servicios y reseñas 
-                  en un solo lugar para tomar la mejor decisión.
+                  Accede a una red de proveedores en las principales ciudades del país. 
+                  Donde sea tu evento, estamos ahí.
                 </p>
               </CardContent>
             </Card>
@@ -279,10 +279,10 @@ export function ForClientsPage({ onClose, onGetStarted }: ForClientsPageProps) {
                   <span className="text-xl">2</span>
                 </div>
                 <div className="flex-1">
-                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Compara y elige</h3>
+                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Revisa y elige</h3>
                   <p className="text-gray-600">
                     Revisa perfiles completos con fotos, videos y portafolios. Lee reseñas de otros 
-                    clientes y compara hasta 3 opciones lado a lado.
+                    clientes y elige la mejor opción para tu evento.
                   </p>
                 </div>
               </div>
@@ -475,7 +475,7 @@ export function ForClientsPage({ onClose, onGetStarted }: ForClientsPageProps) {
                     ))}
                   </div>
                   <p className="text-gray-700 mb-4 italic">
-                    "Poder comparar proveedores y ver reseñas reales me dio mucha confianza. 
+                    "Ver perfiles detallados y reseñas reales me dio mucha confianza. 
                     Contraté fotógrafo y decoración, ambos excelentes."
                   </p>
                   <div>
@@ -511,7 +511,7 @@ export function ForClientsPage({ onClose, onGetStarted }: ForClientsPageProps) {
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
             <p className="text-white/60 text-sm mt-4">
-              Gratis para siempre • Sin comisiones • Compara sin límites
+              Gratis para siempre • Sin comisiones • Encuentra tu talento ideal
             </p>
           </div>
         </div>

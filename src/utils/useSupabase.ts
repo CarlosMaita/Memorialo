@@ -23,8 +23,13 @@ export function useSupabase() {
             const userData = await apiRequest(`/users/${session.user.id}`, 'GET');
             setCurrentUser(userData);
             setAccessToken(session.access_token);
-          } catch (err) {
+          } catch (err: any) {
             console.error('Error loading user data after auth change:', err);
+            // Keep the session even if backend is unavailable
+            if (err?.message === 'BACKEND_UNAVAILABLE') {
+              setAccessToken(session.access_token);
+              console.log('Backend unavailable during auth change, keeping session');
+            }
           }
         }
       } else if (event === 'SIGNED_OUT') {
@@ -68,10 +73,23 @@ export function useSupabase() {
         setCurrentUser(userData);
         setAccessToken(session.access_token);
         console.log('User session restored:', userData.email);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error loading user data:', err);
-        // Session exists but user data not found, sign out
-        await supabase.auth.signOut();
+        // Check if user is banned or archived
+        if (err?.message?.includes('banned') || err?.message?.includes('archived')) {
+          console.log('User account is banned or archived, signing out');
+          await supabase.auth.signOut();
+          return;
+        }
+        // Only sign out if it's not a backend availability issue
+        if (err?.message !== 'BACKEND_UNAVAILABLE') {
+          // Session exists but user data not found (user deleted), sign out
+          await supabase.auth.signOut();
+        } else {
+          // Backend unavailable, keep session but set token for when it comes back
+          setAccessToken(session.access_token);
+          console.log('Backend unavailable, keeping session active');
+        }
       }
     } catch (error) {
       console.error('Session check error:', error);
@@ -127,11 +145,43 @@ export function useSupabase() {
       }
 
       // Get user data from backend
-      const userData = await apiRequest(`/users/${data.user.id}`, 'GET');
-      setCurrentUser(userData);
-      setAccessToken(data.session.access_token);
+      try {
+        const userData = await apiRequest(`/users/${data.user.id}`, 'GET');
+        setCurrentUser(userData);
+        setAccessToken(data.session.access_token);
+        return { user: userData, accessToken: data.session.access_token };
+      } catch (err: any) {
+        // Check if user is banned or archived
+        if (err?.message?.includes('banned')) {
+          await supabase.auth.signOut();
+          throw new Error('Tu cuenta ha sido suspendida. Contacta al administrador para más información.');
+        }
+        if (err?.message?.includes('archived')) {
+          await supabase.auth.signOut();
+          throw new Error('Tu cuenta está archivada. Contacta al administrador para reactivarla.');
+        }
+        throw err;
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
 
-      return { user: userData, accessToken: data.session.access_token };
+  const signInWithGoogle = async () => {
+    try {
+      // Do not forget to complete setup at https://supabase.com/docs/guides/auth/social-login/auth-google
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+      return data;
     } catch (error) {
       throw error;
     }
@@ -199,6 +249,16 @@ export function useSupabase() {
     } catch (error) {
       console.error('Get provider error:', error);
       return null;
+    }
+  };
+
+  const updateProvider = async (providerId: string, updates: any) => {
+    try {
+      const data = await apiRequest(`/providers/${providerId}`, 'PUT', updates, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Update provider error:', error);
+      throw error;
     }
   };
 
@@ -403,6 +463,101 @@ export function useSupabase() {
     }
   };
 
+  // Admin functions
+  const verifyProvider = async (providerId: string) => {
+    try {
+      const data = await apiRequest(`/admin/providers/${providerId}/verify`, 'POST', {}, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Verify provider error:', error);
+      throw error;
+    }
+  };
+
+  const banProvider = async (providerId: string, reason: string) => {
+    try {
+      const data = await apiRequest(`/admin/providers/${providerId}/ban`, 'POST', { reason }, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Ban provider error:', error);
+      throw error;
+    }
+  };
+
+  const unbanProvider = async (providerId: string) => {
+    try {
+      const data = await apiRequest(`/admin/providers/${providerId}/unban`, 'POST', {}, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Unban provider error:', error);
+      throw error;
+    }
+  };
+
+  const banUser = async (userId: string, reason: string) => {
+    try {
+      const data = await apiRequest(`/admin/users/${userId}/ban`, 'POST', { reason }, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Ban user error:', error);
+      throw error;
+    }
+  };
+
+  const unbanUser = async (userId: string) => {
+    try {
+      const data = await apiRequest(`/admin/users/${userId}/unban`, 'POST', {}, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Unban user error:', error);
+      throw error;
+    }
+  };
+
+  const archiveUser = async (userId: string) => {
+    try {
+      const data = await apiRequest(`/admin/users/${userId}/archive`, 'POST', {}, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Archive user error:', error);
+      throw error;
+    }
+  };
+
+  const unarchiveUser = async (userId: string) => {
+    try {
+      const data = await apiRequest(`/admin/users/${userId}/unarchive`, 'POST', {}, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Unarchive user error:', error);
+      throw error;
+    }
+  };
+
+  const deleteUser = async (userId: string) => {
+    try {
+      const data = await apiRequest(`/admin/users/${userId}`, 'DELETE', {}, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Delete user error:', error);
+      throw error;
+    }
+  };
+
+  const getAllUsers = async () => {
+    try {
+      const data = await apiRequest('/admin/users', 'GET', undefined, accessToken || undefined);
+      return data;
+    } catch (error: any) {
+      // If backend is unavailable, silently return empty array
+      if (error?.message === 'BACKEND_UNAVAILABLE') {
+        return [];
+      }
+      console.error('Get all users error:', error);
+      throw error;
+    }
+  };
+
   // Image upload function
   const uploadImage = async (file: File): Promise<string> => {
     try {
@@ -443,6 +598,17 @@ export function useSupabase() {
     }
   };
 
+  // Initialize admin user (for first-time setup)
+  const initializeAdmin = async () => {
+    try {
+      const data = await apiRequest('/auth/init-admin', 'POST', {});
+      return data;
+    } catch (error) {
+      console.error('Initialize admin error:', error);
+      throw error;
+    }
+  };
+
   return {
     currentUser,
     accessToken,
@@ -454,6 +620,7 @@ export function useSupabase() {
     createProvider,
     getProviders,
     getProviderByUserId,
+    updateProvider,
     createService,
     getServices,
     updateService,
@@ -470,6 +637,17 @@ export function useSupabase() {
     getEvents,
     updateEvent,
     deleteEvent,
-    uploadImage
+    verifyProvider,
+    banProvider,
+    unbanProvider,
+    banUser,
+    unbanUser,
+    archiveUser,
+    unarchiveUser,
+    deleteUser,
+    getAllUsers,
+    uploadImage,
+    initializeAdmin,
+    signInWithGoogle
   };
 }

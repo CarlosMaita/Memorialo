@@ -8,7 +8,14 @@ let supabase: ReturnType<typeof createClient> | null = null;
 
 export function getSupabaseClient() {
   if (!supabase) {
-    supabase = createClient(supabaseUrl, publicAnonKey);
+    supabase = createClient(supabaseUrl, publicAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storage: window.localStorage,
+      }
+    });
   }
   return supabase;
 }

@@ -177,7 +177,9 @@ export function Footer({
               <h5 className="font-bold mb-3 text-sm" style={{ color: 'var(--gold)' }}>Síguenos</h5>
               <div className="flex gap-3">
                 <a 
-                  href="#" 
+                  href="https://www.facebook.com/profile.php?id=61584748781154"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
                   style={{ backgroundColor: 'rgba(212, 175, 55, 0.2)' }}
                   aria-label="Facebook"
@@ -185,7 +187,9 @@ export function Footer({
                   <Facebook className="w-4 h-4" style={{ color: 'var(--gold)' }} />
                 </a>
                 <a 
-                  href="#" 
+                  href="https://instagram.com/memorialo"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
                   style={{ backgroundColor: 'rgba(212, 175, 55, 0.2)' }}
                   aria-label="Instagram"
@@ -194,7 +198,7 @@ export function Footer({
                 </a>
                 <a 
                   href="#" 
-                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                  className="hidden w-8 h-8 rounded-full items-center justify-center transition-all hover:scale-110"
                   style={{ backgroundColor: 'rgba(212, 175, 55, 0.2)' }}
                   aria-label="Twitter"
                 >
@@ -202,7 +206,7 @@ export function Footer({
                 </a>
                 <a 
                   href="#" 
-                  className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                  className="hidden w-8 h-8 rounded-full items-center justify-center transition-all hover:scale-110"
                   style={{ backgroundColor: 'rgba(212, 175, 55, 0.2)' }}
                   aria-label="LinkedIn"
                 >
