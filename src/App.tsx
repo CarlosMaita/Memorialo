@@ -1677,7 +1677,7 @@ export default function App() {
           <>
             {/* Search & Filters */}
             <div className="mb-8">
-              <div className="mb-6 text-center">
+              <div className="mb-4 text-center">
                 <h2 className="mb-2 font-[Carattere] text-[24px]">Tu Evento Inolvidable Empieza Aquí</h2>
               </div>
 
