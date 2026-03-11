@@ -550,7 +550,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
               <CardTitle className="text-lg">Información Básica</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="name">Nombre del Servicio *</Label>
                   <Input
@@ -585,7 +585,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="whatsappNumber">WhatsApp Business *</Label>
                   <Input
@@ -615,7 +615,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="category">Categoría Principal *</Label>
                   {formReady && (
@@ -668,7 +668,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="pricePerHour">Precio Base por Hora</Label>
                   <Input
