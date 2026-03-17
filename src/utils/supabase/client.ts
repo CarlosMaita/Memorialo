@@ -56,7 +56,14 @@ export async function apiRequest(
   try {
     const url = `${serverUrl}${path}`;
     
-    const response = await fetch(url, options);
+    let response: Response;
+    try {
+      response = await fetch(url, options);
+    } catch (fetchError) {
+      // Only actual network failures (no connection) should be BACKEND_UNAVAILABLE
+      console.log(`Network error (fetch failed) for ${method} ${path}:`, fetchError);
+      throw new Error('BACKEND_UNAVAILABLE');
+    }
     
     if (!response.ok) {
       let errorMessage = `Request failed with status ${response.status}`;
@@ -66,7 +73,12 @@ export async function apiRequest(
       } catch {
         errorMessage = await response.text() || errorMessage;
       }
-      console.error(`API Error [${method} ${path}]:`, errorMessage);
+      // Use console.log for transient/expected errors, console.error for unexpected ones
+      if (errorMessage.includes('compute resources')) {
+        console.log(`API transient error [${method} ${path}]:`, errorMessage);
+      } else {
+        console.error(`API Error [${method} ${path}]:`, errorMessage);
+      }
       throw new Error(errorMessage);
     }
 
@@ -74,15 +86,14 @@ export async function apiRequest(
     return data;
   } catch (error) {
     if (error instanceof Error) {
-      // Check if it's a network error
-      if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
-        // Silently throw BACKEND_UNAVAILABLE - will be handled by caller
-        throw new Error('BACKEND_UNAVAILABLE');
+      // Re-throw BACKEND_UNAVAILABLE and transient errors as-is
+      if (error.message === 'BACKEND_UNAVAILABLE' || error.message.includes('compute resources')) {
+        throw error;
       }
       console.error(`Error calling ${method} ${path}:`, error.message);
       throw error;
     }
-    console.error(`Network error while calling ${method} ${path}:`, error);
+    console.error(`Unknown error while calling ${method} ${path}:`, error);
     throw new Error('Network error');
   }
 }

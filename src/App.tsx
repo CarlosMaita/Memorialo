@@ -7,7 +7,7 @@ import { mockContracts } from './data/mockContracts';
 import { useSupabase } from './utils/useSupabase';
 import { ArtistCard } from './components/ArtistCard';
 import { AirbnbSearchBar, SearchCriteria } from './components/AirbnbSearchBar';
-import { ArtistProfile } from './components/ArtistProfile';
+// ArtistProfile modal replaced by ServiceDetailPage
 import { BookingDialog } from './components/BookingDialog';
 import { BusinessDashboard } from './components/BusinessDashboard';
 import { ClientDashboard } from './components/ClientDashboard';
@@ -25,6 +25,8 @@ import { PrivacyPolicy } from './components/legal/PrivacyPolicy';
 import { CancellationPolicy } from './components/legal/CancellationPolicy';
 import { RefundPolicy } from './components/legal/RefundPolicy';
 import { CodeOfConduct } from './components/legal/CodeOfConduct';
+import { ServiceDetailPage } from './components/ServiceDetailPage';
+import { SEOHead, buildMarketplaceStructuredData } from './components/SEOHead';
 import { Button } from './components/ui/button';
 import { Badge } from './components/ui/badge';
 import { Toaster } from './components/ui/sonner';
@@ -51,7 +53,6 @@ export default function App() {
   });
   const [sortBy, setSortBy] = useState('rating');
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
-  const [showProfile, setShowProfile] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
   const [bookingArtist, setBookingArtist] = useState<Artist | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<ServicePlan | null>(null);
@@ -233,7 +234,12 @@ export default function App() {
         console.log('✅ Datos cargados desde la base de datos');
       }
     } catch (error: any) {
-      console.error('❌ Error de conexión al backend:', error);
+      // Downgrade logging for transient/expected errors
+      if (error?.message?.includes('compute resources')) {
+        console.log('Backend overloaded, using demo data');
+      } else {
+        console.log('Error de conexión al backend:', error?.message || error);
+      }
       
       setIsDemoMode(true);
       toast.error('Backend no disponible - Usando datos de ejemplo', {
@@ -285,7 +291,7 @@ export default function App() {
 
   const handleViewProfile = (artist: Artist) => {
     setSelectedArtist(artist);
-    setShowProfile(true);
+    navigateTo(`/servicio/${artist.id}`);
   };
 
   const handleBookNow = (artist: Artist, plan?: ServicePlan) => {
@@ -298,7 +304,6 @@ export default function App() {
     
     setBookingArtist(artist);
     setSelectedPlan(plan || null);
-    setShowProfile(false);
     setShowBooking(true);
   };
 
@@ -1076,15 +1081,19 @@ export default function App() {
 
   // Get provider-specific data
   // Filter services by userId to show all services created by this provider
-  const providerServices = currentProvider && currentUser
+  // Note: Don't require currentProvider to be loaded - the BusinessDashboard handles null provider
+  // by showing the setup form. Services should still be available for contract matching.
+  const providerServices = currentUser?.isProvider
     ? artists.filter(a => a.userId === currentUser.id)
     : [];
   
   // Debug logging
   if (currentUser && currentUser.isProvider) {
     console.log('Provider View - Current User ID:', currentUser.id);
-    console.log('Provider View - All Artists:', artists);
-    console.log('Provider View - Filtered Provider Services:', providerServices);
+    console.log('Provider View - All Artists count:', artists.length);
+    console.log('Provider View - Filtered Provider Services:', providerServices.length, providerServices.map(s => ({ id: s.id, name: s.name, userId: s.userId })));
+    console.log('Provider View - All Contracts count:', contracts.length);
+    console.log('Provider View - All Bookings count:', bookings.length);
   }
 
   // Filter and sort artists based on search criteria
@@ -1238,6 +1247,62 @@ export default function App() {
   }
   if (currentRoute === '/codigo-conducta') {
     return <CodeOfConduct onBack={() => navigateTo('/')} />;
+  }
+
+  // Service detail page route
+  if (currentRoute.startsWith('/servicio/')) {
+    const serviceId = currentRoute.replace('/servicio/', '');
+    const serviceArtist = artists.find(a => a.id === serviceId);
+    
+    if (serviceArtist) {
+      return (
+        <div className="min-h-screen bg-background">
+          <Toaster />
+          <ServiceDetailPage
+            artist={serviceArtist}
+            reviews={reviews}
+            isAuthenticated={!!currentUser}
+            onBack={() => {
+              navigateTo('/');
+              setViewMode('client');
+            }}
+            onBookNow={handleBookNow}
+          />
+
+          <BookingDialog
+            artist={bookingArtist}
+            selectedPlan={selectedPlan}
+            open={showBooking}
+            onClose={() => {
+              setShowBooking(false);
+              setSelectedPlan(null);
+            }}
+            onContractCreated={handleContractCreated}
+            onBookingCreated={handleBookingCreate}
+            onBookingUpdate={handleBookingUpdate}
+            user={currentUser}
+            onLoginRequired={() => setShowAuthDialog(true)}
+            events={events}
+          />
+
+          <AuthDialog
+            open={showAuthDialog}
+            onClose={() => setShowAuthDialog(false)}
+            onLogin={(user, accessToken) => {
+              if (user.isProvider) {
+                setViewMode('provider');
+              }
+            }}
+            onSignUp={handleSignUp}
+            onSignIn={handleSignIn}
+            onSignInWithGoogle={handleSignInWithGoogle}
+          />
+        </div>
+      );
+    } else {
+      // Service not found - redirect home
+      navigateTo('/');
+    }
   }
 
   return (
@@ -1607,6 +1672,7 @@ export default function App() {
               user={currentUser}
               provider={currentProvider}
               services={providerServices}
+              allArtists={artists}
               contracts={contracts}
               bookings={bookings}
               onServiceCreate={handleServiceCreate}
@@ -1633,6 +1699,7 @@ export default function App() {
               onBookingCreate={handleBookingCreate}
               onBookingUpdate={handleBookingUpdate}
               onProviderCreate={handleProviderCreate}
+              accessToken={supabase.accessToken}
             />
           ) : (
             currentUser && (
@@ -1675,6 +1742,12 @@ export default function App() {
           )
         ) : viewMode === 'client' ? (
           <>
+            {/* SEO for marketplace home */}
+            <SEOHead
+              canonical="/"
+              keywords="servicios eventos Venezuela, bodas, fiestas, DJ, catering, fotografia, decoracion"
+              structuredData={buildMarketplaceStructuredData(filteredArtists)}
+            />
             {/* Search & Filters */}
             <div className="mb-8">
               <div className="mb-4 text-center">
@@ -1820,15 +1893,6 @@ export default function App() {
       )}
 
       {/* Dialogs */}
-      <ArtistProfile
-        artist={selectedArtist}
-        open={showProfile}
-        onClose={() => setShowProfile(false)}
-        onBookNow={handleBookNow}
-        reviews={reviews}
-        isAuthenticated={!!currentUser}
-      />
-
       <BookingDialog
         artist={bookingArtist}
         selectedPlan={selectedPlan}
@@ -1868,6 +1932,14 @@ export default function App() {
           contracts={userContracts}
           reviews={userReviews}
           onBecomeProvider={handleBecomeProvider}
+          onUserUpdate={async (updates) => {
+            try {
+              await supabase.updateUser(currentUser.id, updates);
+            } catch (error) {
+              console.error('Error updating user profile:', error);
+              toast.error('Error al actualizar el perfil');
+            }
+          }}
         />
       )}
 

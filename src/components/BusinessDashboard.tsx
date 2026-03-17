@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Artist, Contract, User, Provider, Booking } from '../types';
 import { ServiceEditor } from './ServiceEditor';
 import { ContractView } from './ContractView';
+import { BillingSection } from './BillingSection';
 import { 
   Plus, 
   Edit, 
@@ -32,7 +33,8 @@ import {
   X,
   TrendingUp,
   Award,
-  Activity
+  Activity,
+  Receipt
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -42,6 +44,7 @@ interface BusinessDashboardProps {
   user: User;
   provider: Provider | null;
   services: Artist[];
+  allArtists?: Artist[];
   contracts: Contract[];
   bookings: Booking[];
   onServiceCreate: (service: Artist) => void;
@@ -58,6 +61,7 @@ interface BusinessDashboardProps {
   onDeleteEvent?: (eventId: string) => void;
   onAssignContractToEvent?: (contractId: string, eventId: string | null) => void;
   onReviewCreate?: (contractId: string) => void;
+  accessToken?: string | null;
 }
 
 const categories = [
@@ -68,19 +72,21 @@ const categories = [
   'Detalles Y Logística'
 ];
 
-type SidebarSection = 'dashboard' | 'services' | 'contracts' | 'bookings';
+type SidebarSection = 'dashboard' | 'services' | 'contracts' | 'bookings' | 'billing';
 
 const navItems: { id: SidebarSection; label: string; icon: React.ReactNode }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
   { id: 'services', label: 'Mis Servicios', icon: <Briefcase className="w-5 h-5" /> },
   { id: 'contracts', label: 'Contratos', icon: <FileText className="w-5 h-5" /> },
   { id: 'bookings', label: 'Reservas', icon: <Calendar className="w-5 h-5" /> },
+  { id: 'billing', label: 'Facturación', icon: <Receipt className="w-5 h-5" /> },
 ];
 
 export function BusinessDashboard({ 
   user, 
   provider,
   services, 
+  allArtists = [],
   contracts,
   bookings,
   onServiceCreate, 
@@ -96,7 +102,8 @@ export function BusinessDashboard({
   onUpdateEvent,
   onDeleteEvent,
   onAssignContractToEvent,
-  onReviewCreate
+  onReviewCreate,
+  accessToken = null
 }: BusinessDashboardProps) {
   const [showServiceEditor, setShowServiceEditor] = useState(false);
   const [editingService, setEditingService] = useState<Artist | null>(null);
@@ -165,15 +172,40 @@ export function BusinessDashboard({
     toast.success('¡Perfil de proveedor creado exitosamente!');
   };
 
-  // Get contracts for provider's services
-  const providerContracts = contracts.filter(contract => 
-    services.some(service => service.id === contract.artistId)
+  // Build a Set of all service IDs owned by this provider for fast lookup
+  const providerServiceIds = new Set(services.map(s => s.id));
+
+  // Also derive provider service IDs from allArtists as fallback
+  // (handles cases where 'services' prop is empty due to timing/loading issues)
+  const providerServiceIdsFromAll = new Set(
+    allArtists.filter(a => a.userId === user.id).map(a => a.id)
   );
 
-  // Get bookings for provider's services
-  const providerBookings = bookings.filter(booking =>
-    services.some(service => service.id === booking.artistId)
+  // Merge both sets for robust matching
+  const allProviderServiceIds = new Set([...providerServiceIds, ...providerServiceIdsFromAll]);
+
+  // Debug logging for contract matching
+  console.log('BusinessDashboard - User ID:', user.id);
+  console.log('BusinessDashboard - Provider services count:', services.length, 'IDs:', [...providerServiceIds]);
+  console.log('BusinessDashboard - AllArtists-derived service IDs:', [...providerServiceIdsFromAll]);
+  console.log('BusinessDashboard - Total contracts:', contracts.length);
+  console.log('BusinessDashboard - Total bookings:', bookings.length);
+
+  // Get contracts for provider's services (robust matching)
+  // Match by: service ID in provider's services OR artistUserId field on contract
+  const providerContracts = contracts.filter(contract => 
+    allProviderServiceIds.has(contract.artistId) ||
+    (contract.artistUserId && contract.artistUserId === user.id)
   );
+
+  // Get bookings for provider's services (robust matching)
+  const providerBookings = bookings.filter(booking =>
+    allProviderServiceIds.has(booking.artistId) ||
+    (booking.artistUserId && booking.artistUserId === user.id)
+  );
+
+  console.log('BusinessDashboard - Matched provider contracts:', providerContracts.length);
+  console.log('BusinessDashboard - Matched provider bookings:', providerBookings.length);
 
   // Contracts that are signed by both parties
   const signedContracts = providerContracts.filter(c => 
@@ -597,7 +629,7 @@ export function BusinessDashboard({
       </nav>
 
       {/* Bottom info */}
-      <div className="p-4 border-t border-gray-100">
+      <div className="p-4 border-t border-gray-100 space-y-2">
         <div className="bg-gradient-to-r from-[#1B2A47] to-[#2d4270] rounded-xl p-3 text-white text-xs">
           <div className="flex items-center gap-2 mb-1">
             <Activity className="w-4 h-4 text-[#D4AF37]" />
@@ -607,6 +639,13 @@ export function BusinessDashboard({
             {services.filter(s => !s.isArchived).length} servicio{services.filter(s => !s.isArchived).length !== 1 ? 's' : ''} activo{services.filter(s => !s.isArchived).length !== 1 ? 's' : ''}
           </p>
         </div>
+        <button
+          onClick={() => handleNavClick('billing')}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors font-medium"
+        >
+          <Receipt className="w-3.5 h-3.5 text-amber-500" />
+          Ver Facturación
+        </button>
       </div>
     </div>
   );
@@ -780,6 +819,63 @@ export function BusinessDashboard({
                         )}
                       </>
                     )}
+                  </CardContent>
+                </Card>
+
+                {/* Billing summary widget */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Receipt className="w-4 h-4 text-[#D4AF37]" />
+                      Facturación
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {(() => {
+                      const now = new Date();
+                      const monthName = now.toLocaleDateString('es-ES', { month: 'long' });
+                      const completedThisMonth = providerContracts.filter(c => {
+                        if (c.status !== 'completed') return false;
+                        const cDate = new Date(c.terms.startDate);
+                        return cDate.getMonth() === now.getMonth() && cDate.getFullYear() === now.getFullYear();
+                      });
+                      const monthRevenue = completedThisMonth.reduce((s, c) => s + c.terms.price, 0);
+                      const commission = Math.round(monthRevenue * 0.10);
+                      return (
+                        <>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-500 capitalize">{monthName}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {completedThisMonth.length} venta{completedThisMonth.length !== 1 ? 's' : ''}
+                            </Badge>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-gray-500">Ingresos brutos</span>
+                            <span className="text-sm font-semibold text-[#1B2A47]">
+                              ${monthRevenue.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-gray-500">Comisión (10%)</span>
+                            <span className="text-sm font-medium text-orange-600">
+                              -${commission.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="border-t pt-2 flex justify-between items-center">
+                            <span className="text-xs font-medium text-gray-700">Neto estimado</span>
+                            <span className="text-sm font-bold text-green-600">
+                              ${(monthRevenue - commission).toLocaleString()}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => setActiveSection('billing')}
+                            className="text-xs text-[#1B2A47] hover:text-[#D4AF37] font-medium transition-colors"
+                          >
+                            Ver detalle de facturación →
+                          </button>
+                        </>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
               </div>
@@ -1141,6 +1237,16 @@ export function BusinessDashboard({
                 </div>
               )}
             </div>
+          )}
+
+          {/* ── FACTURACIÓN ────────────────────────────────────────────── */}
+          {activeSection === 'billing' && (
+            <BillingSection
+              provider={provider}
+              services={services}
+              contracts={contracts}
+              accessToken={accessToken}
+            />
           )}
 
         </div>

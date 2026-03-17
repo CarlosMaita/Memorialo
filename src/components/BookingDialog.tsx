@@ -132,6 +132,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
       id: contractId,
       bookingId,
       artistId: artist.id,
+      artistUserId: artist.userId,
       artistName: artist.name,
       artistEmail: artist.email,
       artistWhatsapp: artist.whatsappNumber,
@@ -183,6 +184,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     const booking: Booking = {
       id: contract.bookingId,
       artistId: artist.id,
+      artistUserId: artist.userId,
       artistName: artist.name,
       userId: user.id,
       clientName: formData.clientName,

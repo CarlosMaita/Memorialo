@@ -110,18 +110,16 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
       >
         {/* Ciudad */}
         <Popover open={cityOpen} onOpenChange={setCityOpen}>
-          <PopoverTrigger asChild>
-            <button className="flex-1 px-6 py-4 text-left hover:bg-gray-50 transition-colors border-r border-gray-200 group">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                <div>
-                  <div className="text-xs font-semibold text-gray-900">Ciudad</div>
-                  <div className="text-sm text-gray-500 truncate" style={{ maxWidth: '150px' }}>
-                    {city || 'Seleccionar ciudad'}
-                  </div>
+          <PopoverTrigger className="flex-1 px-6 py-4 text-left hover:bg-gray-50 transition-colors border-r border-gray-200 group">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+              <div>
+                <div className="text-xs font-semibold text-gray-900">Ciudad</div>
+                <div className="text-sm text-gray-500 truncate" style={{ maxWidth: '150px' }}>
+                  {city || 'Seleccionar ciudad'}
                 </div>
               </div>
-            </button>
+            </div>
           </PopoverTrigger>
           <PopoverContent className="w-80 p-0" align="start">
             <Command>
@@ -157,18 +155,16 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
 
         {/* Tipo de Servicio */}
         <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
-          <PopoverTrigger asChild>
-            <button className="flex-1 px-6 py-4 text-left hover:bg-gray-50 transition-colors border-r border-gray-200 group">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                <div>
-                  <div className="text-xs font-semibold text-gray-900">Tipo de servicio</div>
-                  <div className="text-sm text-gray-500 truncate" style={{ maxWidth: '180px' }}>
-                    {subcategory || (category ? capitalizeCategory(category) : 'Seleccionar servicio')}
-                  </div>
+          <PopoverTrigger className="flex-1 px-6 py-4 text-left hover:bg-gray-50 transition-colors border-r border-gray-200 group">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+              <div>
+                <div className="text-xs font-semibold text-gray-900">Tipo de servicio</div>
+                <div className="text-sm text-gray-500 truncate" style={{ maxWidth: '180px' }}>
+                  {subcategory || (category ? capitalizeCategory(category) : 'Seleccionar servicio')}
                 </div>
               </div>
-            </button>
+            </div>
           </PopoverTrigger>
           <PopoverContent className="w-96 p-4" align="start">
             {!category ? (
@@ -252,18 +248,16 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
 
         {/* Rango de Precio */}
         <Popover open={priceOpen} onOpenChange={setPriceOpen}>
-          <PopoverTrigger asChild>
-            <button className="flex-1 px-6 py-4 text-left hover:bg-gray-50 transition-colors group">
-              <div className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-                <div>
-                  <div className="text-xs font-semibold text-gray-900">Presupuesto</div>
-                  <div className="text-sm text-gray-500">
-                    ${priceRange[0].toLocaleString()} - ${priceRange[1].toLocaleString()}
-                  </div>
+          <PopoverTrigger className="flex-1 px-6 py-4 text-left hover:bg-gray-50 transition-colors group">
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+              <div>
+                <div className="text-xs font-semibold text-gray-900">Presupuesto</div>
+                <div className="text-sm text-gray-500">
+                  ${priceRange[0].toLocaleString()} - ${priceRange[1].toLocaleString()}
                 </div>
               </div>
-            </button>
+            </div>
           </PopoverTrigger>
           <PopoverContent className="w-80 p-4" align="start">
             <div className="space-y-4">

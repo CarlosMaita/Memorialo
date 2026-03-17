@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getSupabaseClient, apiRequest } from './supabase/client';
 import { User, Artist, Contract, Review, Booking, Provider } from '../types';
 
@@ -6,6 +6,105 @@ export function useSupabase() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Flag to suppress onAuthStateChange while checkSession is running
+  const isCheckingSession = { current: false };
+  // Retry timer ref for BACKEND_UNAVAILABLE recovery
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Helper: build a minimal fallback user from Supabase session metadata
+  function buildFallbackUser(sessionUser: any): User {
+    const meta = sessionUser.user_metadata || {};
+    return {
+      id: sessionUser.id,
+      email: sessionUser.email || '',
+      name: meta.name || meta.full_name || sessionUser.email?.split('@')[0] || 'Usuario',
+      phone: meta.phone || '',
+      createdAt: sessionUser.created_at || new Date().toISOString(),
+      isProvider: meta.isProvider || false,
+      role: 'user',
+    } as User;
+  }
+
+  // Helper: try loading user data from backend with retries
+  async function loadUserWithRetry(
+    userId: string,
+    token: string,
+    sessionUser: any,
+    { maxRetries = 3, baseDelay = 2000 } = {}
+  ): Promise<User | null> {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const userData = await apiRequest(`/users/${userId}`, 'GET');
+        return userData;
+      } catch (err: any) {
+        // If user not found, try auto-provision (OAuth first login)
+        if (err?.message?.includes('User not found') || err?.message?.includes('404')) {
+          try {
+            console.log(`User not found in KV (attempt ${attempt}), auto-provisioning...`);
+            const newUser = await apiRequest('/auth/ensure-user', 'POST', {}, token);
+            console.log('OAuth user auto-provisioned:', newUser.email);
+            return newUser;
+          } catch (provisionErr: any) {
+            if (provisionErr?.message === 'BACKEND_UNAVAILABLE' && attempt < maxRetries) {
+              console.log(`Provision failed (BACKEND_UNAVAILABLE), retry ${attempt + 1}/${maxRetries}...`);
+              await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt)));
+              continue;
+            }
+            console.error('Failed to auto-provision user:', provisionErr);
+            return null;
+          }
+        }
+        // If banned/archived, throw immediately
+        if (err?.message?.includes('banned') || err?.message?.includes('archived')) {
+          throw err;
+        }
+        // If backend unavailable, retry
+        if (err?.message === 'BACKEND_UNAVAILABLE' && attempt < maxRetries) {
+          console.log(`Backend unavailable, retry ${attempt + 1}/${maxRetries} in ${baseDelay * Math.pow(2, attempt)}ms...`);
+          await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt)));
+          continue;
+        }
+        // Last attempt or non-retryable error
+        throw err;
+      }
+    }
+    return null;
+  }
+
+  // Schedule a background retry to replace fallback user with real data
+  function scheduleBackgroundRetry(userId: string, token: string, sessionUser: any) {
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    
+    let retryCount = 0;
+    const maxBackgroundRetries = 5;
+    
+    const tryLoad = async () => {
+      retryCount++;
+      console.log(`Background retry ${retryCount}/${maxBackgroundRetries} to load user data...`);
+      try {
+        const userData = await loadUserWithRetry(userId, token, sessionUser, { maxRetries: 0 });
+        if (userData) {
+          console.log('Background retry succeeded, user loaded:', userData.email);
+          setCurrentUser(userData);
+          return; // Done
+        }
+      } catch (err: any) {
+        console.log(`Background retry ${retryCount} failed:`, err?.message);
+      }
+      
+      // Schedule next retry with exponential backoff
+      if (retryCount < maxBackgroundRetries) {
+        const delay = 5000 * Math.pow(1.5, retryCount);
+        console.log(`Next background retry in ${Math.round(delay / 1000)}s`);
+        retryTimerRef.current = setTimeout(tryLoad, delay);
+      } else {
+        console.log('Background retries exhausted, user will need to reload page');
+      }
+    };
+    
+    retryTimerRef.current = setTimeout(tryLoad, 3000);
+  }
 
   // Check for existing session on mount and listen for auth changes
   useEffect(() => {
@@ -15,85 +114,132 @@ export function useSupabase() {
     const supabase = getSupabaseClient();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event);
+
+      // Skip if checkSession is still running – it will handle the session itself
+      if (isCheckingSession.current) {
+        console.log('Skipping onAuthStateChange – checkSession in progress');
+        return;
+      }
       
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (session) {
           console.log('Session updated, refreshing user data');
+          setAccessToken(session.access_token);
           try {
-            const userData = await apiRequest(`/users/${session.user.id}`, 'GET');
-            setCurrentUser(userData);
-            setAccessToken(session.access_token);
+            const userData = await loadUserWithRetry(
+              session.user.id,
+              session.access_token,
+              session.user,
+              { maxRetries: 2, baseDelay: 1500 }
+            );
+            if (userData) {
+              setCurrentUser(userData);
+            } else {
+              // Fallback: build user from session metadata so UI isn't empty
+              console.log('Using fallback user from session metadata');
+              const fallback = buildFallbackUser(session.user);
+              setCurrentUser(fallback);
+              // Schedule background retries to replace with real data
+              scheduleBackgroundRetry(session.user.id, session.access_token, session.user);
+            }
           } catch (err: any) {
             console.error('Error loading user data after auth change:', err);
-            // Keep the session even if backend is unavailable
             if (err?.message === 'BACKEND_UNAVAILABLE') {
-              setAccessToken(session.access_token);
-              console.log('Backend unavailable during auth change, keeping session');
+              // Set fallback user so the UI works
+              const fallback = buildFallbackUser(session.user);
+              setCurrentUser(fallback);
+              console.log('Backend unavailable, using fallback user and scheduling retries');
+              scheduleBackgroundRetry(session.user.id, session.access_token, session.user);
             }
           }
         }
       } else if (event === 'SIGNED_OUT') {
         setCurrentUser(null);
         setAccessToken(null);
+        // Clear any pending retries
+        if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
       }
     });
     
     return () => {
       subscription.unsubscribe();
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     };
   }, []);
 
   const checkSession = async () => {
+    isCheckingSession.current = true;
     try {
       // Check if there's an active session with Supabase client
       const supabase = getSupabaseClient();
       
-      // First try to refresh the session to get a fresh token
-      const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+      // Use getSession first (no network call) to avoid triggering auth events
+      const { data: { session: existingSession }, error: getError } = await supabase.auth.getSession();
       
-      let session = refreshedSession;
-      
-      // If refresh fails, try to get the existing session
-      if (refreshError || !refreshedSession) {
-        console.log('Session refresh failed, trying to get existing session');
-        const { data: { session: existingSession }, error } = await supabase.auth.getSession();
-        
-        if (error || !existingSession) {
-          setLoading(false);
-          return;
+      if (getError || !existingSession) {
+        setLoading(false);
+        return;
+      }
+
+      let session = existingSession;
+
+      // Only try to refresh if the token looks expired (within 60s of expiry)
+      const expiresAt = session.expires_at ? session.expires_at * 1000 : 0;
+      const isNearExpiry = expiresAt > 0 && expiresAt - Date.now() < 60_000;
+
+      if (isNearExpiry) {
+        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession();
+        if (refreshedSession) {
+          session = refreshedSession;
         }
-        session = existingSession;
       }
 
       console.log('Session found, access token present:', !!session.access_token);
 
-      // Get user data from backend
+      // Get user data from backend with retry logic
       try {
-        const userData = await apiRequest(`/users/${session.user.id}`, 'GET');
-        setCurrentUser(userData);
-        setAccessToken(session.access_token);
-        console.log('User session restored:', userData.email);
+        const userData = await loadUserWithRetry(
+          session.user.id,
+          session.access_token,
+          session.user,
+          { maxRetries: 2, baseDelay: 1500 }
+        );
+        if (userData) {
+          setCurrentUser(userData);
+          setAccessToken(session.access_token);
+          console.log('User session restored:', userData.email);
+        } else {
+          // All retries exhausted but no hard error - use fallback
+          console.log('Could not load user data during checkSession, using fallback');
+          setAccessToken(session.access_token);
+          const fallback = buildFallbackUser(session.user);
+          setCurrentUser(fallback);
+          scheduleBackgroundRetry(session.user.id, session.access_token, session.user);
+        }
       } catch (err: any) {
-        console.error('Error loading user data:', err);
+        console.error('Error loading user data during checkSession:', err);
         // Check if user is banned or archived
         if (err?.message?.includes('banned') || err?.message?.includes('archived')) {
           console.log('User account is banned or archived, signing out');
           await supabase.auth.signOut();
           return;
         }
-        // Only sign out if it's not a backend availability issue
-        if (err?.message !== 'BACKEND_UNAVAILABLE') {
-          // Session exists but user data not found (user deleted), sign out
-          await supabase.auth.signOut();
-        } else {
-          // Backend unavailable, keep session but set token for when it comes back
+        if (err?.message === 'BACKEND_UNAVAILABLE') {
+          // Backend unavailable after retries - use fallback user
           setAccessToken(session.access_token);
-          console.log('Backend unavailable, keeping session active');
+          const fallback = buildFallbackUser(session.user);
+          setCurrentUser(fallback);
+          console.log('Backend unavailable during checkSession, using fallback user and scheduling retries');
+          scheduleBackgroundRetry(session.user.id, session.access_token, session.user);
+        } else {
+          // Unknown error - sign out
+          await supabase.auth.signOut();
         }
       }
     } catch (error) {
       console.error('Session check error:', error);
     } finally {
+      isCheckingSession.current = false;
       setLoading(false);
     }
   };
@@ -233,8 +379,9 @@ export function useSupabase() {
       const data = await apiRequest('/providers', 'GET');
       return data;
     } catch (error: any) {
-      // If backend is unavailable, silently return empty array
-      if (error?.message === 'BACKEND_UNAVAILABLE') {
+      // If backend is unavailable or overloaded, silently return empty array
+      if (error?.message === 'BACKEND_UNAVAILABLE' || error?.message?.includes('compute resources')) {
+        console.log('getProviders: backend not available, returning empty array');
         return [];
       }
       console.error('Get providers error:', error);
@@ -278,8 +425,8 @@ export function useSupabase() {
       const data = await apiRequest('/services', 'GET');
       return data;
     } catch (error: any) {
-      // If backend is unavailable, silently return empty array
-      if (error?.message === 'BACKEND_UNAVAILABLE') {
+      // If backend is unavailable or overloaded, silently return empty array
+      if (error?.message === 'BACKEND_UNAVAILABLE' || error?.message?.includes('compute resources')) {
         return [];
       }
       console.error('Get services error:', error);
@@ -323,8 +470,8 @@ export function useSupabase() {
       const data = await apiRequest('/contracts', 'GET');
       return data;
     } catch (error: any) {
-      // If backend is unavailable, silently return empty array
-      if (error?.message === 'BACKEND_UNAVAILABLE') {
+      // If backend is unavailable or overloaded, silently return empty array
+      if (error?.message === 'BACKEND_UNAVAILABLE' || error?.message?.includes('compute resources')) {
         return [];
       }
       console.error('Get contracts error:', error);
@@ -366,8 +513,8 @@ export function useSupabase() {
       const data = await apiRequest('/reviews', 'GET');
       return data;
     } catch (error: any) {
-      // If backend is unavailable, silently return empty array
-      if (error?.message === 'BACKEND_UNAVAILABLE') {
+      // If backend is unavailable or overloaded, silently return empty array
+      if (error?.message === 'BACKEND_UNAVAILABLE' || error?.message?.includes('compute resources')) {
         return [];
       }
       console.error('Get reviews error:', error);
@@ -395,8 +542,8 @@ export function useSupabase() {
       const data = await apiRequest('/bookings', 'GET');
       return data;
     } catch (error: any) {
-      // If backend is unavailable, silently return empty array
-      if (error?.message === 'BACKEND_UNAVAILABLE') {
+      // If backend is unavailable or overloaded, silently return empty array
+      if (error?.message === 'BACKEND_UNAVAILABLE' || error?.message?.includes('compute resources')) {
         return [];
       }
       console.error('Get bookings error:', error);
@@ -434,8 +581,8 @@ export function useSupabase() {
       const data = await apiRequest('/events', 'GET');
       return data;
     } catch (error: any) {
-      // If backend is unavailable, silently return empty array
-      if (error?.message === 'BACKEND_UNAVAILABLE') {
+      // If backend is unavailable or overloaded, silently return empty array
+      if (error?.message === 'BACKEND_UNAVAILABLE' || error?.message?.includes('compute resources')) {
         return [];
       }
       console.error('Get events error:', error);
@@ -549,8 +696,8 @@ export function useSupabase() {
       const data = await apiRequest('/admin/users', 'GET', undefined, accessToken || undefined);
       return data;
     } catch (error: any) {
-      // If backend is unavailable, silently return empty array
-      if (error?.message === 'BACKEND_UNAVAILABLE') {
+      // If backend is unavailable or overloaded, silently return empty array
+      if (error?.message === 'BACKEND_UNAVAILABLE' || error?.message?.includes('compute resources')) {
         return [];
       }
       console.error('Get all users error:', error);
@@ -603,8 +750,14 @@ export function useSupabase() {
     try {
       const data = await apiRequest('/auth/init-admin', 'POST', {});
       return data;
-    } catch (error) {
-      console.error('Initialize admin error:', error);
+    } catch (error: any) {
+      // Silently ignore backend unavailability – admin init is non-critical at startup
+      if (error?.message === 'BACKEND_UNAVAILABLE' || error?.message?.includes('compute resources')) {
+        console.log('initializeAdmin: backend not reachable, skipping admin init for now');
+        return null;
+      }
+      // For all other errors, log quietly (not as console.error) and rethrow
+      console.log('Initialize admin error:', error?.message || error);
       throw error;
     }
   };
