@@ -32,12 +32,19 @@ class ServiceController extends Controller
             'subcategory' => ['nullable', 'string', 'max:100'],
             'city' => ['nullable', 'string', 'max:100'],
             'price' => ['nullable', 'numeric', 'min:0'],
+            'isActive' => ['sometimes', 'boolean'],
+            'is_active' => ['sometimes', 'boolean'],
             'metadata' => ['nullable', 'array'],
         ]);
 
         if (array_key_exists('providerId', $validated)) {
             $validated['provider_id'] = $validated['providerId'];
             unset($validated['providerId']);
+        }
+
+        if (array_key_exists('isActive', $validated)) {
+            $validated['is_active'] = $validated['isActive'];
+            unset($validated['isActive']);
         }
 
         $service = Service::create([
@@ -49,6 +56,7 @@ class ServiceController extends Controller
             'subcategory' => $validated['subcategory'] ?? null,
             'city' => $validated['city'] ?? null,
             'price' => $validated['price'] ?? 0,
+            'is_active' => $validated['is_active'] ?? true,
             'metadata' => $validated['metadata'] ?? null,
         ]);
 
@@ -85,6 +93,7 @@ class ServiceController extends Controller
             'rating' => ['sometimes', 'numeric', 'between:0,5'],
             'reviews' => ['sometimes', 'integer', 'min:0'],
             'reviews_count' => ['sometimes', 'integer', 'min:0'],
+            'isActive' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
             'metadata' => ['sometimes', 'nullable', 'array'],
         ]);
@@ -97,6 +106,11 @@ class ServiceController extends Controller
         if (array_key_exists('reviews', $validated)) {
             $validated['reviews_count'] = $validated['reviews'];
             unset($validated['reviews']);
+        }
+
+        if (array_key_exists('isActive', $validated)) {
+            $validated['is_active'] = $validated['isActive'];
+            unset($validated['isActive']);
         }
 
         $service->update($validated);

@@ -23,7 +23,7 @@
 - [x] Validaciones de entrada implementadas (Auth/User/Provider/Service Controllers).
 - [ ] Autorizacion por roles implementada.
 - [ ] Logs y trazas de errores activos.
-- [ ] Pruebas de integracion para rutas criticas.
+- [x] Pruebas de integracion para rutas criticas (suite Feature smoke para health/auth/providers/services).
 - [ ] Cobertura minima acordada alcanzada.
 
 ## Estado Actual Fase 1

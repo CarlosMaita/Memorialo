@@ -74,3 +74,12 @@
 - Evidencia: get_errors sin errores en laravel/ y php artisan route:list --path=api con 16 rutas activas.
 - Riesgo generado/mitigado: Mitigado riesgo de continuar implementacion sobre un estado inconsistente.
 - Accion siguiente: Iniciar conexion gradual del frontend a endpoints Laravel priorizando health y auth.
+
+### 2026-03-21
+- Fase: 1 (testing y estabilizacion)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Habilitacion de extensiones sqlite en PHP CLI, generacion de APP_KEY y creacion de suite de pruebas de humo API (health/auth/providers/services).
+- Motivo: Asegurar validacion automatizada reproducible del contrato API antes de continuar el cutover con frontend.
+- Evidencia: tests/Feature/ApiPhaseOneSmokeTest.php y ejecucion exitosa de php artisan test --testsuite=Feature (4 pruebas, 43 aserciones).
+- Riesgo generado/mitigado: Mitigado riesgo de regresiones silenciosas en endpoints base durante migracion incremental.
+- Accion siguiente: Conectar frontend a Laravel para health/auth y ejecutar smoke E2E de flujo provider/service.
