@@ -41,7 +41,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     bio: '',
     whatsappNumber: '',
     email: '',
-    isPublished: true // Por defecto los servicios están publicados
+    isPublished: true, // Por defecto los servicios están publicados
+    allowCustomHourly: true // Permite reservas personalizadas por hora
   });
 
   const [servicePlans, setServicePlans] = useState<ServicePlan[]>([]);
@@ -127,7 +128,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
         bio: '',
         whatsappNumber: '',
         email: '',
-        isPublished: true
+        isPublished: true,
+        allowCustomHourly: true
       });
       setServicePlans([]);
       setCurrentPlan({
@@ -222,7 +224,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
           bio: existingService.bio || '',
           whatsappNumber: existingService.whatsappNumber || '',
           email: existingService.email || '',
-          isPublished: existingService.isPublished !== undefined ? existingService.isPublished : true
+          isPublished: existingService.isPublished !== undefined ? existingService.isPublished : true,
+          allowCustomHourly: existingService.allowCustomHourly !== undefined ? existingService.allowCustomHourly : true
         };
         
         setFormData(loadedFormData);
@@ -503,6 +506,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
       specialties: specialties.filter(s => s.trim() !== ''),
       availability: availability,
       servicePlans: servicePlans,
+      allowCustomHourly: formData.allowCustomHourly,
       image: mainImage || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400',
       portfolio: filteredPortfolio.length > 0 ? filteredPortfolio : [],
       verified: existingService?.verified || false,
@@ -699,6 +703,27 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                     </Select>
                   )}
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 border rounded-lg" style={{ borderColor: formData.allowCustomHourly ? '#10b981' : '#94a3b8', backgroundColor: formData.allowCustomHourly ? '#f0fdf4' : '#f8fafc' }}>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className={`w-5 h-5 ${formData.allowCustomHourly ? 'text-green-600' : 'text-slate-600'}`} />
+                    <Label htmlFor="allowCustomHourly" className="text-base cursor-pointer mb-0">
+                      Plan personalizado por horas
+                    </Label>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    {formData.allowCustomHourly
+                      ? 'Los clientes pueden crear reservas personalizadas por duración.'
+                      : 'Los clientes solo podrán reservar usando los planes predefinidos.'}
+                  </p>
+                </div>
+                <Switch
+                  id="allowCustomHourly"
+                  checked={formData.allowCustomHourly}
+                  onCheckedChange={(checked) => setFormData({ ...formData, allowCustomHourly: checked })}
+                />
               </div>
 
               <div>

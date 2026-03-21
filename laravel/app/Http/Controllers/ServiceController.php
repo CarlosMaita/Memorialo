@@ -45,6 +45,7 @@ class ServiceController extends Controller
             'specialties' => ['nullable', 'array'],
             'availability' => ['nullable', 'array'],
             'servicePlans' => ['nullable', 'array'],
+            'allowCustomHourly' => ['sometimes', 'boolean'],
             'image' => ['nullable', 'string'],
             'portfolio' => ['nullable', 'array'],
             'whatsappNumber' => ['nullable', 'string', 'max:50'],
@@ -82,7 +83,7 @@ class ServiceController extends Controller
 
         $metadata = is_array($validated['metadata'] ?? null) ? $validated['metadata'] : [];
 
-        foreach (['responseTime', 'specialties', 'availability', 'servicePlans', 'image', 'portfolio', 'whatsappNumber', 'email', 'customTerms', 'isArchived'] as $metadataKey) {
+        foreach (['responseTime', 'specialties', 'availability', 'servicePlans', 'allowCustomHourly', 'image', 'portfolio', 'whatsappNumber', 'email', 'customTerms', 'isArchived'] as $metadataKey) {
             if (array_key_exists($metadataKey, $validated)) {
                 $metadata[$metadataKey] = $validated[$metadataKey];
             }
@@ -148,6 +149,7 @@ class ServiceController extends Controller
             'specialties' => ['sometimes', 'nullable', 'array'],
             'availability' => ['sometimes', 'nullable', 'array'],
             'servicePlans' => ['sometimes', 'nullable', 'array'],
+            'allowCustomHourly' => ['sometimes', 'boolean'],
             'image' => ['sometimes', 'nullable', 'string'],
             'portfolio' => ['sometimes', 'nullable', 'array'],
             'whatsappNumber' => ['sometimes', 'nullable', 'string', 'max:50'],
@@ -205,7 +207,7 @@ class ServiceController extends Controller
             unset($validated['metadata']);
         }
 
-        foreach (['responseTime', 'specialties', 'availability', 'servicePlans', 'image', 'portfolio', 'whatsappNumber', 'email', 'customTerms', 'isArchived'] as $metadataKey) {
+        foreach (['responseTime', 'specialties', 'availability', 'servicePlans', 'allowCustomHourly', 'image', 'portfolio', 'whatsappNumber', 'email', 'customTerms', 'isArchived'] as $metadataKey) {
             if (array_key_exists($metadataKey, $validated)) {
                 $metadata[$metadataKey] = $validated[$metadataKey];
                 unset($validated[$metadataKey]);
@@ -276,6 +278,7 @@ class ServiceController extends Controller
             'specialties' => $metadata['specialties'] ?? [],
             'availability' => $metadata['availability'] ?? null,
             'servicePlans' => $metadata['servicePlans'] ?? [],
+            'allowCustomHourly' => (bool) ($metadata['allowCustomHourly'] ?? true),
             'image' => $metadata['image'] ?? null,
             'portfolio' => $metadata['portfolio'] ?? [],
             'whatsappNumber' => $metadata['whatsappNumber'] ?? null,

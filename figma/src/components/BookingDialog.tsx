@@ -26,7 +26,25 @@ interface BookingDialogProps {
 }
 
 export function BookingDialog({ artist, selectedPlan, open, onClose, onContractCreated, onBookingCreated, onBookingUpdate, user, onLoginRequired, events = [] }: BookingDialogProps) {
+  const allowCustomHourly = artist?.allowCustomHourly !== false;
+
+  const buildPlanOptionValue = (plan: ServicePlan, index: number): string => {
+    const rawId = (plan as any)?.id;
+    return rawId !== undefined && rawId !== null && rawId !== ''
+      ? `plan:${String(rawId)}`
+      : `idx:${index}`;
+  };
+
+  const getPlanByOptionValue = (value: string): ServicePlan | null => {
+    if (!artist?.servicePlans?.length || value === 'custom') {
+      return null;
+    }
+
+    return artist.servicePlans.find((plan, index) => buildPlanOptionValue(plan, index) === value) || null;
+  };
+
   const [selectedEventId, setSelectedEventId] = useState<string>('');
+  const [selectedPlanValue, setSelectedPlanValue] = useState<string>('custom');
   const [formData, setFormData] = useState({
     clientName: user?.name || '',
     clientEmail: user?.email || '',
@@ -37,7 +55,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     eventType: '',
     location: '',
     specialRequests: '',
-    planId: selectedPlan?.id || ''
+    planId: selectedPlan?.id ? String(selectedPlan.id) : ''
   });
 
   const [showContract, setShowContract] = useState(false);
@@ -45,14 +63,44 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
   const [generatedBooking, setGeneratedBooking] = useState<Booking | null>(null);
 
   useEffect(() => {
+    if (!open || !artist) {
+      return;
+    }
+
     if (selectedPlan) {
+      const matchingOption = artist.servicePlans?.findIndex((plan) => String((plan as any)?.id) === String((selectedPlan as any)?.id));
+      const planOption = matchingOption !== undefined && matchingOption !== -1
+        ? buildPlanOptionValue(artist.servicePlans[matchingOption], matchingOption)
+        : `plan:${String((selectedPlan as any)?.id)}`;
+
+      setSelectedPlanValue(planOption);
       setFormData(prev => ({
         ...prev,
         duration: selectedPlan.duration.toString(),
-        planId: selectedPlan.id
+        planId: String(selectedPlan.id)
       }));
+      return;
     }
-  }, [selectedPlan]);
+
+    // If custom hourly is disabled, enforce selecting an explicit service plan.
+    if (open && !allowCustomHourly && artist?.servicePlans?.length) {
+      const firstPlan = artist.servicePlans[0];
+      setSelectedPlanValue(buildPlanOptionValue(firstPlan, 0));
+      setFormData(prev => ({
+        ...prev,
+        duration: firstPlan.duration.toString(),
+        planId: String(firstPlan.id)
+      }));
+      return;
+    }
+
+    setSelectedPlanValue('custom');
+    setFormData(prev => ({
+      ...prev,
+      duration: '2',
+      planId: ''
+    }));
+  }, [selectedPlan, open, allowCustomHourly, artist?.servicePlans]);
 
   useEffect(() => {
     if (user) {
@@ -95,7 +143,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
 
   if (!artist) return null;
 
-  const selectedServicePlan = selectedPlan || (formData.planId ? artist.servicePlans?.find(p => p.id === formData.planId) : null);
+  const selectedServicePlan = selectedPlan || getPlanByOptionValue(selectedPlanValue) || (formData.planId ? artist.servicePlans?.find(p => String((p as any).id) === formData.planId) : null);
   const totalPrice = selectedServicePlan ? selectedServicePlan.price : artist.pricePerHour * parseInt(formData.duration || '0');
   const isEventSelected = selectedEventId && selectedEventId !== 'new';
   const userEvents = events.filter(e => e.userId === user?.id && e.status !== 'cancelled');
@@ -265,7 +313,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Selected Plan Info */}
-          {selectedServicePlan && (
+          {selectedServicePlan && formData.planId !== '' && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -300,10 +348,12 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
           {/* Plan Selection (if no plan pre-selected) */}
           {!selectedPlan && artist.servicePlans && artist.servicePlans.length > 0 && (
             <div className="space-y-3">
-              <Label htmlFor="planSelect" className="mb-1 block">Seleccionar Plan (Opcional)</Label>
+              <Label htmlFor="planSelect" className="mb-1 block">{allowCustomHourly ? 'Seleccionar Plan (Opcional)' : 'Seleccionar Plan *'}</Label>
               <Select 
-                value={formData.planId || 'custom'} 
+                value={selectedPlanValue} 
                 onValueChange={(value) => {
+                  setSelectedPlanValue(value);
+
                   if (value === 'custom') {
                     setFormData({ 
                       ...formData, 
@@ -311,22 +361,24 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
                       duration: '2'
                     });
                   } else {
-                    const plan = artist.servicePlans?.find(p => p.id === value);
+                    const plan = getPlanByOptionValue(value);
                     setFormData({ 
                       ...formData, 
-                      planId: value,
+                      planId: plan?.id ? String((plan as any).id) : value,
                       duration: plan ? plan.duration.toString() : formData.duration
                     });
                   }
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Reserva personalizada o selecciona un plan" />
+                  <SelectValue placeholder={allowCustomHourly ? 'Reserva personalizada o selecciona un plan' : 'Selecciona un plan'} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="custom">Reserva personalizada</SelectItem>
-                  {artist.servicePlans.map((plan) => (
-                    <SelectItem key={plan.id} value={plan.id}>
+                  {allowCustomHourly && (
+                    <SelectItem value="custom">Reserva personalizada</SelectItem>
+                  )}
+                  {artist.servicePlans.map((plan, index) => (
+                    <SelectItem key={buildPlanOptionValue(plan, index)} value={buildPlanOptionValue(plan, index)}>
                       {plan.name} - ${plan.price} ({plan.duration}h)
                     </SelectItem>
                   ))}
