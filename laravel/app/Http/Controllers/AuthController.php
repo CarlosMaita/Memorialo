@@ -16,18 +16,26 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'isProvider' => ['sometimes', 'boolean'],
+            'is_provider' => ['sometimes', 'boolean'],
         ]);
+
+        $isProvider = (bool) ($validated['isProvider'] ?? $validated['is_provider'] ?? false);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'phone' => $validated['phone'] ?? null,
+            'is_provider' => $isProvider,
+            'role' => $isProvider ? 'provider' : 'user',
         ]);
 
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
-            'user' => $user,
+            'user' => $this->formatUser($user),
             'token' => $token,
             'token_type' => 'Bearer',
         ], 201);
@@ -51,7 +59,7 @@ class AuthController extends Controller
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
-            'user' => $user,
+            'user' => $this->formatUser($user),
             'token' => $token,
             'token_type' => 'Bearer',
         ]);
@@ -60,7 +68,7 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         return response()->json([
-            'user' => $request->user(),
+            'user' => $request->user() ? $this->formatUser($request->user()) : null,
         ]);
     }
 
@@ -71,5 +79,26 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Sesion cerrada correctamente.',
         ]);
+    }
+
+    private function formatUser(User $user): array
+    {
+        return [
+            'id' => (string) $user->id,
+            'email' => $user->email,
+            'name' => $user->name,
+            'phone' => $user->phone,
+            'whatsappNumber' => $user->whatsapp_number,
+            'createdAt' => optional($user->created_at)?->toISOString(),
+            'avatar' => $user->avatar,
+            'isProvider' => (bool) $user->is_provider,
+            'providerId' => $user->provider_id ? (string) $user->provider_id : null,
+            'role' => $user->role,
+            'banned' => (bool) $user->banned,
+            'bannedAt' => optional($user->banned_at)?->toISOString(),
+            'bannedReason' => $user->banned_reason,
+            'archived' => (bool) $user->archived,
+            'archivedAt' => optional($user->archived_at)?->toISOString(),
+        ];
     }
 }

@@ -56,3 +56,21 @@
 - Evidencia: Actualizacion de resumen ejecutivo, plan de fases y checklist de validacion.
 - Riesgo generado/mitigado: Mitigado riesgo de crecimiento desordenado del codigo durante la migracion incremental.
 - Accion siguiente: Verificar cumplimiento SOLID en cada lote de endpoints y modelos que se implemente.
+
+### 2026-03-21
+- Fase: 1 (paridad de contratos API)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Normalizacion de compatibilidad camelCase/snake_case en ServiceController para entrada y salida; consolidacion de formato de respuesta para servicios.
+- Motivo: Evitar quiebres de frontend durante cutover endpoint por endpoint por diferencias de naming en payloads.
+- Evidencia: app/Http/Controllers/ServiceController.php actualizado con mapeos providerId/reviews y salida userId/providerId/isActive/createdAt.
+- Riesgo generado/mitigado: Mitigado riesgo de regresion funcional por contratos de API incompatibles.
+- Accion siguiente: Probar integracion frontend de endpoints de servicios y completar pruebas de humo de auth/users/providers/services.
+
+### 2026-03-21
+- Fase: 1 (validacion tecnica)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Verificacion de estado del backend con revision de errores y validacion de rutas API activas.
+- Motivo: Confirmar estabilidad base tras cambios de compatibilidad en controladores.
+- Evidencia: get_errors sin errores en laravel/ y php artisan route:list --path=api con 16 rutas activas.
+- Riesgo generado/mitigado: Mitigado riesgo de continuar implementacion sobre un estado inconsistente.
+- Accion siguiente: Iniciar conexion gradual del frontend a endpoints Laravel priorizando health y auth.
