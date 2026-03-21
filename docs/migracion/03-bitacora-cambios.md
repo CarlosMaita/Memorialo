@@ -182,3 +182,21 @@
 - Evidencia: figma/src/components/ArtistCard.tsx y figma/src/App.tsx actualizados; npm run build en verde.
 - Riesgo generado/mitigado: Mitigado riesgo de tarjetas desalineadas y ruido visual en desktop; riesgo residual menor de ajustes CSS en breakpoints especificos.
 - Accion siguiente: Ejecutar QA visual desktop/mobile para verificar alturas homogéneas de cards y comportamiento responsive.
+
+### 2026-03-21
+- Fase: 1 (planificacion modulo notificaciones)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Documentacion del proceso de implementacion del modulo de notificaciones y correo transaccional para Laravel, incluyendo inventario actual, lotes de ejecucion, riesgos, checklist de validacion y casos de negocio obligatorios.
+- Motivo: Preparar una ejecucion incremental y segura del sistema de notificaciones sin introducir cambios grandes sin rollback documentado.
+- Evidencia: Actualizacion de 00-resumen-ejecutivo, 01-inventario-actual, 02-plan-fases, 04-riesgos-y-mitigaciones y 05-checklist-validacion.
+- Riesgo generado/mitigado: Mitigado riesgo de implementar notificaciones de forma ad-hoc y acoplada al frontend; riesgo residual de definicion pendiente de proveedor de correo y estrategia de colas.
+- Accion siguiente: Ejecutar Lote N1 (modelo/persistencia) y Lote N2 (bandeja/header) con feature flags y rollback por lote.
+
+### 2026-03-21
+- Fase: 1 (ejecucion documental Lote N1)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Definicion del modelo de persistencia objetivo para notificaciones mediante esquema hibrido con `notifications` para bandeja in-app y `notification_deliveries` para trazabilidad de entrega, errores, reintentos e idempotencia.
+- Motivo: Preparar implementacion segura del sistema de notificaciones desacoplando UX de header y operacion de correo transaccional.
+- Evidencia: Se agregaron en la documentacion tipos canonicos, matriz evento -> canal, payload canonico de bandeja, regla de `dedupe_key` y criterio de salida N1.
+- Riesgo generado/mitigado: Mitigado riesgo de no poder auditar correos o controlar duplicados si se usaba solo la tabla nativa de Laravel Notifications.
+- Accion siguiente: Avanzar a N2 con contrato API para listar notificaciones, obtener conteo no leido y marcar como leidas.

@@ -55,3 +55,38 @@
 - Probabilidad: Media.
 - Mitigacion: Definir SOLID como estandar obligatorio, revisar arquitectura por lote y exigir evidencia en revisiones tecnicas.
 - Senal de alerta: Controladores monoliticos, reglas de negocio duplicadas y cambios con efectos colaterales frecuentes.
+
+## Riesgo 9 - Duplicidad de notificaciones
+- Descripcion: Reintentos de eventos o doble disparo desde frontend/backend puede generar correos y avisos duplicados.
+- Impacto: Alto.
+- Probabilidad: Media.
+- Mitigacion: Usar `dedupe_key`, listeners idempotentes y disparo solo desde backend Laravel.
+- Senal de alerta: Usuarios reportan multiples correos para una misma accion.
+
+## Riesgo 10 - Acoplamiento del correo al flujo transaccional
+- Descripcion: Enviar correos de forma sincrona desde request principal puede degradar tiempos de respuesta o provocar fallas parciales.
+- Impacto: Alto.
+- Probabilidad: Media.
+- Mitigacion: Mover envio a colas/listeners asincronos y registrar estado de entrega separadamente.
+- Senal de alerta: Picos de latencia en signup, bookings o contratos.
+
+## Riesgo 11 - Bandeja in-app inconsistente con el correo
+- Descripcion: Si correo y notificacion in-app se disparan por caminos distintos, el usuario puede ver estados divergentes.
+- Impacto: Medio.
+- Probabilidad: Media.
+- Mitigacion: Emitir un unico evento de dominio y resolver canales desde una capa comun de notificacion.
+- Senal de alerta: Correo enviado sin registro en bandeja o viceversa.
+
+## Riesgo 12 - Falta de retencion y limpieza
+- Descripcion: La tabla de notificaciones puede crecer sin politica de archivo o expiracion.
+- Impacto: Medio.
+- Probabilidad: Media.
+- Mitigacion: Definir retention policy y tarea programada de limpieza/archivado.
+- Senal de alerta: crecimiento anomalo de tabla `notifications` y consultas lentas en header.
+
+## Riesgo 13 - Persistencia insuficiente para auditoria de correo
+- Descripcion: Si se usa solo `notifications`, no habra trazabilidad clara de envios, fallos, proveedor, reintentos ni deduplicacion operativa.
+- Impacto: Alto.
+- Probabilidad: Media.
+- Mitigacion: Mantener tabla complementaria `notification_deliveries` desde N1 y documentar la `dedupe_key` por caso de negocio.
+- Senal de alerta: No se puede responder si un correo fue enviado, fallo o se duplico para un usuario especifico.

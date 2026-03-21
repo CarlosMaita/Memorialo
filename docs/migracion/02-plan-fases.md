@@ -54,11 +54,13 @@ Reducir riesgo operativo moviendo la logica backend a Laravel 13 por dominios, c
 ### Objetivos
 - Migrar modulos transaccionales principales.
 - Preservar reglas de negocio y consistencia entre entidades.
+- Preparar eventos de dominio que disparen notificaciones de negocio.
 
 ### Entregables
 - Endpoints y servicios de dominio para contratos, bookings, reviews y eventos.
 - Relaciones y constraints en DB.
 - Casos de prueba de escenarios criticos.
+- Puntos de emision de eventos para: solicitud de servicio, aprobacion de contrato, servicio completado y review creada.
 
 ### Criterio de salida
 - Flujos end-to-end de contratacion y valoracion estables en staging.
@@ -67,13 +69,82 @@ Reducir riesgo operativo moviendo la logica backend a Laravel 13 por dominios, c
 ### Objetivos
 - Migrar operaciones administrativas.
 - Implementar trazabilidad de acciones criticas.
+- Implementar sistema de notificaciones in-app y correo transaccional sobre Laravel.
 
 ### Entregables
 - Endpoints admin (gestion de usuarios, estados, moderacion).
 - Auditoria basica de operaciones sensibles.
+- Tabla/canal de notificaciones y endpoint de bandeja para header.
+- Plantillas de correo para onboarding y flujos operativos.
+- Estrategia de colas/reintentos documentada.
 
 ### Criterio de salida
 - Panel admin funcional y validado por pruebas de aceptacion.
+- Header frontend con badge de no leidas y bandeja operativa; correos criticos enviados de forma asincrona y verificable.
+
+## Lote Especifico - Notificaciones
+### Lote N1 - Modelo y persistencia
+- Crear modelo de notificacion de aplicacion apoyado en tabla `notifications` de Laravel o tabla dedicada si se requiere payload extendido.
+- Definir tipos canonicos: `welcome`, `service_request_created`, `contract_approved`, `review_requested`, `review_received`, `provider_role_activated`.
+- Definir campos minimos: destinatario, actor, tipo, titulo, cuerpo, payload, canal, estado, `read_at`, `sent_at`, `failed_at`, `dedupe_key`.
+- Rollback: desactivar consumo frontend del endpoint y mantener envio legacy de correo si existiera.
+
+#### Decision N1 adoptada
+- Implementar modelo hibrido:
+	- `notifications` para UX in-app.
+	- `notification_deliveries` para auditoria y canales.
+
+#### Entregables N1
+- Diseno de tabla `notifications` como bandeja fuente para header.
+- Diseno de tabla `notification_deliveries` para delivery por canal.
+- Catalogo canonico de tipos de negocio.
+- Regla formal de `dedupe_key` por evento.
+- Definicion de flags operativas:
+	- `NOTIFICATIONS_IN_APP_ENABLED`
+	- `NOTIFICATIONS_MAIL_ENABLED`
+
+#### Criterio de salida N1
+- Persistencia objetivo documentada y lista para implementacion.
+- Todos los casos de negocio tienen tipo canonico y canal asignado.
+- Idempotencia definida por caso.
+- Rollback por canal documentado.
+
+#### Validacion N1
+- Cada caso solicitado por negocio debe tener:
+	- tipo canonico,
+	- canal asociado,
+	- entidad origen,
+	- `dedupe_key` definida,
+	- estrategia de lectura (`database`) o entrega (`mail`) clara.
+
+### Lote N2 - Backend de lectura y estado
+- Exponer endpoints Laravel para listar notificaciones, obtener conteo no leido y marcar como leidas.
+- Reglas de autorizacion: cada usuario solo ve su bandeja.
+- Validacion de salida: header puede pintar badge y dropdown sin mock.
+- Rollback: volver a ocultar icono frontend y conservar persistencia sin consumo.
+
+### Lote N3 - Eventos de correo transaccional
+- Conectar eventos de negocio a listeners/notifications Laravel para envio asincrono.
+- Casos iniciales obligatorios:
+	- Bienvenida tras registro.
+	- Nueva solicitud de servicio para proveedor.
+	- Contrato aprobado para usuario.
+	- Solicitud de reseña al completar servicio.
+	- Aviso de nueva reseña al proveedor.
+	- Aviso al cambiar rol a proveedor.
+- Rollback: desactivar listeners por feature flag y mantener solo notificacion in-app.
+
+### Lote N4 - UX frontend header
+- Agregar icono de campana para usuarios y proveedores.
+- Mostrar badge con cantidad no leida.
+- Dropdown/listado con acceso a historial reciente y marcado como leido.
+- Validacion: estados vacio, cargando, error y no leidas.
+- Rollback: ocultar icono por flag frontend sin afectar persistencia backend.
+
+### Lote N5 - Observabilidad y operacion
+- Registrar metricas de envio, errores por canal y reintentos.
+- Definir runbook de reproceso manual para correos fallidos.
+- Alinear retencion/cleanup de notificaciones antiguas.
 
 ## Fase 5 - Migracion de Datos y Cutover
 ### Objetivos
@@ -112,3 +183,5 @@ Reducir riesgo operativo moviendo la logica backend a Laravel 13 por dominios, c
 - Acceso al proyecto Supabase y datos existentes.
 - Credenciales de entorno staging/produccion.
 - Decisiones de infraestructura para despliegue Laravel 13.
+- Credenciales del proveedor de correo transaccional elegido.
+- Definicion de estrategia de colas (database/redis/sqs) para desacoplar envio.
