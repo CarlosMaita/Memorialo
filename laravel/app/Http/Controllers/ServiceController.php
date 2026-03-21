@@ -34,6 +34,8 @@ class ServiceController extends Controller
             'price' => ['nullable', 'numeric', 'min:0'],
             'isActive' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
+            'bookingsCompleted' => ['sometimes', 'integer', 'min:0'],
+            'bookings_completed' => ['sometimes', 'integer', 'min:0'],
             'metadata' => ['nullable', 'array'],
         ]);
 
@@ -47,6 +49,11 @@ class ServiceController extends Controller
             unset($validated['isActive']);
         }
 
+        if (array_key_exists('bookingsCompleted', $validated)) {
+            $validated['bookings_completed'] = $validated['bookingsCompleted'];
+            unset($validated['bookingsCompleted']);
+        }
+
         $service = Service::create([
             'user_id' => $authUser->id,
             'provider_id' => $validated['provider_id'] ?? $authUser->provider_id,
@@ -57,6 +64,7 @@ class ServiceController extends Controller
             'city' => $validated['city'] ?? null,
             'price' => $validated['price'] ?? 0,
             'is_active' => $validated['is_active'] ?? true,
+            'bookings_completed' => $validated['bookings_completed'] ?? 0,
             'metadata' => $validated['metadata'] ?? null,
         ]);
 
@@ -93,6 +101,8 @@ class ServiceController extends Controller
             'rating' => ['sometimes', 'numeric', 'between:0,5'],
             'reviews' => ['sometimes', 'integer', 'min:0'],
             'reviews_count' => ['sometimes', 'integer', 'min:0'],
+            'bookingsCompleted' => ['sometimes', 'integer', 'min:0'],
+            'bookings_completed' => ['sometimes', 'integer', 'min:0'],
             'isActive' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
             'metadata' => ['sometimes', 'nullable', 'array'],
@@ -111,6 +121,11 @@ class ServiceController extends Controller
         if (array_key_exists('isActive', $validated)) {
             $validated['is_active'] = $validated['isActive'];
             unset($validated['isActive']);
+        }
+
+        if (array_key_exists('bookingsCompleted', $validated)) {
+            $validated['bookings_completed'] = $validated['bookingsCompleted'];
+            unset($validated['bookingsCompleted']);
         }
 
         $service->update($validated);
@@ -155,6 +170,7 @@ class ServiceController extends Controller
             'price' => (float) $service->price,
             'rating' => (float) $service->rating,
             'reviews' => (int) $service->reviews_count,
+            'bookingsCompleted' => (int) $service->bookings_completed,
             'isActive' => (bool) $service->is_active,
             'metadata' => $service->metadata,
             'createdAt' => optional($service->created_at)?->toISOString(),

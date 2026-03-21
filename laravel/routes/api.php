@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ContractController;
 use App\Http\Controllers\ProviderController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
@@ -37,9 +39,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/services', [ServiceController::class, 'store']);
     Route::put('/services/{id}', [ServiceController::class, 'update']);
     Route::delete('/services/{id}', [ServiceController::class, 'destroy']);
+
+    Route::put('/contracts/{id}', [ContractController::class, 'update']);
+
+    Route::post('/reviews', [ReviewController::class, 'store']);
 });
 
 Route::get('/users/{id}', [UserController::class, 'show']);
 Route::get('/providers', [ProviderController::class, 'index']);
 Route::get('/providers/user/{userId}', [ProviderController::class, 'showByUser']);
 Route::get('/services', [ServiceController::class, 'index']);
+Route::post('/contracts', [ContractController::class, 'store']);
+Route::get('/contracts', [ContractController::class, 'index']);
+Route::get('/reviews', [ReviewController::class, 'index']);

@@ -110,3 +110,30 @@
 - Evidencia: figma/.gitignore actualizado con build/ y .env.
 - Riesgo generado/mitigado: Mitigado riesgo de exponer configuracion local y de ensuciar historial con artefactos de compilacion.
 - Accion siguiente: Ejecutar smoke manual de UI en modo Laravel y cerrar item pendiente del checklist de Fase 1.
+
+### 2026-03-21
+- Fase: 1 (fortalecimiento de smoke backend)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Expansion de la suite ApiPhaseOneSmokeTest para cubrir login/logout, update de user, lectura/update de provider, listado de services y delete de service dentro del dominio migrado.
+- Motivo: Reducir dependencia de validacion manual para la capa Laravel ya conectada al frontend hibrido y detectar regresiones de contrato antes del smoke UI.
+- Evidencia: php artisan test --testsuite=Feature --filter=ApiPhaseOneSmokeTest en verde (3 pruebas, 77 aserciones).
+- Riesgo generado/mitigado: Mitigado riesgo de regresiones no detectadas en auth/users/providers/services pese a que el smoke manual UI siga pendiente.
+- Accion siguiente: Ejecutar smoke manual frontend -> Laravel y validar UX real de signup/login/provider/service con la app corriendo en modo laravel.
+
+### 2026-03-21
+- Fase: 1 (migracion dominio reviews)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Implementacion de Reviews en Laravel (migracion, modelo, controlador, rutas GET/POST), sincronizacion de agregados de rating/reviews_count en services y activacion de ruteo hibrido frontend para /reviews.
+- Motivo: Continuar cutover endpoint-by-endpoint migrando un dominio funcional usado por la UI y reduciendo dependencia de Supabase.
+- Evidencia: php artisan route:list --path=api muestra 18 rutas incluyendo api/reviews; php artisan test --testsuite=Feature --filter=ApiPhaseOneSmokeTest en verde (3 pruebas, 90 aserciones); npm run build exitoso en figma.
+- Riesgo generado/mitigado: Mitigado riesgo de inconsistencias de rating/reseñas entre frontend y backend al consolidar write/read de reviews en Laravel.
+- Accion siguiente: Ejecutar smoke manual UI en modo Laravel para validar flujo completo de reseñas (create/list) junto con auth/users/providers/services.
+
+### 2026-03-21
+- Fase: 1 (migracion dominio contracts)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Implementacion de Contracts en Laravel (migracion, modelo, controlador, rutas GET/POST/PUT), normalizacion camelCase/snake_case en payloads y activacion de ruteo hibrido frontend para /contracts.
+- Motivo: Continuar cutover endpoint-by-endpoint migrando el dominio de contratos usado por dashboards y firma de acuerdos.
+- Evidencia: php artisan route:list --path=api muestra 21 rutas incluyendo api/contracts; php artisan test --testsuite=Feature --filter=ApiPhaseOneSmokeTest en verde (contracts create/list/update + side effect); npm run build exitoso en figma.
+- Riesgo generado/mitigado: Mitigado riesgo de inconsistencia de estado de contratos al centralizar en Laravel y preservar compatibilidad de naming para la UI.
+- Accion siguiente: Migrar dominio bookings en Laravel para cerrar el flujo operativo completo posterior a firma de contrato.

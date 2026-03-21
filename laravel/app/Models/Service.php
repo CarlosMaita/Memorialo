@@ -21,6 +21,7 @@ class Service extends Model
         'price',
         'rating',
         'reviews_count',
+        'bookings_completed',
         'is_active',
         'metadata',
     ];
@@ -32,6 +33,7 @@ class Service extends Model
             'is_active' => 'boolean',
             'price' => 'decimal:2',
             'rating' => 'decimal:2',
+            'bookings_completed' => 'integer',
         ];
     }
 

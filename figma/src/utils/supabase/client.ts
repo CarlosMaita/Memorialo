@@ -9,7 +9,7 @@ export const backendMode = (viteEnv.VITE_BACKEND_MODE || 'supabase').toLowerCase
 export const apiBaseUrl = viteEnv.VITE_API_BASE_URL || defaultSupabaseServerUrl;
 export const laravelApiBaseUrl = viteEnv.VITE_LARAVEL_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
-const laravelPrefixes = ['/health', '/auth', '/users', '/providers', '/services'];
+const laravelPrefixes = ['/health', '/auth', '/users', '/providers', '/services', '/contracts', '/reviews'];
 
 function isLaravelPath(path: string): boolean {
   return laravelPrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
