@@ -47,3 +47,12 @@
 - Evidencia: migraciones completadas (users, cache, jobs, personal_access_tokens).
 - Riesgo generado/mitigado: Mitigado riesgo de arranque fallido por incompatibilidades de entorno.
 - Accion siguiente: Definir provider/service/domain models para providers y services (Fase 1).
+
+### 2026-03-20
+- Fase: Gobierno tecnico transversal
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Incorporacion formal del uso de principios SOLID como criterio obligatorio de implementacion durante toda la migracion.
+- Motivo: Reducir acoplamiento, mejorar mantenibilidad y minimizar riesgo de regresiones en la transicion a Laravel 13.
+- Evidencia: Actualizacion de resumen ejecutivo, plan de fases y checklist de validacion.
+- Riesgo generado/mitigado: Mitigado riesgo de crecimiento desordenado del codigo durante la migracion incremental.
+- Accion siguiente: Verificar cumplimiento SOLID en cada lote de endpoints y modelos que se implemente.

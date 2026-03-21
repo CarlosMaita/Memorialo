@@ -3,6 +3,11 @@
 ## Objetivo del Plan
 Reducir riesgo operativo moviendo la logica backend a Laravel 13 por dominios, con pruebas y compatibilidad progresiva.
 
+## Estandar Transversal de Implementacion
+- Todo desarrollo de backend durante la migracion debe respetar principios SOLID.
+- Cada lote debe evidenciar separacion de responsabilidades, extensibilidad sin modificar comportamiento existente y dependencias hacia abstracciones cuando aplique.
+- Las revisiones de codigo y pruebas deben validar cumplimiento de este estandar antes de cerrar cada fase.
+
 ## Fase 0 - Preparacion y Bootstrap
 ### Objetivos
 - Inicializar proyecto Laravel 13 en laravel/.

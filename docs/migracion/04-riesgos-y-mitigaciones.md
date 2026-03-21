@@ -48,3 +48,10 @@
 - Probabilidad: Media.
 - Mitigacion: Checklist de infraestructura en Fase 0 con responsables y fechas.
 - Senal de alerta: Bloqueos recurrentes en deploy o performance.
+
+## Riesgo 8 - Implementacion sin principios SOLID
+- Descripcion: Construir endpoints y servicios sin separacion clara de responsabilidades aumenta acoplamiento y dificulta evolucion por fases.
+- Impacto: Alto.
+- Probabilidad: Media.
+- Mitigacion: Definir SOLID como estandar obligatorio, revisar arquitectura por lote y exigir evidencia en revisiones tecnicas.
+- Senal de alerta: Controladores monoliticos, reglas de negocio duplicadas y cambios con efectos colaterales frecuentes.

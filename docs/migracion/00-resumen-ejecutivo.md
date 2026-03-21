@@ -19,6 +19,7 @@ Migrar este repositorio desde una arquitectura frontend + Supabase Functions/KV 
 - Compatibilidad temporal de endpoints para evitar corte brusco.
 - Documentacion continua en docs/migracion.
 - Criterios de salida verificables en cada fase.
+- Implementacion de codigo backend siguiendo principios SOLID.
 
 ## Entregables de Documentacion
 - docs/migracion/01-inventario-actual.md

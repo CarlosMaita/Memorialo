@@ -18,6 +18,7 @@
 - [ ] Funciones admin operativas.
 
 ## C. Calidad y Seguridad
+- [ ] Implementacion alineada con principios SOLID.
 - [ ] Validaciones de entrada implementadas.
 - [ ] Autorizacion por roles implementada.
 - [ ] Logs y trazas de errores activos.
