@@ -20,6 +20,20 @@ interface AuthDialogProps {
 }
 
 export function AuthDialog({ open, onClose, onLogin, onSignUp, onSignIn, onSignInWithGoogle, onInitializeAdmin }: AuthDialogProps) {
+  const mapAuthErrorMessage = (message?: string): string => {
+    const raw = message || '';
+
+    if (raw.includes('BACKEND_UNAVAILABLE')) {
+      return 'El servidor no esta disponible en este momento. Inicia el backend de Laravel e intenta nuevamente.';
+    }
+
+    if (raw.includes('compute resources')) {
+      return 'El servidor esta temporalmente ocupado. Intenta nuevamente en unos segundos.';
+    }
+
+    return raw || 'Error de autenticacion';
+  };
+
   const [loginForm, setLoginForm] = useState({
     email: '',
     password: ''
@@ -48,7 +62,7 @@ export function AuthDialog({ open, onClose, onLogin, onSignUp, onSignIn, onSignI
       // Reset form
       setLoginForm({ email: '', password: '' });
     } catch (error: any) {
-      const errorMessage = error.message || 'Error al iniciar sesión';
+      const errorMessage = mapAuthErrorMessage(error.message || 'Error al iniciar sesion');
       if (errorMessage.includes('Invalid login credentials')) {
         toast.error('Email o contraseña incorrectos. Verifica tus credenciales o crea una cuenta nueva.');
       } else {
@@ -94,7 +108,7 @@ export function AuthDialog({ open, onClose, onLogin, onSignUp, onSignIn, onSignI
         isProvider: false
       });
     } catch (error: any) {
-      const errorMessage = error.message || 'Error al crear la cuenta';
+      const errorMessage = mapAuthErrorMessage(error.message || 'Error al crear la cuenta');
       
       // Handle specific error messages
       if (errorMessage.includes('ya está registrado') || errorMessage.includes('already been registered')) {
