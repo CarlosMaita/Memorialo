@@ -1,11 +1,11 @@
 # Checklist de Validacion
 
 ## A. Preparacion (Fase 0)
-- [ ] Laravel 13 inicializado en laravel/.
+- [x] Laravel 13 inicializado en laravel/.
 - [ ] Entorno local y staging configurados.
-- [ ] Conexion a DB validada.
-- [ ] Politica de autenticacion decidida.
-- [ ] Politica de storage de imagenes decidida.
+- [x] Conexion a DB validada.
+- [x] Politica de autenticacion decidida.
+- [x] Politica de storage de imagenes decidida.
 
 ## B. Paridad Funcional por Dominio
 - [ ] Auth y sesion equivalentes al comportamiento actual.
