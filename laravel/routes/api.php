@@ -9,6 +9,7 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ServiceController;
+use App\Http\Controllers\UploadController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -63,6 +64,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/users/{id}/archive', [AdminController::class, 'archiveUser']);
     Route::post('/admin/users/{id}/unarchive', [AdminController::class, 'unarchiveUser']);
     Route::delete('/admin/users/{id}', [AdminController::class, 'deleteUser']);
+
+    Route::post('/upload-image', [UploadController::class, 'image']);
 
     Route::post('/reviews', [ReviewController::class, 'store']);
 });

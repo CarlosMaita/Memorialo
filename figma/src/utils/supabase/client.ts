@@ -9,7 +9,7 @@ export const backendMode = (viteEnv.VITE_BACKEND_MODE || 'supabase').toLowerCase
 export const apiBaseUrl = viteEnv.VITE_API_BASE_URL || defaultSupabaseServerUrl;
 export const laravelApiBaseUrl = viteEnv.VITE_LARAVEL_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
-const laravelPrefixes = ['/health', '/auth', '/users', '/providers', '/services', '/contracts', '/bookings', '/events', '/billing', '/admin', '/reviews'];
+const laravelPrefixes = ['/health', '/auth', '/users', '/providers', '/services', '/contracts', '/bookings', '/events', '/billing', '/admin', '/upload-image', '/reviews'];
 
 function isLaravelPath(path: string): boolean {
   return laravelPrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
@@ -58,6 +58,7 @@ export async function apiRequest(
   
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   };
 
   if (tokenToUse) {
@@ -88,11 +89,15 @@ export async function apiRequest(
     
     if (!response.ok) {
       let errorMessage = `Request failed with status ${response.status}`;
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorData.message || errorMessage;
-      } catch {
-        errorMessage = await response.text() || errorMessage;
+      const rawBody = await response.text();
+
+      if (rawBody) {
+        try {
+          const errorData = JSON.parse(rawBody);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          errorMessage = rawBody;
+        }
       }
       // Use console.log for transient/expected errors, console.error for unexpected ones
       if (errorMessage.includes('compute resources')) {

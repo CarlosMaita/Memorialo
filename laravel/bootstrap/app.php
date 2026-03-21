@@ -12,7 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->statefulApi();
+        if ((bool) env('SANCTUM_STATEFUL_API', false)) {
+            $middleware->statefulApi();
+        }
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
