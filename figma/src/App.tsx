@@ -1424,28 +1424,7 @@ export default function App() {
                     <Briefcase className="w-4 h-4 mr-2" />
                     Mi Negocio
                   </Button>
-                  <Button
-                    variant={viewMode === 'business' && dashboardView === 'client' ? 'secondary' : 'ghost'}
-                    onClick={() => {
-                      setViewMode('business');
-                      setDashboardView('client');
-                    }}
-                    className={viewMode === 'business' && dashboardView === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}
-                  >
-                    <LayoutDashboard className="w-4 h-4 mr-2" />
-                    Mis Reservas
-                  </Button>
                 </>
-              )}
-              {currentUser && !currentUser.isProvider && (
-                <Button
-                  variant={viewMode === 'business' ? 'secondary' : 'ghost'}
-                  onClick={() => setViewMode('business')}
-                  className={viewMode === 'business' ? '' : 'text-white hover:text-white hover:bg-white/10'}
-                >
-                  <LayoutDashboard className="w-4 h-4 mr-2" />
-                  Mis Reservas
-                </Button>
               )}
 
               {/* Admin Panel Button */}
@@ -1488,6 +1467,13 @@ export default function App() {
                       <UserCircle className="w-4 h-4 mr-2" />
                       Mi Perfil
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      setViewMode('business');
+                      setDashboardView('client');
+                    }}>
+                      <LayoutDashboard className="w-4 h-4 mr-2" />
+                      Mis Reservas
+                    </DropdownMenuItem>
                     {currentUser.isProvider && (
                       <>
                         <DropdownMenuItem onClick={() => {
@@ -1496,13 +1482,6 @@ export default function App() {
                         }}>
                           <Briefcase className="w-4 h-4 mr-2" />
                           Mi Negocio
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          setViewMode('business');
-                          setDashboardView('client');
-                        }}>
-                          <LayoutDashboard className="w-4 h-4 mr-2" />
-                          Mis Reservas
                         </DropdownMenuItem>
                       </>
                     )}
