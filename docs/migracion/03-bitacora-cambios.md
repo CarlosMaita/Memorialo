@@ -137,3 +137,39 @@
 - Evidencia: php artisan route:list --path=api muestra 21 rutas incluyendo api/contracts; php artisan test --testsuite=Feature --filter=ApiPhaseOneSmokeTest en verde (contracts create/list/update + side effect); npm run build exitoso en figma.
 - Riesgo generado/mitigado: Mitigado riesgo de inconsistencia de estado de contratos al centralizar en Laravel y preservar compatibilidad de naming para la UI.
 - Accion siguiente: Migrar dominio bookings en Laravel para cerrar el flujo operativo completo posterior a firma de contrato.
+
+### 2026-03-21
+- Fase: 1 (migracion dominio bookings)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Implementacion de Bookings en Laravel (migracion, modelo, controlador, rutas GET/POST/PUT), normalizacion camelCase/snake_case en payloads y activacion de ruteo hibrido frontend para /bookings.
+- Motivo: Continuar cutover endpoint-by-endpoint y cubrir el flujo operativo posterior a la firma de contratos en dashboards de cliente/proveedor.
+- Evidencia: php artisan route:list --path=api muestra 24 rutas incluyendo api/bookings; php artisan test --testsuite=Feature --filter=ApiPhaseOneSmokeTest en verde con cobertura bookings create/list/update; npm run build exitoso en figma.
+- Riesgo generado/mitigado: Mitigado riesgo de divergencia de estado de reservas entre UI y backend al centralizar operaciones de bookings en Laravel.
+- Accion siguiente: Migrar dominio events en Laravel para completar gestion de agenda y asignacion contrato-evento en modo hibrido.
+
+### 2026-03-21
+- Fase: 1 (migracion dominio events)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Implementacion de Events en Laravel (migracion, modelo, controlador, rutas GET/POST/PUT/DELETE), control de ownership en update/delete y normalizacion camelCase/snake_case en payloads.
+- Motivo: Completar la gestion de agenda/eventos en el backend Laravel y reducir dependencia de Supabase en el flujo de cliente.
+- Evidencia: php artisan route:list --path=api muestra 28 rutas incluyendo api/events; php artisan test --testsuite=Feature --filter=ApiPhaseOneSmokeTest en verde con cobertura events create/list/update/delete; npm run build exitoso en figma.
+- Riesgo generado/mitigado: Mitigado riesgo de inconsistencias al asignar contratos a eventos y al editar/archivar agenda desde dashboards.
+- Accion siguiente: Migrar endpoints de billing/admin para cerrar dominios restantes del modo hibrido.
+
+### 2026-03-21
+- Fase: 1 (migracion dominio billing)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Implementacion de Billing en Laravel (migracion de billing_invoices, modelo y controlador), rutas /billing/config, /billing/provider/:id, /billing/provider/:id/pay y /billing/admin/overview; integracion de frontend para consumir base Laravel en modo hibrido.
+- Motivo: Consolidar facturacion y pagos de comisiones en Laravel para eliminar dependencia del endpoint legacy de Supabase en el dashboard de proveedor.
+- Evidencia: php artisan route:list --path=api muestra 32 rutas incluyendo api/billing/*; php artisan test --testsuite=Feature --filter=ApiPhaseOneSmokeTest en verde con cobertura billing; npm run build exitoso en figma.
+- Riesgo generado/mitigado: Mitigado riesgo de discrepancia entre facturacion visual y backend al centralizar calculo mensual y registro de pagos en una capa unica.
+- Accion siguiente: Migrar endpoints admin restantes (/admin/users, verify/ban/unban providers y users) para cerrar Fase 1 de dominios hibridos.
+
+### 2026-03-21
+- Fase: 1 (migracion dominio admin)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Implementacion de endpoints admin en Laravel para moderacion de providers/users (listado, verify/ban/unban de providers, ban/unban/archive/unarchive/delete de users) con control de rol admin y paridad de payload para frontend.
+- Motivo: Cerrar la capa de backoffice en Laravel y completar los dominios operativos del modo hibrido de Fase 1.
+- Evidencia: php artisan route:list --path=api muestra 41 rutas incluyendo api/admin/*; php artisan test --testsuite=Feature --filter=ApiPhaseOneSmokeTest en verde con cobertura admin; npm run build exitoso en figma.
+- Riesgo generado/mitigado: Mitigado riesgo de desalineacion entre tablero admin y backend al centralizar acciones de moderacion en Laravel.
+- Accion siguiente: Ejecutar smoke manual E2E del panel admin y facturacion en modo Laravel para validar UX/permiso real con cuentas de prueba.

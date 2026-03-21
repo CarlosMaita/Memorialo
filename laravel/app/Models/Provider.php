@@ -17,6 +17,14 @@ class Provider extends Model
         'category',
         'description',
         'verified',
+        'verified_at',
+        'verified_by',
+        'banned',
+        'banned_at',
+        'banned_by',
+        'banned_reason',
+        'unbanned_at',
+        'unbanned_by',
         'rating',
         'total_bookings',
         'services',
@@ -26,8 +34,12 @@ class Provider extends Model
     {
         return [
             'verified' => 'boolean',
+            'banned' => 'boolean',
             'services' => 'array',
             'rating' => 'decimal:2',
+            'verified_at' => 'datetime',
+            'banned_at' => 'datetime',
+            'unbanned_at' => 'datetime',
         ];
     }
 

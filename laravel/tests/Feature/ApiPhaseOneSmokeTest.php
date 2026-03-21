@@ -291,6 +291,190 @@ class ApiPhaseOneSmokeTest extends TestCase
                 'bookingsCompleted' => 1,
             ]);
 
+        $booking = $this->postJson('/api/bookings', [
+            'id' => 'booking-001',
+            'artistId' => $serviceId,
+            'artistUserId' => (string) $user->id,
+            'artistName' => 'Studio Carlo Prime',
+            'clientName' => 'Carlo Client',
+            'clientEmail' => 'client@example.com',
+            'clientPhone' => '+525500000111',
+            'date' => '2026-06-10',
+            'startTime' => '18:00',
+            'duration' => 2,
+            'eventType' => 'Boda',
+            'location' => 'CDMX',
+            'specialRequests' => 'Entrada especial',
+            'totalPrice' => 5000,
+            'status' => 'pending',
+            'contractId' => 'contract-001',
+        ]);
+
+        $booking
+            ->assertCreated()
+            ->assertJsonPath('id', 'booking-001')
+            ->assertJsonPath('artistId', (string) $serviceId)
+            ->assertJsonPath('status', 'pending')
+            ->assertJsonPath('totalPrice', 5000);
+
+        $this->getJson('/api/bookings')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => 'booking-001',
+                'artistId' => (string) $serviceId,
+                'status' => 'pending',
+            ]);
+
+        $this->putJson('/api/bookings/booking-001', [
+            'status' => 'confirmed',
+            'startTime' => '19:00',
+        ])
+            ->assertOk()
+            ->assertJsonPath('id', 'booking-001')
+            ->assertJsonPath('status', 'confirmed')
+            ->assertJsonPath('startTime', '19:00');
+
+        $event = $this->postJson('/api/events', [
+            'id' => 'event-001',
+            'name' => 'Boda Carlo',
+            'description' => 'Evento principal',
+            'eventDate' => '2026-07-01',
+            'eventType' => 'Boda',
+            'location' => 'CDMX',
+            'budget' => 15000,
+            'status' => 'planning',
+            'contractIds' => ['contract-001'],
+        ]);
+
+        $event
+            ->assertCreated()
+            ->assertJsonPath('id', 'event-001')
+            ->assertJsonPath('name', 'Boda Carlo')
+            ->assertJsonPath('status', 'planning')
+            ->assertJsonPath('contractIds.0', 'contract-001');
+
+        $this->getJson('/api/events')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => 'event-001',
+                'name' => 'Boda Carlo',
+            ]);
+
+        $this->putJson('/api/events/event-001', [
+            'status' => 'confirmed',
+            'location' => 'Guadalajara',
+        ])
+            ->assertOk()
+            ->assertJsonPath('id', 'event-001')
+            ->assertJsonPath('status', 'confirmed')
+            ->assertJsonPath('location', 'Guadalajara');
+
+        $this->deleteJson('/api/events/event-001')
+            ->assertOk()
+            ->assertJsonPath('message', 'Event deleted');
+
+        $this->getJson('/api/events')
+            ->assertOk()
+            ->assertJsonMissing([
+                'id' => 'event-001',
+            ]);
+
+        $this->getJson('/api/billing/config')
+            ->assertOk()
+            ->assertJsonPath('commissionRate', 0.08);
+
+        $this->getJson('/api/billing/provider/'.$providerId)
+            ->assertOk()
+            ->assertJsonPath('currentInvoice.providerId', (string) $providerId)
+            ->assertJsonPath('currentInvoice.commissionRate', 0.08)
+            ->assertJsonPath('currentInvoice.completedContracts.0.contractId', 'contract-001');
+
+        $month = now()->format('Y-m');
+
+        $this->postJson('/api/billing/provider/'.$providerId.'/pay', [
+            'month' => $month,
+            'paymentReference' => 'PAY-TEST-001',
+            'amount' => 400,
+        ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('invoice.providerId', (string) $providerId)
+            ->assertJsonPath('invoice.month', $month)
+            ->assertJsonPath('invoice.status', 'paid');
+
+        $adminUser = User::factory()->create([
+            'role' => 'admin',
+            'is_provider' => false,
+        ]);
+
+        $deletableUser = User::factory()->create([
+            'role' => 'user',
+            'is_provider' => false,
+        ]);
+
+        Sanctum::actingAs($adminUser);
+
+        $this->getJson('/api/billing/admin/overview')
+            ->assertOk()
+            ->assertJsonPath('currentMonth', $month)
+            ->assertJsonPath('invoices.0.providerId', (string) $providerId)
+            ->assertJsonPath('invoices.0.status', 'paid');
+
+        $this->getJson('/api/admin/users')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => (string) $user->id,
+                'email' => $user->email,
+            ]);
+
+        $this->postJson('/api/admin/providers/'.$providerId.'/verify', [])
+            ->assertOk()
+            ->assertJsonPath('id', (string) $providerId)
+            ->assertJsonPath('verified', true);
+
+        $this->postJson('/api/admin/providers/'.$providerId.'/ban', [
+            'reason' => 'Incumplimiento de politicas',
+        ])
+            ->assertOk()
+            ->assertJsonPath('id', (string) $providerId)
+            ->assertJsonPath('banned', true)
+            ->assertJsonPath('bannedReason', 'Incumplimiento de politicas');
+
+        $this->postJson('/api/admin/providers/'.$providerId.'/unban', [])
+            ->assertOk()
+            ->assertJsonPath('id', (string) $providerId)
+            ->assertJsonPath('banned', false);
+
+        $this->postJson('/api/admin/users/'.$user->id.'/ban', [
+            'reason' => 'Abuso en plataforma',
+        ])
+            ->assertOk()
+            ->assertJsonPath('id', (string) $user->id)
+            ->assertJsonPath('banned', true)
+            ->assertJsonPath('bannedReason', 'Abuso en plataforma');
+
+        $this->postJson('/api/admin/users/'.$user->id.'/unban', [])
+            ->assertOk()
+            ->assertJsonPath('id', (string) $user->id)
+            ->assertJsonPath('banned', false);
+
+        $this->postJson('/api/admin/users/'.$user->id.'/archive', [])
+            ->assertOk()
+            ->assertJsonPath('id', (string) $user->id)
+            ->assertJsonPath('archived', true);
+
+        $this->postJson('/api/admin/users/'.$user->id.'/unarchive', [])
+            ->assertOk()
+            ->assertJsonPath('id', (string) $user->id)
+            ->assertJsonPath('archived', false);
+
+        $this->deleteJson('/api/admin/users/'.$deletableUser->id)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'User deleted');
+
+        Sanctum::actingAs($user);
+
         $this->deleteJson('/api/services/'.$serviceId)
             ->assertOk()
             ->assertJsonPath('message', 'Service deleted');

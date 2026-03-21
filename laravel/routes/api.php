@@ -1,7 +1,11 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\BillingController;
+use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ContractController;
+use App\Http\Controllers\EventController;
 use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ServiceController;
@@ -41,6 +45,24 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/services/{id}', [ServiceController::class, 'destroy']);
 
     Route::put('/contracts/{id}', [ContractController::class, 'update']);
+    Route::put('/bookings/{id}', [BookingController::class, 'update']);
+    Route::put('/events/{id}', [EventController::class, 'update']);
+    Route::delete('/events/{id}', [EventController::class, 'destroy']);
+    Route::post('/events', [EventController::class, 'store']);
+
+    Route::get('/billing/provider/{providerId}', [BillingController::class, 'providerBilling']);
+    Route::post('/billing/provider/{providerId}/pay', [BillingController::class, 'pay']);
+    Route::get('/billing/admin/overview', [BillingController::class, 'adminOverview']);
+
+    Route::get('/admin/users', [AdminController::class, 'users']);
+    Route::post('/admin/providers/{id}/verify', [AdminController::class, 'verifyProvider']);
+    Route::post('/admin/providers/{id}/ban', [AdminController::class, 'banProvider']);
+    Route::post('/admin/providers/{id}/unban', [AdminController::class, 'unbanProvider']);
+    Route::post('/admin/users/{id}/ban', [AdminController::class, 'banUser']);
+    Route::post('/admin/users/{id}/unban', [AdminController::class, 'unbanUser']);
+    Route::post('/admin/users/{id}/archive', [AdminController::class, 'archiveUser']);
+    Route::post('/admin/users/{id}/unarchive', [AdminController::class, 'unarchiveUser']);
+    Route::delete('/admin/users/{id}', [AdminController::class, 'deleteUser']);
 
     Route::post('/reviews', [ReviewController::class, 'store']);
 });
@@ -51,4 +73,8 @@ Route::get('/providers/user/{userId}', [ProviderController::class, 'showByUser']
 Route::get('/services', [ServiceController::class, 'index']);
 Route::post('/contracts', [ContractController::class, 'store']);
 Route::get('/contracts', [ContractController::class, 'index']);
+Route::post('/bookings', [BookingController::class, 'store']);
+Route::get('/bookings', [BookingController::class, 'index']);
+Route::get('/events', [EventController::class, 'index']);
+Route::get('/billing/config', [BillingController::class, 'config']);
 Route::get('/reviews', [ReviewController::class, 'index']);

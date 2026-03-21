@@ -29,8 +29,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
+import { backendMode, laravelApiBaseUrl } from '../utils/supabase/client';
 
-const API_BASE = `https://${projectId}.supabase.co/functions/v1/make-server-5d78aefb`;
+const API_BASE = backendMode === 'laravel'
+  ? laravelApiBaseUrl
+  : `https://${projectId}.supabase.co/functions/v1/make-server-5d78aefb`;
 const COMMISSION_RATE = 0.08;
 
 interface CompletedContractEntry {
