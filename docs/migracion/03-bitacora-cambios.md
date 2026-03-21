@@ -173,3 +173,12 @@
 - Evidencia: php artisan route:list --path=api muestra 41 rutas incluyendo api/admin/*; php artisan test --testsuite=Feature --filter=ApiPhaseOneSmokeTest en verde con cobertura admin; npm run build exitoso en figma.
 - Riesgo generado/mitigado: Mitigado riesgo de desalineacion entre tablero admin y backend al centralizar acciones de moderacion en Laravel.
 - Accion siguiente: Ejecutar smoke manual E2E del panel admin y facturacion en modo Laravel para validar UX/permiso real con cuentas de prueba.
+
+### 2026-03-21
+- Fase: 1 (ajustes UI marketplace)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Refactor visual de cards de resultados en frontend con layout estilo YouTube en desktop: grid a 4 columnas, miniatura rectangular (aspect-video), simplificacion de contenido (solo nombre + rating/reseñas) y ajuste fino de espaciados/alineacion del titulo.
+- Motivo: Mejorar legibilidad, consistencia visual y densidad de informacion del listado de servicios sin alterar flujo funcional.
+- Evidencia: figma/src/components/ArtistCard.tsx y figma/src/App.tsx actualizados; npm run build en verde.
+- Riesgo generado/mitigado: Mitigado riesgo de tarjetas desalineadas y ruido visual en desktop; riesgo residual menor de ajustes CSS en breakpoints especificos.
+- Accion siguiente: Ejecutar QA visual desktop/mobile para verificar alturas homogéneas de cards y comportamiento responsive.

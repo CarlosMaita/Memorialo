@@ -19,9 +19,9 @@ export function ArtistCard({ artist, onViewProfile }: ArtistCardProps) {
         />
       </div>
       
-      <CardContent className="px-1 pt-0 pb-1">
-        <div className="mb-2" onClick={() => onViewProfile(artist)}>
-          <h3 className="line-clamp-2 leading-snug">{artist.name}</h3>
+      <CardContent className="px-1 pt-0.5 pb-1">
+        <div className="min-h-[3.25rem] mb-1.5" onClick={() => onViewProfile(artist)}>
+          <h3 className="line-clamp-2 leading-snug font-medium">{artist.name}</h3>
         </div>
 
         <div className="flex items-center gap-1 text-sm text-gray-700" onClick={() => onViewProfile(artist)}>
