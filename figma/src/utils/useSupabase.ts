@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { getSupabaseClient, apiRequest } from './supabase/client';
-import { User, Artist, Contract, Review, Booking, Provider } from '../types';
+import { getSupabaseClient, apiRequest, backendMode } from './supabase/client';
+import { User } from '../types';
+
+const LARAVEL_ACCESS_TOKEN_KEY = 'laravel_access_token';
 
 export function useSupabase() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -109,6 +111,12 @@ export function useSupabase() {
   // Check for existing session on mount and listen for auth changes
   useEffect(() => {
     checkSession();
+
+    if (backendMode === 'laravel') {
+      return () => {
+        if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      };
+    }
     
     // Listen for auth state changes
     const supabase = getSupabaseClient();
@@ -170,6 +178,36 @@ export function useSupabase() {
   const checkSession = async () => {
     isCheckingSession.current = true;
     try {
+      if (backendMode === 'laravel') {
+        const token = window.localStorage.getItem(LARAVEL_ACCESS_TOKEN_KEY);
+
+        if (!token) {
+          setCurrentUser(null);
+          setAccessToken(null);
+          return;
+        }
+
+        try {
+          const response = await apiRequest('/auth/me', 'GET', undefined, token);
+          const userData = response?.user || null;
+
+          if (userData) {
+            setAccessToken(token);
+            setCurrentUser(userData);
+          } else {
+            window.localStorage.removeItem(LARAVEL_ACCESS_TOKEN_KEY);
+            setCurrentUser(null);
+            setAccessToken(null);
+          }
+        } catch {
+          window.localStorage.removeItem(LARAVEL_ACCESS_TOKEN_KEY);
+          setCurrentUser(null);
+          setAccessToken(null);
+        }
+
+        return;
+      }
+
       // Check if there's an active session with Supabase client
       const supabase = getSupabaseClient();
       
@@ -246,6 +284,29 @@ export function useSupabase() {
 
   const signUp = async (email: string, password: string, name: string, phone?: string, isProvider?: boolean) => {
     try {
+      if (backendMode === 'laravel') {
+        const registerResult = await apiRequest('/auth/register', 'POST', {
+          email,
+          password,
+          name,
+          phone,
+          isProvider,
+        });
+
+        const token = registerResult?.token as string;
+        const userData = registerResult?.user as User;
+
+        if (!token || !userData) {
+          throw new Error('Respuesta invalida del servidor durante registro');
+        }
+
+        window.localStorage.setItem(LARAVEL_ACCESS_TOKEN_KEY, token);
+        setCurrentUser(userData);
+        setAccessToken(token);
+
+        return { user: userData, accessToken: token };
+      }
+
       // Create user in backend
       const signupResult = await apiRequest('/auth/signup', 'POST', { email, password, name, phone, isProvider });
       
@@ -279,6 +340,22 @@ export function useSupabase() {
 
   const signIn = async (email: string, password: string) => {
     try {
+      if (backendMode === 'laravel') {
+        const loginResult = await apiRequest('/auth/login', 'POST', { email, password });
+        const token = loginResult?.token as string;
+        const userData = loginResult?.user as User;
+
+        if (!token || !userData) {
+          throw new Error('Respuesta invalida del servidor durante inicio de sesion');
+        }
+
+        window.localStorage.setItem(LARAVEL_ACCESS_TOKEN_KEY, token);
+        setCurrentUser(userData);
+        setAccessToken(token);
+
+        return { user: userData, accessToken: token };
+      }
+
       // Sign in with Supabase client
       const supabase = getSupabaseClient();
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -315,6 +392,10 @@ export function useSupabase() {
 
   const signInWithGoogle = async () => {
     try {
+      if (backendMode === 'laravel') {
+        throw new Error('Google Sign-In no esta disponible en modo Laravel por ahora');
+      }
+
       // Do not forget to complete setup at https://supabase.com/docs/guides/auth/social-login/auth-google
       const supabase = getSupabaseClient();
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -335,6 +416,21 @@ export function useSupabase() {
 
   const signOut = async () => {
     try {
+      if (backendMode === 'laravel') {
+        if (accessToken) {
+          try {
+            await apiRequest('/auth/logout', 'POST', {}, accessToken);
+          } catch (error) {
+            console.log('Laravel logout warning:', error);
+          }
+        }
+
+        window.localStorage.removeItem(LARAVEL_ACCESS_TOKEN_KEY);
+        setCurrentUser(null);
+        setAccessToken(null);
+        return;
+      }
+
       const supabase = getSupabaseClient();
       await supabase.auth.signOut();
       setCurrentUser(null);
@@ -748,6 +844,10 @@ export function useSupabase() {
   // Initialize admin user (for first-time setup)
   const initializeAdmin = async () => {
     try {
+      if (backendMode === 'laravel') {
+        return null;
+      }
+
       const data = await apiRequest('/auth/init-admin', 'POST', {});
       return data;
     } catch (error: any) {

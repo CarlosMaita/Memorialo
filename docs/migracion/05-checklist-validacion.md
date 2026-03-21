@@ -28,6 +28,8 @@
 
 ## Estado Actual Fase 1
 - [x] Paridad de naming camelCase/snake_case implementada en controladores base (Auth, User, Provider, Service).
+- [x] Frontend con ruteo hibrido configurado para cutover endpoint-by-endpoint.
+- [x] Build de frontend principal (figma) validado tras configuracion hibrida.
 - [ ] Pruebas de humo frontend -> Laravel completadas para health/auth/users/providers/services.
 
 ## D. Migracion de Datos

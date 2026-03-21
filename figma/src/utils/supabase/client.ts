@@ -2,6 +2,26 @@ import { createClient } from '@supabase/supabase-js';
 import { projectId, publicAnonKey } from './info';
 
 const supabaseUrl = `https://${projectId}.supabase.co`;
+const defaultSupabaseServerUrl = `${supabaseUrl}/functions/v1/make-server-5d78aefb`;
+const viteEnv = (import.meta as any).env || {};
+
+export const backendMode = (viteEnv.VITE_BACKEND_MODE || 'supabase').toLowerCase();
+export const apiBaseUrl = viteEnv.VITE_API_BASE_URL || defaultSupabaseServerUrl;
+export const laravelApiBaseUrl = viteEnv.VITE_LARAVEL_API_BASE_URL || 'http://127.0.0.1:8000/api';
+
+const laravelPrefixes = ['/health', '/auth', '/users', '/providers', '/services'];
+
+function isLaravelPath(path: string): boolean {
+  return laravelPrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
+
+function resolveServerUrl(path: string): string {
+  if (backendMode === 'laravel' && isLaravelPath(path)) {
+    return laravelApiBaseUrl;
+  }
+
+  return apiBaseUrl;
+}
 
 // Singleton instance
 let supabase: ReturnType<typeof createClient> | null = null;
@@ -20,28 +40,29 @@ export function getSupabaseClient() {
   return supabase;
 }
 
-// API helper for making requests to the server
-const serverUrl = `${supabaseUrl}/functions/v1/make-server-5d78aefb`;
-
 export async function apiRequest(
   path: string, 
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
   body?: any,
   accessToken?: string
 ) {
-  const tokenToUse = accessToken || publicAnonKey;
-  const isUsingAccessToken = !!accessToken;
+  const isLaravelMode = backendMode === 'laravel' && isLaravelPath(path);
+  const tokenToUse = accessToken || (isLaravelMode ? undefined : publicAnonKey);
+  const isUsingAccessToken = !!tokenToUse;
   
   // Log for review creation specifically
   if (path === '/reviews' && method === 'POST') {
     console.log('API Request to /reviews - Using access token:', isUsingAccessToken);
-    console.log('API Request to /reviews - Token preview:', tokenToUse.substring(0, 20) + '...');
+    console.log('API Request to /reviews - Token preview:', tokenToUse ? tokenToUse.substring(0, 20) + '...' : 'none');
   }
   
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${tokenToUse}`
   };
+
+  if (tokenToUse) {
+    headers['Authorization'] = `Bearer ${tokenToUse}`;
+  }
 
   const options: RequestInit = {
     method,
@@ -54,7 +75,7 @@ export async function apiRequest(
   }
 
   try {
-    const url = `${serverUrl}${path}`;
+    const url = `${resolveServerUrl(path)}${path}`;
     
     let response: Response;
     try {

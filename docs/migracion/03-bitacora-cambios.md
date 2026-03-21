@@ -80,6 +80,33 @@
 - Responsable: Copilot + Carlo
 - Cambio ejecutado: Habilitacion de extensiones sqlite en PHP CLI, generacion de APP_KEY y creacion de suite de pruebas de humo API (health/auth/providers/services).
 - Motivo: Asegurar validacion automatizada reproducible del contrato API antes de continuar el cutover con frontend.
-- Evidencia: tests/Feature/ApiPhaseOneSmokeTest.php y ejecucion exitosa de php artisan test --testsuite=Feature (4 pruebas, 43 aserciones).
+- Evidencia: tests/Feature/ApiPhaseOneSmokeTest.php y ejecucion exitosa de php artisan test --testsuite=Feature --filter=ApiPhaseOneSmokeTest (3 pruebas, 42 aserciones).
 - Riesgo generado/mitigado: Mitigado riesgo de regresiones silenciosas en endpoints base durante migracion incremental.
 - Accion siguiente: Conectar frontend a Laravel para health/auth y ejecutar smoke E2E de flujo provider/service.
+
+### 2026-03-21
+- Fase: 1 (cutover frontend incremental)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Implementacion de enrutamiento hibrido en frontend para dirigir endpoints migrados (/health, /auth, /users, /providers, /services) a Laravel y mantener dominios restantes en Supabase.
+- Motivo: Aplicar estrategia endpoint-by-endpoint sin romper modulos aun no migrados.
+- Evidencia: figma/src/utils/supabase/client.ts con VITE_BACKEND_MODE y ruteo por prefijos; figma/src/utils/useSupabase.ts con sesion/token Laravel; figma/.env.example agregado.
+- Riesgo generado/mitigado: Mitigado riesgo de big-bang migration en frontend y de indisponibilidad de dominios pendientes.
+- Accion siguiente: Crear entorno figma/.env con VITE_BACKEND_MODE=laravel y ejecutar smoke manual de registro/login/provider/service.
+
+### 2026-03-21
+- Fase: 1 (estabilizacion frontend)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Activacion de figma/.env en modo laravel, reparacion de dependencias frontend (vite/clsx/tailwind-merge) y compilacion exitosa del frontend principal.
+- Motivo: Confirmar que el cutover hibrido compila y es ejecutable antes de pruebas funcionales manuales.
+- Evidencia: npm.cmd run build exitoso en figma/ (vite v6.3.5); backend Laravel revalidado con php artisan test --testsuite=Feature --filter=ApiPhaseOneSmokeTest (3 pruebas en verde, 42 aserciones).
+- Riesgo generado/mitigado: Mitigado riesgo de bloqueo operativo por build fallido en frontend durante la migracion.
+- Accion siguiente: Ejecutar smoke manual end-to-end en UI (signup/login/provider/service) y registrar hallazgos.
+
+### 2026-03-21
+- Fase: 1 (higiene de cambios)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Limpieza de artefactos locales de frontend para control de versiones (build/ y .env local ignorados desde figma/.gitignore).
+- Motivo: Evitar ruido y riesgo de commitear archivos generados o sensibles durante la migracion.
+- Evidencia: figma/.gitignore actualizado con build/ y .env.
+- Riesgo generado/mitigado: Mitigado riesgo de exponer configuracion local y de ensuciar historial con artefactos de compilacion.
+- Accion siguiente: Ejecutar smoke manual de UI en modo Laravel y cerrar item pendiente del checklist de Fase 1.
