@@ -21,6 +21,7 @@ class UploadController extends Controller
             'imageData' => ['required', 'string'],
             'fileName' => ['required', 'string', 'max:255'],
             'contentType' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'folder' => ['sometimes', 'nullable', 'string', 'max:50'],
         ]);
 
         $rawData = $validated['imageData'];
@@ -49,8 +50,15 @@ class UploadController extends Controller
             return response()->json(['error' => 'Unsupported image type'], 400);
         }
 
+        $folder = (string) ($validated['folder'] ?? 'service-images');
+
+        if (! in_array($folder, ['service-images', 'avatar-images'], true)) {
+            return response()->json(['error' => 'Invalid upload folder'], 400);
+        }
+
         $relativePath = sprintf(
-            'service-images/%s/%s.%s',
+            '%s/%s/%s.%s',
+            $folder,
             $authUser->id,
             Str::uuid()->toString(),
             $extension

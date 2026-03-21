@@ -17,7 +17,7 @@ interface UserProfileProps {
   contracts: Contract[];
   reviews: Review[];
   onBecomeProvider?: () => void;
-  onUserUpdate?: (updates: Partial<User>) => void;
+  onUserUpdate?: (updates: Partial<User>) => Promise<void> | void;
 }
 
 export function UserProfile({ user, open, onClose, bookings, contracts, reviews, onBecomeProvider, onUserUpdate }: UserProfileProps) {
@@ -44,7 +44,7 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews,
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -60,17 +60,25 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews,
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      setAvatarPreview(dataUrl);
-      // Auto-save avatar
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => resolve(event.target?.result as string);
+      reader.onerror = () => reject(new Error('No se pudo leer la imagen'));
+      reader.readAsDataURL(file);
+    });
+
+    const previousAvatar = avatarPreview;
+    setAvatarPreview(dataUrl);
+
+    try {
       if (onUserUpdate) {
-        onUserUpdate({ avatar: dataUrl });
-        toast.success('Foto de perfil actualizada');
+        await onUserUpdate({ avatar: dataUrl });
       }
-    };
-    reader.readAsDataURL(file);
+      toast.success('Foto de perfil actualizada');
+    } catch {
+      setAvatarPreview(previousAvatar || null);
+      toast.error('Error al actualizar el perfil');
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -88,7 +96,7 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews,
       };
 
       if (onUserUpdate) {
-        onUserUpdate(updates);
+        await onUserUpdate(updates);
       }
 
       setIsEditing(false);

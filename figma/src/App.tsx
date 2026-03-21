@@ -28,6 +28,7 @@ import { CodeOfConduct } from './components/legal/CodeOfConduct';
 import { ServiceDetailPage } from './components/ServiceDetailPage';
 import { SEOHead, buildMarketplaceStructuredData } from './components/SEOHead';
 import { Button } from './components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
 import { Badge } from './components/ui/badge';
 import { Toaster } from './components/ui/sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './components/ui/dropdown-menu';
@@ -1463,9 +1464,23 @@ export default function App() {
               {currentUser ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="text-white hover:text-white hover:bg-white/10 border border-white/20">
-                      <UserCircle className="w-4 h-4 mr-2" />
-                      {currentUser.name}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 rounded-full p-0 hover:bg-white/10"
+                      aria-label="Abrir menú de usuario"
+                    >
+                      <Avatar className="h-9 w-9 border border-white/25">
+                        <AvatarImage src={currentUser.avatar || ''} alt={currentUser.name} className="object-cover" />
+                        <AvatarFallback className="text-xs font-semibold bg-white/20 text-white">
+                          {currentUser.name
+                            .split(' ')
+                            .filter(Boolean)
+                            .slice(0, 2)
+                            .map((part) => part[0]?.toUpperCase())
+                            .join('')}
+                        </AvatarFallback>
+                      </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -1934,10 +1949,19 @@ export default function App() {
           onBecomeProvider={handleBecomeProvider}
           onUserUpdate={async (updates) => {
             try {
-              await supabase.updateUser(currentUser.id, updates);
+              const payload = { ...updates };
+
+              if (typeof payload.avatar === 'string' && payload.avatar.startsWith('data:image/')) {
+                const blob = await fetch(payload.avatar).then((response) => response.blob());
+                const extension = blob.type.split('/')[1] || 'png';
+                const avatarFile = new File([blob], `avatar-${currentUser.id}.${extension}`, { type: blob.type || 'image/png' });
+                payload.avatar = await supabase.uploadImage(avatarFile, 'avatar-images');
+              }
+
+              await supabase.updateUser(currentUser.id, payload);
             } catch (error) {
               console.error('Error updating user profile:', error);
-              toast.error('Error al actualizar el perfil');
+              throw error;
             }
           }}
         />
