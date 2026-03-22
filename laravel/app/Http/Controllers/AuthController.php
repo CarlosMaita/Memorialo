@@ -38,8 +38,10 @@ class AuthController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'phone' => $validated['phone'] ?? null,
-            'is_provider' => $isProvider,
-            'role' => $isProvider ? 'provider' : 'user',
+            'is_provider' => false,
+            'provider_request_status' => $isProvider ? 'pending' : 'none',
+            'provider_requested_at' => $isProvider ? now() : null,
+            'role' => 'user',
         ]);
 
         $this->notifications->dispatchToUser($user, NotificationTypes::WELCOME, [
@@ -215,6 +217,10 @@ class AuthController extends Controller
             'avatar' => $user->avatar,
             'isProvider' => (bool) $user->is_provider,
             'providerId' => $user->provider_id ? (string) $user->provider_id : null,
+            'providerRequestStatus' => $user->provider_request_status ?? 'none',
+            'providerRequestedAt' => optional($user->provider_requested_at)?->toISOString(),
+            'providerApprovedAt' => optional($user->provider_approved_at)?->toISOString(),
+            'providerApprovedBy' => $user->provider_approved_by ? (string) $user->provider_approved_by : null,
             'role' => $user->role,
             'banned' => (bool) $user->banned,
             'bannedAt' => optional($user->banned_at)?->toISOString(),

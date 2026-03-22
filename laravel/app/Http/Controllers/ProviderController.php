@@ -29,6 +29,13 @@ class ProviderController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
+        if (! $authUser->is_provider || $authUser->provider_request_status !== 'approved') {
+            return response()->json([
+                'error' => 'Provider access not approved',
+                'message' => 'Un administrador debe aprobar tu solicitud antes de crear un perfil de proveedor.',
+            ], 403);
+        }
+
         if (Provider::where('user_id', $authUser->id)->exists()) {
             return response()->json(['error' => 'Provider already exists for user'], 409);
         }
@@ -54,6 +61,7 @@ class ProviderController extends Controller
         $authUser->update([
             'is_provider' => true,
             'provider_id' => $provider->id,
+            'provider_request_status' => 'approved',
             'role' => $authUser->role === 'admin' ? 'admin' : 'provider',
         ]);
 

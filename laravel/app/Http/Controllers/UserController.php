@@ -83,8 +83,8 @@ class UserController extends Controller
             $validated['provider_id'] = null;
         }
 
-        if (array_key_exists('is_provider', $validated) && $validated['is_provider']) {
-            $validated['role'] = $user->role === 'admin' ? 'admin' : 'provider';
+        if (array_key_exists('is_provider', $validated) && $validated['is_provider'] && $authUser->role !== 'admin') {
+            unset($validated['is_provider'], $validated['provider_id']);
         }
 
         $wasProvider = (bool) $user->is_provider;
@@ -106,6 +106,46 @@ class UserController extends Controller
         return response()->json($this->formatUser($user->fresh()));
     }
 
+    public function requestProviderAccess(Request $request, string $id): JsonResponse
+    {
+        $authUser = $request->user();
+
+        if (! $authUser || (string) $authUser->id !== $id) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $user = User::find($id);
+
+        if (! $user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        if ($user->is_provider) {
+            return response()->json([
+                'message' => 'El usuario ya tiene acceso como proveedor.',
+                'status' => 'approved',
+            ]);
+        }
+
+        if ($user->provider_request_status === 'pending') {
+            return response()->json([
+                'message' => 'Ya tienes una solicitud pendiente de aprobacion.',
+                'status' => 'pending',
+            ]);
+        }
+
+        $user->forceFill([
+            'provider_request_status' => 'pending',
+            'provider_requested_at' => now(),
+        ])->save();
+
+        return response()->json([
+            'message' => 'Solicitud enviada. Un administrador debe aprobar tu acceso como proveedor.',
+            'status' => 'pending',
+            'user' => $this->formatUser($user->fresh()),
+        ]);
+    }
+
     private function formatUser(User $user): array
     {
         return [
@@ -118,6 +158,10 @@ class UserController extends Controller
             'avatar' => $user->avatar,
             'isProvider' => (bool) $user->is_provider,
             'providerId' => $user->provider_id ? (string) $user->provider_id : null,
+            'providerRequestStatus' => $user->provider_request_status ?? 'none',
+            'providerRequestedAt' => optional($user->provider_requested_at)?->toISOString(),
+            'providerApprovedAt' => optional($user->provider_approved_at)?->toISOString(),
+            'providerApprovedBy' => $user->provider_approved_by ? (string) $user->provider_approved_by : null,
             'role' => $user->role,
             'banned' => (bool) $user->banned,
             'bannedAt' => optional($user->banned_at)?->toISOString(),

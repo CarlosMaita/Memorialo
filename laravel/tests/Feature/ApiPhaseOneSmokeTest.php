@@ -37,8 +37,9 @@ class ApiPhaseOneSmokeTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('user.email', 'carlo@example.com')
             ->assertJsonPath('user.name', 'Carlo Test')
-            ->assertJsonPath('user.isProvider', true)
-            ->assertJsonPath('user.role', 'provider');
+            ->assertJsonPath('user.isProvider', false)
+            ->assertJsonPath('user.role', 'user')
+            ->assertJsonPath('user.providerRequestStatus', 'pending');
 
         $token = $register->json('token');
 
@@ -51,7 +52,8 @@ class ApiPhaseOneSmokeTest extends TestCase
         $me
             ->assertOk()
             ->assertJsonPath('user.email', 'carlo@example.com')
-            ->assertJsonPath('user.isProvider', true)
+            ->assertJsonPath('user.isProvider', false)
+            ->assertJsonPath('user.providerRequestStatus', 'pending')
             ->assertJsonStructure([
                 'user' => [
                     'id',
@@ -63,6 +65,10 @@ class ApiPhaseOneSmokeTest extends TestCase
                     'avatar',
                     'isProvider',
                     'providerId',
+                    'providerRequestStatus',
+                    'providerRequestedAt',
+                    'providerApprovedAt',
+                    'providerApprovedBy',
                     'role',
                     'banned',
                     'bannedAt',
@@ -96,8 +102,10 @@ class ApiPhaseOneSmokeTest extends TestCase
     public function test_provider_and_service_endpoints_accept_camel_case_payloads(): void
     {
         $user = User::factory()->create([
-            'role' => 'user',
-            'is_provider' => false,
+            'role' => 'provider',
+            'is_provider' => true,
+            'provider_request_status' => 'approved',
+            'provider_approved_at' => now(),
         ]);
 
         Sanctum::actingAs($user);

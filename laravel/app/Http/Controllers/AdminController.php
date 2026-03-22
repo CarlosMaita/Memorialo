@@ -7,11 +7,17 @@ use App\Models\Contract;
 use App\Models\Provider;
 use App\Models\Service;
 use App\Models\User;
+use App\Services\NotificationDispatchService;
+use App\Support\NotificationTypes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
+    public function __construct(private NotificationDispatchService $notifications)
+    {
+    }
+
     public function users(Request $request): JsonResponse
     {
         if ($error = $this->authorizeAdmin($request)) {
@@ -28,6 +34,10 @@ class AdminController extends Controller
             'avatar' => $user->avatar,
             'isProvider' => (bool) $user->is_provider,
             'providerId' => $user->provider_id ? (string) $user->provider_id : null,
+            'providerRequestStatus' => $user->provider_request_status ?? 'none',
+            'providerRequestedAt' => optional($user->provider_requested_at)?->toISOString(),
+            'providerApprovedAt' => optional($user->provider_approved_at)?->toISOString(),
+            'providerApprovedBy' => $user->provider_approved_by ? (string) $user->provider_approved_by : null,
             'role' => $user->role,
             'banned' => (bool) $user->banned,
             'bannedAt' => optional($user->banned_at)?->toISOString(),
@@ -222,6 +232,76 @@ class AdminController extends Controller
         ]);
     }
 
+    public function approveProviderAccess(Request $request, string $id): JsonResponse
+    {
+        if ($error = $this->authorizeAdmin($request)) {
+            return $error;
+        }
+
+        $user = User::find($id);
+        if (! $user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        if ($user->role === 'admin') {
+            return response()->json(['error' => 'Admin user cannot be managed as provider'], 400);
+        }
+
+        $user->forceFill([
+            'is_provider' => true,
+            'role' => 'provider',
+            'provider_request_status' => 'approved',
+            'provider_approved_at' => now(),
+            'provider_approved_by' => $request->user()->id,
+        ])->save();
+
+        $freshUser = $user->fresh();
+
+        $this->notifications->dispatchToUser($freshUser, NotificationTypes::PROVIDER_ROLE_ACTIVATED, [
+            'channels' => ['database', 'mail'],
+            'title' => 'Tu cuenta fue aprobada como proveedor',
+            'body' => 'Un administrador aprobó tu solicitud. Ya puedes acceder a Mi Negocio y publicar tus servicios.',
+            'mailSubject' => 'Cuenta de proveedor aprobada en Memorialo',
+            'mailBody' => "Hola {$freshUser->name},\n\nTe confirmamos que tu solicitud fue aprobada y tu cuenta ya tiene acceso como proveedor en Memorialo.\n\nAhora puedes entrar a Mi Negocio para crear y gestionar tus servicios.\n",
+            'ctaUrl' => '/',
+            'entity' => ['type' => 'user', 'id' => (string) $freshUser->id],
+            'dedupeKey' => NotificationTypes::PROVIDER_ROLE_ACTIVATED.':approved:'.$freshUser->id,
+        ]);
+
+        return response()->json($this->formatUser($freshUser));
+    }
+
+    public function revokeProviderAccess(Request $request, string $id): JsonResponse
+    {
+        if ($error = $this->authorizeAdmin($request)) {
+            return $error;
+        }
+
+        $user = User::find($id);
+        if (! $user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        if ($user->role === 'admin') {
+            return response()->json(['error' => 'Cannot revoke provider access from admin users'], 400);
+        }
+
+        $user->forceFill([
+            'is_provider' => false,
+            'provider_id' => null,
+            'role' => 'user',
+            'provider_request_status' => 'rejected',
+            'provider_approved_at' => null,
+            'provider_approved_by' => null,
+        ])->save();
+
+        Service::query()
+            ->where('user_id', $user->id)
+            ->update(['is_active' => false]);
+
+        return response()->json($this->formatUser($user->fresh()));
+    }
+
     private function authorizeAdmin(Request $request): ?JsonResponse
     {
         $authUser = $request->user();
@@ -249,6 +329,10 @@ class AdminController extends Controller
             'avatar' => $user->avatar,
             'isProvider' => (bool) $user->is_provider,
             'providerId' => $user->provider_id ? (string) $user->provider_id : null,
+            'providerRequestStatus' => $user->provider_request_status ?? 'none',
+            'providerRequestedAt' => optional($user->provider_requested_at)?->toISOString(),
+            'providerApprovedAt' => optional($user->provider_approved_at)?->toISOString(),
+            'providerApprovedBy' => $user->provider_approved_by ? (string) $user->provider_approved_by : null,
             'role' => $user->role,
             'banned' => (bool) $user->banned,
             'bannedAt' => optional($user->banned_at)?->toISOString(),

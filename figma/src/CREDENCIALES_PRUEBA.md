@@ -12,9 +12,23 @@ Para probar rápidamente la aplicación, usa estos botones en el diálogo de ini
 
 ### 👑 Usuario Administrador
 ```
-Email: admin@memorialo.com
-Contraseña: admin123
+Email: admin@memorialo.local
+Contraseña: Admin12345!
 ```
+
+Provisionado con:
+
+```bash
+php artisan app:ensure-admin
+```
+
+Variables configurables en `.env`:
+
+- `ADMIN_DEFAULT_NAME`
+- `ADMIN_DEFAULT_EMAIL`
+- `ADMIN_DEFAULT_PASSWORD`
+
+Importante: cambia la contraseña en tu entorno por seguridad.
 
 **Capacidades:**
 - Acceso completo al panel de administrador
@@ -181,7 +195,7 @@ Contraseña: provider123
 - Revisa la consola del navegador para errores
 
 ### No veo el Panel Admin
-- Solo el usuario con email `admin@memorialo.com` tiene acceso
+- Solo el usuario con rol `admin` tiene acceso (por defecto: `admin@memorialo.local`)
 - Asegúrate de haber iniciado sesión con las credenciales de admin
 
 ### Los cambios no se guardan

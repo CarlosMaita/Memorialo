@@ -819,6 +819,37 @@ export function useSupabase() {
     }
   };
 
+  const requestProviderAccess = async (userId: string) => {
+    try {
+      const data = await apiRequest(`/users/${userId}/provider-request`, 'POST', {}, accessToken || undefined);
+      if (data?.user) {
+        setCurrentUser(data.user);
+      }
+      return data;
+    } catch (error) {
+      console.error('Request provider access error:', error);
+      throw error;
+    }
+  };
+
+  const approveProviderAccess = async (userId: string) => {
+    try {
+      return await apiRequest(`/admin/users/${userId}/provider-access/approve`, 'POST', {}, accessToken || undefined);
+    } catch (error) {
+      console.error('Approve provider access error:', error);
+      throw error;
+    }
+  };
+
+  const revokeProviderAccess = async (userId: string) => {
+    try {
+      return await apiRequest(`/admin/users/${userId}/provider-access/revoke`, 'POST', {}, accessToken || undefined);
+    } catch (error) {
+      console.error('Revoke provider access error:', error);
+      throw error;
+    }
+  };
+
   const getAllUsers = async () => {
     try {
       const data = await apiRequest('/admin/users', 'GET', undefined, accessToken || undefined);
@@ -881,6 +912,39 @@ export function useSupabase() {
       return await apiRequest('/notifications/read-all', 'PATCH', {}, accessToken || undefined);
     } catch (error) {
       console.error('Mark all notifications read error:', error);
+      throw error;
+    }
+  };
+
+  const getFavorites = async (): Promise<string[]> => {
+    try {
+      const data = await apiRequest('/favorites', 'GET', undefined, accessToken || undefined);
+
+      if (Array.isArray(data?.serviceIds)) {
+        return data.serviceIds.map((id: string | number) => String(id));
+      }
+
+      return [];
+    } catch (error) {
+      console.error('Get favorites error:', error);
+      throw error;
+    }
+  };
+
+  const addFavorite = async (serviceId: string) => {
+    try {
+      return await apiRequest('/favorites', 'POST', { serviceId }, accessToken || undefined);
+    } catch (error) {
+      console.error('Add favorite error:', error);
+      throw error;
+    }
+  };
+
+  const removeFavorite = async (serviceId: string) => {
+    try {
+      return await apiRequest(`/favorites/${serviceId}`, 'DELETE', undefined, accessToken || undefined);
+    } catch (error) {
+      console.error('Remove favorite error:', error);
       throw error;
     }
   };
@@ -983,11 +1047,17 @@ export function useSupabase() {
     archiveUser,
     unarchiveUser,
     deleteUser,
+    requestProviderAccess,
+    approveProviderAccess,
+    revokeProviderAccess,
     getAllUsers,
     getNotifications,
     getUnreadNotificationsCount,
     markNotificationRead,
     markAllNotificationsRead,
+    getFavorites,
+    addFavorite,
+    removeFavorite,
     uploadImage,
     initializeAdmin,
     signInWithGoogle

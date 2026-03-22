@@ -7,8 +7,8 @@ Esta guía te ayudará a probar todas las funcionalidades del panel de administr
 Hemos creado varios usuarios de prueba que puedes usar para explorar diferentes funcionalidades:
 
 ### 1. Usuario Administrador 👑
-- **Email:** `admin@memorialo.com`
-- **Contraseña:** `admin123`
+- **Email:** `admin@memorialo.local`
+- **Contraseña:** `Admin12345!`
 - **Permisos:** Acceso completo al panel de administrador
 - **Puede:**
   - Ver todos los proveedores y usuarios
@@ -16,6 +16,25 @@ Hemos creado varios usuarios de prueba que puedes usar para explorar diferentes 
   - Banear/desbanear proveedores y usuarios
   - Ver estadísticas de la plataforma
   - Revisar contratos y bookings
+
+### Provisionamiento del Admin Inicial (Laravel)
+
+Además ejecuté el comando y ya se creó el usuario administrador en tu base de datos actual:
+
+- Email: `admin@memorialo.local`
+- Password: `Admin12345!`
+
+Importante:
+
+- Cambia esa contraseña en tu entorno por seguridad.
+- Si quieres otro correo/clave por defecto, define en tu `.env`:
+  - `ADMIN_DEFAULT_NAME`
+  - `ADMIN_DEFAULT_EMAIL`
+  - `ADMIN_DEFAULT_PASSWORD`
+- Luego puedes volver a ejecutar:
+  - `php artisan app:ensure-admin`
+
+Con esto, cuando inicies sesión con ese usuario, verás inicialmente el dashboard de administración con métricas globales.
 
 ### 2. Usuario Proveedor (Mariachi Los Gallos) 🎸
 - **Email:** `mariachi@losgallos.com`

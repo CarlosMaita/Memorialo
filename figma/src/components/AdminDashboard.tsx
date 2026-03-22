@@ -45,6 +45,8 @@ interface AdminDashboardProps {
   onArchiveUser: (userId: string) => Promise<void>;
   onUnarchiveUser: (userId: string) => Promise<void>;
   onDeleteUser: (userId: string) => Promise<void>;
+  onApproveProviderAccess: (userId: string) => Promise<void>;
+  onRevokeProviderAccess: (userId: string) => Promise<void>;
 }
 
 export function AdminDashboard({
@@ -62,7 +64,9 @@ export function AdminDashboard({
   onUnbanUser,
   onArchiveUser,
   onUnarchiveUser,
-  onDeleteUser
+  onDeleteUser,
+  onApproveProviderAccess,
+  onRevokeProviderAccess
 }: AdminDashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'verified' | 'unverified' | 'banned'>('all');
@@ -509,7 +513,9 @@ export function AdminDashboard({
                     <TableRow>
                       <TableHead>Nombre</TableHead>
                       <TableHead>Email</TableHead>
+                      <TableHead>Contacto</TableHead>
                       <TableHead>Tipo</TableHead>
+                      <TableHead>Acceso Proveedor</TableHead>
                       <TableHead>Fecha de Registro</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>Acciones</TableHead>
@@ -518,7 +524,7 @@ export function AdminDashboard({
                   <TableBody>
                     {users.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                           No hay usuarios registrados
                         </TableCell>
                       </TableRow>
@@ -527,6 +533,12 @@ export function AdminDashboard({
                         <TableRow key={user.id}>
                           <TableCell>{user.name}</TableCell>
                           <TableCell>{user.email}</TableCell>
+                          <TableCell>
+                            <div className="text-xs space-y-1">
+                              <div>Tel: {user.phone || 'No registrado'}</div>
+                              <div>WhatsApp: {user.whatsappNumber || 'No registrado'}</div>
+                            </div>
+                          </TableCell>
                           <TableCell>
                             {user.role === 'admin' ? (
                               <Badge style={{ backgroundColor: '#D4AF37' }}>
@@ -543,6 +555,17 @@ export function AdminDashboard({
                                 <Users className="h-3 w-3 mr-1" />
                                 Cliente
                               </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {user.isProvider ? (
+                              <Badge className="bg-green-600">Aprobado</Badge>
+                            ) : user.providerRequestStatus === 'pending' ? (
+                              <Badge variant="secondary">Pendiente</Badge>
+                            ) : user.providerRequestStatus === 'rejected' ? (
+                              <Badge variant="destructive">Rechazado</Badge>
+                            ) : (
+                              <Badge variant="outline">Sin solicitud</Badge>
                             )}
                           </TableCell>
                           <TableCell>
@@ -624,6 +647,39 @@ export function AdminDashboard({
                                     Archivar
                                   </Button>
                                 )}
+
+                                {user.isProvider ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={async () => {
+                                      if (confirm(`¿Cancelar acceso como proveedor para ${user.name}?`)) {
+                                        try {
+                                          await onRevokeProviderAccess(user.id);
+                                        } catch {
+                                          // handled in parent
+                                        }
+                                      }
+                                    }}
+                                  >
+                                    Cancelar Acceso Proveedor
+                                  </Button>
+                                ) : user.providerRequestStatus === 'pending' ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={async () => {
+                                      try {
+                                        await onApproveProviderAccess(user.id);
+                                      } catch {
+                                        // handled in parent
+                                      }
+                                    }}
+                                    style={{ borderColor: '#D4AF37', color: '#D4AF37' }}
+                                  >
+                                    Aprobar Acceso Proveedor
+                                  </Button>
+                                ) : null}
                                 
                                 <Button
                                   size="sm"

@@ -6,6 +6,7 @@ use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ContractController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\ReviewController;
@@ -40,6 +41,7 @@ Route::prefix('/auth')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::put('/users/{id}', [UserController::class, 'update']);
+    Route::post('/users/{id}/provider-request', [UserController::class, 'requestProviderAccess']);
 
     Route::post('/providers', [ProviderController::class, 'store']);
     Route::put('/providers/{id}', [ProviderController::class, 'update']);
@@ -66,6 +68,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/users/{id}/unban', [AdminController::class, 'unbanUser']);
     Route::post('/admin/users/{id}/archive', [AdminController::class, 'archiveUser']);
     Route::post('/admin/users/{id}/unarchive', [AdminController::class, 'unarchiveUser']);
+    Route::post('/admin/users/{id}/provider-access/approve', [AdminController::class, 'approveProviderAccess']);
+    Route::post('/admin/users/{id}/provider-access/revoke', [AdminController::class, 'revokeProviderAccess']);
     Route::delete('/admin/users/{id}', [AdminController::class, 'deleteUser']);
 
     Route::post('/upload-image', [UploadController::class, 'image']);
@@ -76,6 +80,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
     Route::patch('/notifications/{id}/read', [NotificationController::class, 'markRead']);
     Route::patch('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+
+    Route::get('/favorites', [FavoriteController::class, 'index']);
+    Route::post('/favorites', [FavoriteController::class, 'store']);
+    Route::delete('/favorites/{serviceId}', [FavoriteController::class, 'destroy']);
 });
 
 Route::get('/users/{id}', [UserController::class, 'show']);

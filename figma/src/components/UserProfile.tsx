@@ -161,7 +161,6 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews,
                 </div>
               </button>
 
-              {/* Small camera badge */}
               <button
                 onClick={handleAvatarClick}
                 className="absolute bottom-1 right-1 w-8 h-8 rounded-full bg-[#D4AF37] shadow-lg flex items-center justify-center cursor-pointer border-2 border-white hover:scale-110 transition-transform"
@@ -349,16 +348,22 @@ export function UserProfile({ user, open, onClose, bookings, contracts, reviews,
                       ¿Ofreces servicios para eventos?
                     </h3>
                     <p className="text-xs text-gray-500">
-                      Activa tu perfil de proveedor y empieza a recibir clientes
+                      Solicita acceso y un administrador aprobará tu perfil de proveedor
                     </p>
                   </div>
-                  <Button
-                    onClick={onBecomeProvider}
-                    className="bg-[#0A1F44] hover:bg-[#0A1F44]/90 text-white shadow-md hover:shadow-lg transition-all"
-                  >
-                    <Briefcase className="w-4 h-4 mr-2" />
-                    Activar Perfil de Proveedor
-                  </Button>
+                  {user.providerRequestStatus === 'pending' ? (
+                    <div className="text-sm text-amber-700 font-medium">
+                      Tu solicitud está pendiente de aprobación.
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={onBecomeProvider}
+                      className="bg-[#0A1F44] hover:bg-[#0A1F44]/90 text-white shadow-md hover:shadow-lg transition-all"
+                    >
+                      <Briefcase className="w-4 h-4 mr-2" />
+                      Solicitar Acceso como Proveedor
+                    </Button>
+                  )}
                 </div>
               </div>
             </>

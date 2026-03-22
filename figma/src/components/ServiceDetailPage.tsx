@@ -30,6 +30,8 @@ interface ServiceDetailPageProps {
   artist: Artist;
   reviews: Review[];
   isAuthenticated: boolean;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
   onBack: () => void;
   onBookNow: (artist: Artist, plan?: ServicePlan) => void;
 }
@@ -38,12 +40,13 @@ export function ServiceDetailPage({
   artist,
   reviews,
   isAuthenticated,
+  isFavorite,
+  onToggleFavorite,
   onBack,
   onBookNow,
 }: ServiceDetailPageProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
-  const [liked, setLiked] = useState(false);
 
   const artistReviews = reviews.filter((r) => r.artistId === artist.id);
   const allImages = [artist.image, ...artist.portfolio];
@@ -148,15 +151,17 @@ export function ServiceDetailPage({
               <Share2 className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">Compartir</span>
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLiked(!liked)}
-              className={liked ? 'text-red-500' : 'text-gray-600'}
-            >
-              <Heart className={`w-4 h-4 mr-1 ${liked ? 'fill-red-500' : ''}`} />
-              <span className="hidden sm:inline">Guardar</span>
-            </Button>
+            {isAuthenticated && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleFavorite}
+                className={isFavorite ? 'text-red-500' : 'text-gray-600'}
+              >
+                <Heart className={`w-4 h-4 mr-1 ${isFavorite ? 'fill-red-500' : ''}`} />
+                <span className="hidden sm:inline">{isFavorite ? 'Guardado' : 'Guardar'}</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase, Shield, Search, Bell, CheckCheck } from 'lucide-react';
+import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase, Shield, Search, Bell, CheckCheck, Heart } from 'lucide-react';
 import { Artist, ServicePlan, Contract, User, Review, Booking, Provider, Event } from './types';
 import { mockArtists, mockEvents, mockUsers, mockProviders } from './data/mockData';
 import { mockReviews } from './data/mockReviews';
@@ -52,7 +52,7 @@ type HeaderNotification = {
 export default function App() {
   // Supabase hook
   const supabase = useSupabase();
-  
+
   const [viewMode, setViewMode] = useState<ViewMode>('client');
   const [dashboardView, setDashboardView] = useState<DashboardView>('provider');
   const [artists, setArtists] = useState<Artist[]>([]);
@@ -76,18 +76,18 @@ export default function App() {
   const [showForProviders, setShowForProviders] = useState(false);
   const [showForClients, setShowForClients] = useState(false);
   const [currentRoute, setCurrentRoute] = useState(window.location.pathname);
-  
+
   // User authentication and profile
   const currentUser = supabase.currentUser;
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
-  
+
   // Reviews and bookings
   const [reviews, setReviews] = useState<Review[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [reviewBooking, setReviewBooking] = useState<Booking | null>(null);
-  
+
   // Provider
   const [providers, setProviders] = useState<Provider[]>([]);
   const [currentProvider, setCurrentProvider] = useState<Provider | null>(null);
@@ -103,6 +103,7 @@ export default function App() {
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [favoriteServiceIds, setFavoriteServiceIds] = useState<string[]>([]);
 
   // Load initial data from Supabase
   useEffect(() => {
@@ -122,13 +123,17 @@ export default function App() {
 
   // Load provider when user changes
   useEffect(() => {
+    if (currentUser?.role === 'admin') {
+      setViewMode('admin');
+    }
+
     console.log('currentUser changed:', {
       userId: currentUser?.id,
       email: currentUser?.email,
       isProvider: currentUser?.isProvider,
       providerId: currentUser?.providerId
     });
-    
+
     if (currentUser?.isProvider) {
       console.log('User is provider, loading provider data...');
       loadCurrentProvider(currentUser.id);
@@ -204,12 +209,40 @@ export default function App() {
     };
   }, [currentUser?.id, notificationsEnabled]);
 
+  useEffect(() => {
+    if (!currentUser) {
+      setFavoriteServiceIds([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadFavorites = async () => {
+      try {
+        const ids = await supabase.getFavorites();
+        if (!cancelled) {
+          setFavoriteServiceIds(Array.isArray(ids) ? ids : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setFavoriteServiceIds([]);
+        }
+      }
+    };
+
+    loadFavorites();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id]);
+
   // Handle URL routing
   useEffect(() => {
     const handlePopState = () => {
       setCurrentRoute(window.location.pathname);
     };
-    
+
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
@@ -223,12 +256,12 @@ export default function App() {
       } catch (error) {
         console.log('Admin user already exists or initialization not needed');
       }
-      
+
       // Load services (artists) - use mock data as fallback
       const servicesData = await supabase.getServices();
       let loadedArtists: Artist[] = [];
       let hasEmptyTables = false;
-      
+
       if (servicesData && servicesData.length > 0) {
         loadedArtists = servicesData;
       } else {
@@ -260,21 +293,21 @@ export default function App() {
       // Update artist ratings based on loaded reviews
       const updatedArtists = loadedArtists.map(artist => {
         const artistReviews = loadedReviews.filter(r => r.artistId === artist.id);
-        
+
         if (artistReviews.length === 0) {
           return artist;
         }
-        
+
         const totalRating = artistReviews.reduce((sum, r) => sum + r.rating, 0);
         const averageRating = totalRating / artistReviews.length;
-        
+
         return {
           ...artist,
           rating: Math.round(averageRating * 10) / 10,
           reviews: artistReviews.length
         };
       });
-      
+
       setArtists(updatedArtists);
 
       // Load bookings
@@ -302,7 +335,7 @@ export default function App() {
       }
 
       // Users will be loaded separately when admin logs in (see useEffect)
-      
+
       // If database is empty, enable demo mode silently
       if (hasEmptyTables) {
         setIsDemoMode(true);
@@ -318,12 +351,12 @@ export default function App() {
       } else {
         console.log('Error de conexión al backend:', error?.message || error);
       }
-      
+
       setIsDemoMode(true);
       toast.error('Backend no disponible - Usando datos de ejemplo', {
         duration: 5000,
       });
-      
+
       // Fallback to mock data
       setArtists(mockArtists);
       setReviews(mockReviews);
@@ -354,7 +387,7 @@ export default function App() {
   const loadCurrentProvider = async (userId?: string) => {
     const userIdToUse = userId || currentUser?.id;
     if (!userIdToUse) return null;
-    
+
     try {
       console.log('Loading provider for user:', userIdToUse);
       const provider = await supabase.getProviderByUserId(userIdToUse);
@@ -379,25 +412,48 @@ export default function App() {
       setShowAuthDialog(true);
       return;
     }
-    
+
     setBookingArtist(artist);
     setSelectedPlan(plan || null);
     setShowBooking(true);
+  };
+
+  const handleToggleFavorite = async (artist: Artist) => {
+    if (!currentUser) {
+      return;
+    }
+
+    const isFavorite = favoriteServiceIds.includes(artist.id);
+
+    try {
+      if (isFavorite) {
+        await supabase.removeFavorite(artist.id);
+        setFavoriteServiceIds((prev) => prev.filter((id) => id !== artist.id));
+        toast.success('Servicio eliminado de favoritos');
+      } else {
+        await supabase.addFavorite(artist.id);
+        setFavoriteServiceIds((prev) => (prev.includes(artist.id) ? prev : [...prev, artist.id]));
+        toast.success('Servicio agregado a favoritos');
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      toast.error('No se pudo actualizar favoritos');
+    }
   };
 
   const handleContractCreated = async (contract: Contract) => {
     try {
       const createdContract = await supabase.createContract(contract);
       setContracts(prev => [...prev, createdContract]);
-      
+
       // If contract has an eventId, add it to the event's contract list
       if (createdContract.eventId) {
         const event = events.find(e => e.id === createdContract.eventId);
         if (event) {
           const contractIds = new Set(event.contractIds);
           contractIds.add(createdContract.id);
-          await handleUpdateEvent(createdContract.eventId, { 
-            contractIds: Array.from(contractIds) 
+          await handleUpdateEvent(createdContract.eventId, {
+            contractIds: Array.from(contractIds)
           }, true); // silent = true para no mostrar toast
         }
       }
@@ -410,14 +466,9 @@ export default function App() {
   const handleSignUp = async (email: string, password: string, name: string, phone: string, isProvider: boolean) => {
     try {
       const result = await supabase.signUp(email, password, name, phone, isProvider);
-      
-      // Provider profile will be auto-created by backend when user accesses "Mi Negocio"
-      // No need to manually create it here
-      if (isProvider && result.user) {
-        setViewMode('business');
-        setDashboardView('provider');
-        // Load provider data (will be auto-created if doesn't exist)
-        await loadCurrentProvider(result.user.id);
+
+      if (isProvider && result.user?.providerRequestStatus === 'pending') {
+        toast.success('Tu solicitud de proveedor fue enviada y está pendiente de aprobación.');
       }
     } catch (error) {
       throw error;
@@ -427,7 +478,7 @@ export default function App() {
   const handleSignIn = async (email: string, password: string) => {
     try {
       await supabase.signIn(email, password);
-      
+
       // If user is a provider, load provider data and switch to business view
       if (supabase.currentUser?.isProvider) {
         await loadCurrentProvider();
@@ -464,14 +515,14 @@ export default function App() {
     try {
       // Update current user to mark as provider
       if (currentUser) {
-        await supabase.updateUser(currentUser.id, { 
+        await supabase.updateUser(currentUser.id, {
           isProvider: true,
           name: provider.businessName // Update name to business name
         });
-        
+
         // Load provider data (will be auto-created by backend if doesn't exist)
         const createdProvider = await loadCurrentProvider(currentUser.id);
-        
+
         // Update the provider with the form data
         if (createdProvider) {
           const updatedProvider = await supabase.updateProvider(createdProvider.id, {
@@ -481,7 +532,7 @@ export default function App() {
           });
           setCurrentProvider(updatedProvider);
         }
-        
+
         toast.success('¡Perfil de proveedor creado exitosamente!');
       }
     } catch (error) {
@@ -497,40 +548,24 @@ export default function App() {
     }
 
     try {
-      console.log('Converting user to provider...', currentUser.email);
-      
-      // Update user to mark as provider - backend will auto-create provider profile
-      const updatedUser = await supabase.updateUser(currentUser.id, { 
-        isProvider: true
-      });
-      
-      console.log('User updated successfully:', {
-        userId: updatedUser.id,
-        isProvider: updatedUser.isProvider
-      });
-      
-      // Load provider data (will be auto-created by backend if doesn't exist)
-      await loadCurrentProvider(currentUser.id);
-      
-      // The useEffect should trigger automatically when currentUser updates,
-      // but we already have the provider loaded in setCurrentProvider above
-      
-      // Close user profile dialog
+      const result = await supabase.requestProviderAccess(currentUser.id);
       setShowUserProfile(false);
-      
-      // Switch to business view immediately
-      setViewMode('business');
-      setDashboardView('provider');
-      
-      toast.success('¡Cuenta convertida a proveedor! Ahora puedes ofrecer tus servicios');
+
+      if (result?.status === 'pending') {
+        toast.success('Solicitud enviada. Un administrador debe aprobar tu acceso como proveedor.');
+      } else {
+        toast.success('Tu solicitud de proveedor ya fue procesada.');
+      }
     } catch (error: any) {
       console.error('Error becoming provider:', error);
-      
+
       // Show more friendly error message
       if (error?.message?.includes('BACKEND_UNAVAILABLE')) {
         toast.error('El servidor no está disponible. Por favor, intenta de nuevo más tarde.');
+      } else if (error?.message) {
+        toast.error(error.message);
       } else {
-        toast.error('Error al convertir cuenta a proveedor');
+        toast.error('Error al enviar solicitud de proveedor');
       }
     }
   };
@@ -539,7 +574,7 @@ export default function App() {
     try {
       const createdService = await supabase.createService(service);
       setArtists([...artists, createdService]);
-      
+
       // Link service to provider
       if (currentProvider) {
         const updatedProvider = {
@@ -547,7 +582,7 @@ export default function App() {
           services: [...currentProvider.services, createdService.id]
         };
         setCurrentProvider(updatedProvider);
-        setProviders(providers.map(p => 
+        setProviders(providers.map(p =>
           p.id === currentProvider.id ? updatedProvider : p
         ));
       }
@@ -581,21 +616,21 @@ export default function App() {
   const updateArtistRatings = (artistId: string, allReviews: Review[]) => {
     // Get all reviews for this artist
     const artistReviews = allReviews.filter(r => r.artistId === artistId);
-    
+
     if (artistReviews.length === 0) return;
-    
+
     // Calculate average rating
     const totalRating = artistReviews.reduce((sum, r) => sum + r.rating, 0);
     const averageRating = totalRating / artistReviews.length;
-    
+
     // Update the artist with new rating and review count
-    setArtists(prev => 
-      prev.map(artist => 
-        artist.id === artistId 
-          ? { 
-              ...artist, 
+    setArtists(prev =>
+      prev.map(artist =>
+        artist.id === artistId
+          ? {
+              ...artist,
               rating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
-              reviews: artistReviews.length 
+              reviews: artistReviews.length
             }
           : artist
       )
@@ -608,26 +643,26 @@ export default function App() {
         toast.error('Debes iniciar sesión para dejar una reseña');
         return;
       }
-      
+
       const createdReview = await supabase.createReview(review);
       setReviews(prev => {
         const newReviews = [...prev, createdReview];
-        
+
         // Update artist rating and review count
         updateArtistRatings(review.artistId, newReviews);
-        
+
         return newReviews;
       });
-      
+
       // Update booking to mark it as reviewed
-      setBookings(prev => 
-        prev.map(b => 
-          b.id === review.bookingId 
+      setBookings(prev =>
+        prev.map(b =>
+          b.id === review.bookingId
             ? { ...b, reviewId: review.id }
             : b
         )
       );
-      
+
       // Close dialog and show success message
       setShowReviewDialog(false);
       setReviewBooking(null);
@@ -687,7 +722,7 @@ export default function App() {
   const handleUpdateEvent = async (eventId: string, updates: Partial<Event>, silent = false) => {
     try {
       const updatedEvent = await supabase.updateEvent(eventId, updates);
-      setEvents(prev => prev.map(event => 
+      setEvents(prev => prev.map(event =>
         event.id === eventId ? updatedEvent : event
       ));
       if (!silent) {
@@ -795,14 +830,14 @@ export default function App() {
   const handleDeleteEvent = async (eventId: string) => {
     try {
       await supabase.deleteEvent(eventId);
-      
+
       // Remove event from all contracts
-      setContracts(prev => prev.map(contract => 
-        contract.eventId === eventId 
+      setContracts(prev => prev.map(contract =>
+        contract.eventId === eventId
           ? { ...contract, eventId: undefined }
           : contract
       ));
-      
+
       setEvents(prev => prev.filter(event => event.id !== eventId));
       toast.success('Evento eliminado');
     } catch (error) {
@@ -879,7 +914,7 @@ export default function App() {
           contractIds.add(contractId);
           await handleUpdateEvent(eventId, { contractIds: Array.from(contractIds) }, true);
         }
-        
+
         // Remove from other events
         const otherEvents = events.filter(e => e.id !== eventId && e.contractIds.includes(contractId));
         for (const otherEvent of otherEvents) {
@@ -887,7 +922,7 @@ export default function App() {
             contractIds: otherEvent.contractIds.filter(id => id !== contractId)
           }, true);
         }
-        
+
         toast.success('Reserva asignada al evento');
       } else {
         // Remove from all events
@@ -909,25 +944,25 @@ export default function App() {
     try {
       // Update contract in Supabase
       const updated = await supabase.updateContract(updatedContract.id, updatedContract);
-      
+
       // Update local state
       setContracts(prev => prev.map(c => c.id === updated.id ? updated : c));
-      
+
       // Update associated booking - search by bookingId OR contractId
-      const associatedBooking = bookings.find(b => 
+      const associatedBooking = bookings.find(b =>
         b.id === updated.bookingId || b.contractId === updated.id
       );
-      
+
       if (associatedBooking) {
         let newBookingStatus = associatedBooking.status;
-        
+
         // Map contract status to booking status
         if (updated.status === 'cancelled') {
           newBookingStatus = 'cancelled';
         } else if (updated.status === 'active') {
           newBookingStatus = 'confirmed';
         }
-        
+
         // Update booking if status changed
         if (newBookingStatus !== associatedBooking.status) {
           const updatedBooking = {
@@ -937,7 +972,7 @@ export default function App() {
           await handleBookingUpdate(updatedBooking);
         }
       }
-      
+
       // Show appropriate message based on status
       if (updatedContract.status === 'cancelled') {
         toast.error('Contrato rechazado - La reserva ha sido cancelada');
@@ -958,46 +993,46 @@ export default function App() {
       if (isDemoMode) {
         // Demo mode - update state directly
         const now = new Date().toISOString();
-        setProviders(providers.map(p => 
-          p.id === providerId 
-            ? { 
-                ...p, 
-                verified: true, 
+        setProviders(providers.map(p =>
+          p.id === providerId
+            ? {
+                ...p,
+                verified: true,
                 verifiedAt: now,
-                verifiedBy: currentUser?.id 
-              } 
+                verifiedBy: currentUser?.id
+              }
             : p
         ));
-        
+
         // Update artist verified status for all services of this provider
         const provider = providers.find(p => p.id === providerId);
         if (provider) {
-          setArtists(artists.map(a => 
+          setArtists(artists.map(a =>
             a.userId === provider.userId ? { ...a, verified: true } : a
           ));
         }
-        
+
         toast.success('Proveedor verificado exitosamente');
         return;
       }
 
       const updatedProvider = await supabase.verifyProvider(providerId);
       setProviders(providers.map(p => p.id === providerId ? updatedProvider : p));
-      
+
       // Update artist verified status for all services of this provider
       const provider = providers.find(p => p.id === providerId);
       if (provider) {
-        setArtists(artists.map(a => 
+        setArtists(artists.map(a =>
           a.userId === provider.userId ? { ...a, verified: true } : a
         ));
       }
-      
+
       // Reload users if admin
       if (currentUser?.role === 'admin') {
         const usersData = await supabase.getAllUsers();
         if (usersData) setAllUsers(usersData);
       }
-      
+
       toast.success('Proveedor verificado exitosamente');
     } catch (error) {
       console.error('Error verifying provider:', error);
@@ -1011,46 +1046,46 @@ export default function App() {
       if (isDemoMode) {
         // Demo mode - update state directly
         const now = new Date().toISOString();
-        setProviders(providers.map(p => 
-          p.id === providerId 
-            ? { 
-                ...p, 
-                banned: true, 
+        setProviders(providers.map(p =>
+          p.id === providerId
+            ? {
+                ...p,
+                banned: true,
                 bannedAt: now,
-                bannedReason: reason 
-              } 
+                bannedReason: reason
+              }
             : p
         ));
-        
+
         // Hide all services of banned provider
         const provider = providers.find(p => p.id === providerId);
         if (provider) {
-          setArtists(artists.map(a => 
+          setArtists(artists.map(a =>
             a.userId === provider.userId ? { ...a, isArchived: true } : a
           ));
         }
-        
+
         toast.success('Proveedor baneado exitosamente');
         return;
       }
 
       const updatedProvider = await supabase.banProvider(providerId, reason);
       setProviders(providers.map(p => p.id === providerId ? updatedProvider : p));
-      
+
       // Hide all services of banned provider
       const provider = providers.find(p => p.id === providerId);
       if (provider) {
-        setArtists(artists.map(a => 
+        setArtists(artists.map(a =>
           a.userId === provider.userId ? { ...a, isArchived: true } : a
         ));
       }
-      
+
       // Reload users if admin
       if (currentUser?.role === 'admin') {
         const usersData = await supabase.getAllUsers();
         if (usersData) setAllUsers(usersData);
       }
-      
+
       toast.success('Proveedor baneado exitosamente');
     } catch (error) {
       console.error('Error banning provider:', error);
@@ -1063,38 +1098,38 @@ export default function App() {
     try {
       if (isDemoMode) {
         // Demo mode - update state directly
-        setProviders(providers.map(p => 
-          p.id === providerId 
-            ? { 
-                ...p, 
-                banned: false, 
+        setProviders(providers.map(p =>
+          p.id === providerId
+            ? {
+                ...p,
+                banned: false,
                 bannedAt: undefined,
-                bannedReason: undefined 
-              } 
+                bannedReason: undefined
+              }
             : p
         ));
-        
+
         // Show services of unbanned provider
         const provider = providers.find(p => p.id === providerId);
         if (provider) {
-          setArtists(artists.map(a => 
+          setArtists(artists.map(a =>
             a.userId === provider.userId ? { ...a, isArchived: false } : a
           ));
         }
-        
+
         toast.success('Proveedor desbaneado exitosamente');
         return;
       }
 
       const updatedProvider = await supabase.unbanProvider(providerId);
       setProviders(providers.map(p => p.id === providerId ? updatedProvider : p));
-      
+
       // Reload users if admin
       if (currentUser?.role === 'admin') {
         const usersData = await supabase.getAllUsers();
         if (usersData) setAllUsers(usersData);
       }
-      
+
       toast.success('Proveedor desbaneado exitosamente');
     } catch (error) {
       console.error('Error unbanning provider:', error);
@@ -1108,29 +1143,29 @@ export default function App() {
       if (isDemoMode) {
         // Demo mode - update state directly
         const now = new Date().toISOString();
-        setAllUsers(allUsers.map(u => 
-          u.id === userId 
-            ? { 
-                ...u, 
-                banned: true, 
+        setAllUsers(allUsers.map(u =>
+          u.id === userId
+            ? {
+                ...u,
+                banned: true,
                 bannedAt: now,
-                bannedReason: reason 
-              } 
+                bannedReason: reason
+              }
             : u
         ));
-        
+
         toast.success('Usuario baneado exitosamente');
         return;
       }
 
       await supabase.banUser(userId, reason);
-      
+
       // Reload users if admin
       if (currentUser?.role === 'admin') {
         const usersData = await supabase.getAllUsers();
         if (usersData) setAllUsers(usersData);
       }
-      
+
       toast.success('Usuario baneado exitosamente');
     } catch (error) {
       console.error('Error banning user:', error);
@@ -1143,29 +1178,29 @@ export default function App() {
     try {
       if (isDemoMode) {
         // Demo mode - update state directly
-        setAllUsers(allUsers.map(u => 
-          u.id === userId 
-            ? { 
-                ...u, 
-                banned: false, 
+        setAllUsers(allUsers.map(u =>
+          u.id === userId
+            ? {
+                ...u,
+                banned: false,
                 bannedAt: undefined,
-                bannedReason: undefined 
-              } 
+                bannedReason: undefined
+              }
             : u
         ));
-        
+
         toast.success('Usuario desbaneado exitosamente');
         return;
       }
 
       await supabase.unbanUser(userId);
-      
+
       // Reload users if admin
       if (currentUser?.role === 'admin') {
         const usersData = await supabase.getAllUsers();
         if (usersData) setAllUsers(usersData);
       }
-      
+
       toast.success('Usuario desbaneado exitosamente');
     } catch (error) {
       console.error('Error unbanning user:', error);
@@ -1178,28 +1213,28 @@ export default function App() {
     try {
       if (isDemoMode) {
         // Demo mode - update state directly
-        setAllUsers(allUsers.map(u => 
-          u.id === userId 
-            ? { 
-                ...u, 
-                archived: true, 
+        setAllUsers(allUsers.map(u =>
+          u.id === userId
+            ? {
+                ...u,
+                archived: true,
                 archivedAt: new Date().toISOString()
-              } 
+              }
             : u
         ));
-        
+
         toast.success('Usuario archivado exitosamente');
         return;
       }
 
       await supabase.archiveUser(userId);
-      
+
       // Reload users if admin
       if (currentUser?.role === 'admin') {
         const usersData = await supabase.getAllUsers();
         if (usersData) setAllUsers(usersData);
       }
-      
+
       toast.success('Usuario archivado exitosamente');
     } catch (error) {
       console.error('Error archiving user:', error);
@@ -1212,28 +1247,28 @@ export default function App() {
     try {
       if (isDemoMode) {
         // Demo mode - update state directly
-        setAllUsers(allUsers.map(u => 
-          u.id === userId 
-            ? { 
-                ...u, 
-                archived: false, 
+        setAllUsers(allUsers.map(u =>
+          u.id === userId
+            ? {
+                ...u,
+                archived: false,
                 archivedAt: undefined
-              } 
+              }
             : u
         ));
-        
+
         toast.success('Usuario restaurado exitosamente');
         return;
       }
 
       await supabase.unarchiveUser(userId);
-      
+
       // Reload users if admin
       if (currentUser?.role === 'admin') {
         const usersData = await supabase.getAllUsers();
         if (usersData) setAllUsers(usersData);
       }
-      
+
       toast.success('Usuario restaurado exitosamente');
     } catch (error) {
       console.error('Error unarchiving user:', error);
@@ -1252,13 +1287,13 @@ export default function App() {
       }
 
       await supabase.deleteUser(userId);
-      
+
       // Reload users if admin
       if (currentUser?.role === 'admin') {
         const usersData = await supabase.getAllUsers();
         if (usersData) setAllUsers(usersData);
       }
-      
+
       toast.success('Usuario eliminado exitosamente');
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -1267,19 +1302,58 @@ export default function App() {
     }
   };
 
+  const handleApproveProviderAccess = async (userId: string) => {
+    try {
+      await supabase.approveProviderAccess(userId);
+
+      if (currentUser?.role === 'admin') {
+        const usersData = await supabase.getAllUsers();
+        if (usersData) setAllUsers(usersData);
+      }
+
+      toast.success('Acceso de proveedor aprobado');
+    } catch (error) {
+      console.error('Error approving provider access:', error);
+      toast.error('Error al aprobar acceso de proveedor');
+      throw error;
+    }
+  };
+
+  const handleRevokeProviderAccess = async (userId: string) => {
+    try {
+      await supabase.revokeProviderAccess(userId);
+
+      if (currentUser?.role === 'admin') {
+        const usersData = await supabase.getAllUsers();
+        if (usersData) setAllUsers(usersData);
+      }
+
+      const servicesData = await supabase.getServices();
+      if (servicesData) {
+        setArtists(servicesData);
+      }
+
+      toast.success('Acceso de proveedor cancelado');
+    } catch (error) {
+      console.error('Error revoking provider access:', error);
+      toast.error('Error al cancelar acceso de proveedor');
+      throw error;
+    }
+  };
+
   // Get user-specific data
-  const userBookings = currentUser 
+  const userBookings = currentUser
     ? bookings.filter(b => b.userId === currentUser.id)
     : [];
-  
+
   const userContracts = currentUser
     ? contracts.filter(c => c.clientId === currentUser.id)
     : [];
-  
+
   const userReviews = currentUser
     ? reviews.filter(r => r.userId === currentUser.id)
     : [];
-  
+
   // Debug logging for client view
   if (currentUser && !currentUser.isProvider) {
     console.log('Client View - Current User ID:', currentUser.id);
@@ -1296,7 +1370,7 @@ export default function App() {
   const providerServices = currentUser?.isProvider
     ? artists.filter(a => a.userId === currentUser.id)
     : [];
-  
+
   // Debug logging
   if (currentUser && currentUser.isProvider) {
     console.log('Provider View - Current User ID:', currentUser.id);
@@ -1311,7 +1385,7 @@ export default function App() {
     let filtered = [...artists];
 
     // Filter out archived and unpublished services from public view
-    filtered = filtered.filter(artist => 
+    filtered = filtered.filter(artist =>
       !artist.isArchived && (artist.isPublished !== false)
     );
 
@@ -1323,7 +1397,7 @@ export default function App() {
         if (user?.banned || user?.archived) {
           return false;
         }
-        
+
         // Check if the provider is banned
         const provider = providers.find(p => p.userId === artist.userId);
         if (provider?.banned) {
@@ -1336,7 +1410,7 @@ export default function App() {
     // Filter by text query
     if (searchCriteria.query) {
       const query = searchCriteria.query.toLowerCase();
-      filtered = filtered.filter(artist => 
+      filtered = filtered.filter(artist =>
         (artist.name?.toLowerCase() || '').includes(query) ||
         (artist.description?.toLowerCase() || '').includes(query) ||
         (artist.category?.toLowerCase() || '').includes(query) ||
@@ -1347,20 +1421,20 @@ export default function App() {
 
     // Filter by city
     if (searchCriteria.city) {
-      filtered = filtered.filter(artist => 
+      filtered = filtered.filter(artist =>
         (artist.location?.toLowerCase() || '').includes(searchCriteria.city.toLowerCase())
       );
     }
 
     // Filter by category/subcategory
     if (searchCriteria.subcategory) {
-      filtered = filtered.filter(artist => 
+      filtered = filtered.filter(artist =>
         (artist.subcategory?.toLowerCase() || '').includes(searchCriteria.subcategory.toLowerCase()) ||
         (artist.category?.toLowerCase() || '').includes(searchCriteria.subcategory.toLowerCase()) ||
         artist.specialties?.some(s => s.toLowerCase().includes(searchCriteria.subcategory.toLowerCase()))
       );
     } else if (searchCriteria.category) {
-      filtered = filtered.filter(artist => 
+      filtered = filtered.filter(artist =>
         (artist.category?.toLowerCase() || '').includes(searchCriteria.category.toLowerCase()) ||
         artist.specialties?.some(s => s.toLowerCase().includes(searchCriteria.category.toLowerCase()))
       );
@@ -1400,6 +1474,16 @@ export default function App() {
     return filtered;
   }, [artists, searchCriteria, sortBy, allUsers, providers]);
 
+  const isFavoritesRoute = currentRoute === '/favoritos';
+
+  const visibleArtists = useMemo(() => {
+    if (!isFavoritesRoute) {
+      return filteredArtists;
+    }
+
+    return filteredArtists.filter((artist) => favoriteServiceIds.includes(artist.id));
+  }, [filteredArtists, isFavoritesRoute, favoriteServiceIds]);
+
   // Show loading screen while checking authentication
   if (supabase.loading) {
     return (
@@ -1414,23 +1498,23 @@ export default function App() {
                   <stop offset="100%" style={{ stopColor: 'var(--copper)', stopOpacity: 1 }} />
                 </linearGradient>
               </defs>
-              
+
               {/* Fondo con bordes redondeados */}
               <rect x="0" y="0" width="100" height="100" rx="16" fill="url(#loadingLogoGradient)" />
-              
+
               {/* Letra M estilizada como arco/portal */}
-              <path 
-                d="M 20 70 L 20 35 Q 20 25 30 25 L 35 25 L 50 50 L 65 25 L 70 25 Q 80 25 80 35 L 80 70" 
-                stroke="var(--navy-blue)" 
-                strokeWidth="6" 
-                fill="none" 
-                strokeLinecap="round" 
+              <path
+                d="M 20 70 L 20 35 Q 20 25 30 25 L 35 25 L 50 50 L 65 25 L 70 25 Q 80 25 80 35 L 80 70"
+                stroke="var(--navy-blue)"
+                strokeWidth="6"
+                fill="none"
+                strokeLinecap="round"
                 strokeLinejoin="round"
               />
-              
+
               {/* Estrella de 4 puntas en el centro */}
-              <path 
-                d="M 50 42 L 52 48 L 58 50 L 52 52 L 50 58 L 48 52 L 42 50 L 48 48 Z" 
+              <path
+                d="M 50 42 L 52 48 L 58 50 L 52 52 L 50 58 L 48 52 L 42 50 L 48 48 Z"
                 fill="var(--navy-blue)"
               />
             </svg>
@@ -1469,6 +1553,8 @@ export default function App() {
           artist={serviceArtist}
           reviews={reviews}
           isAuthenticated={!!currentUser}
+          isFavorite={favoriteServiceIds.includes(serviceArtist.id)}
+          onToggleFavorite={() => handleToggleFavorite(serviceArtist)}
           onBack={() => {
             navigateTo('/');
             setViewMode('client');
@@ -1517,14 +1603,14 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background">
       <Toaster />
-      
+
       {!showAbout && !showHowItWorks && !showForProviders && !showForClients && (
         <>
           {/* Header */}
           <header className="sticky top-0 z-40 shadow-sm" style={{ backgroundColor: 'var(--navy-blue)' }}>
         <div className="max-w-[1400px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between gap-4">
-            <button 
+            <button
               onClick={() => {
                 setShowAbout(false);
                 setViewMode('client');
@@ -1542,23 +1628,23 @@ export default function App() {
                       <stop offset="100%" style={{ stopColor: 'var(--copper)', stopOpacity: 1 }} />
                     </linearGradient>
                   </defs>
-                  
+
                   {/* Fondo con bordes redondeados */}
                   <rect x="0" y="0" width="100" height="100" rx="16" fill="url(#logoGradient)" />
-                  
+
                   {/* Letra M estilizada como arco/portal */}
-                  <path 
-                    d="M 20 70 L 20 35 Q 20 25 30 25 L 35 25 L 50 50 L 65 25 L 70 25 Q 80 25 80 35 L 80 70" 
-                    stroke="var(--navy-blue)" 
-                    strokeWidth="6" 
-                    fill="none" 
-                    strokeLinecap="round" 
+                  <path
+                    d="M 20 70 L 20 35 Q 20 25 30 25 L 35 25 L 50 50 L 65 25 L 70 25 Q 80 25 80 35 L 80 70"
+                    stroke="var(--navy-blue)"
+                    strokeWidth="6"
+                    fill="none"
+                    strokeLinecap="round"
                     strokeLinejoin="round"
                   />
-                  
+
                   {/* Estrella de 4 puntas en el centro */}
-                  <path 
-                    d="M 50 42 L 52 48 L 58 50 L 52 52 L 50 58 L 48 52 L 42 50 L 48 48 Z" 
+                  <path
+                    d="M 50 42 L 52 48 L 58 50 L 52 52 L 50 58 L 48 52 L 42 50 L 48 48 Z"
                     fill="var(--navy-blue)"
                   />
                 </svg>
@@ -1573,9 +1659,9 @@ export default function App() {
             <div className="flex-1 max-w-2xl mx-2">
               {/* Desktop Search */}
               <div className="hidden md:block relative">
-                <input 
-                  type="text" 
-                  placeholder="Buscar proveedores de servicio..." 
+                <input
+                  type="text"
+                  placeholder="Buscar proveedores de servicio..."
                   className="w-full h-10 px-4 pr-12 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500 bg-white"
                   style={{ borderRadius: '2px' }}
                   value={searchCriteria.query || ''}
@@ -1591,9 +1677,9 @@ export default function App() {
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                   <Search className="w-4 h-4" />
                 </div>
-                <input 
-                  type="text" 
-                  placeholder="Estoy buscando..." 
+                <input
+                  type="text"
+                  placeholder="Estoy buscando..."
                   className="w-full h-9 pl-10 pr-4 rounded-sm text-sm focus:outline-none text-gray-900 placeholder:text-gray-400 bg-white"
                   style={{ borderRadius: '4px' }}
                   value={searchCriteria.query || ''}
@@ -1646,7 +1732,7 @@ export default function App() {
                   Admin
                 </Button>
               )}
-              
+
               {/* User Menu */}
               {currentUser ? (
                 <>
@@ -1749,6 +1835,13 @@ export default function App() {
                       }}>
                         <LayoutDashboard className="w-4 h-4 mr-2" />
                         Mis Reservas
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        setViewMode('client');
+                        navigateTo('/favoritos');
+                      }}>
+                        <Heart className="w-4 h-4 mr-2" />
+                        Favoritos
                       </DropdownMenuItem>
                       {currentUser.isProvider && (
                         <>
@@ -1867,9 +1960,21 @@ export default function App() {
                   Panel de Admin
                 </Button>
               )}
-              
+
               {currentUser ? (
                 <>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setViewMode('client');
+                      navigateTo('/favoritos');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full text-white hover:text-white hover:bg-white/10"
+                  >
+                    <Heart className="w-4 h-4 mr-2" />
+                    Favoritos
+                  </Button>
                   <Button
                     variant="ghost"
                     onClick={() => {
@@ -1931,6 +2036,8 @@ export default function App() {
               onArchiveUser={handleArchiveUser}
               onUnarchiveUser={handleUnarchiveUser}
               onDeleteUser={handleDeleteUser}
+              onApproveProviderAccess={handleApproveProviderAccess}
+              onRevokeProviderAccess={handleRevokeProviderAccess}
             />
           ) : (
             <div className="text-center py-12">
@@ -1953,7 +2060,7 @@ export default function App() {
                 try {
                   const updatedContract = await supabase.updateContract(updated.id, updated);
                   setContracts(prev => prev.map(c => c.id === updatedContract.id ? updatedContract : c));
-                  
+
                   // If contract was marked as completed, reload services to update bookingsCompleted
                   if (updated.status === 'completed') {
                     console.log('Contract marked as completed, reloading services...');
@@ -2015,14 +2122,16 @@ export default function App() {
           <>
             {/* SEO for marketplace home */}
             <SEOHead
-              canonical="/"
+              canonical={isFavoritesRoute ? '/favoritos' : '/'}
               keywords="servicios eventos Venezuela, bodas, fiestas, DJ, catering, fotografia, decoracion"
-              structuredData={buildMarketplaceStructuredData(filteredArtists)}
+              structuredData={buildMarketplaceStructuredData(visibleArtists)}
             />
             {/* Search & Filters */}
             <div className="mb-5 md:mb-8">
               <div className="mb-4 text-center hidden md:block">
-                <h2 className="mb-2 font-[Carattere] text-[24px]">Tu Evento Inolvidable Empieza Aquí</h2>
+                <h2 className="mb-2 font-[Carattere] text-[24px]">
+                  {isFavoritesRoute ? 'Tus Favoritos' : 'Tu Evento Inolvidable Empieza Aquí'}
+                </h2>
               </div>
 
               <AirbnbSearchBar
@@ -2034,7 +2143,7 @@ export default function App() {
             {/* Results & Sort */}
             <div className="mb-3 md:mb-4 flex flex-col-reverse md:flex-row items-start md:items-center justify-between gap-2 md:gap-3">
               <p className="text-gray-600 text-xs md:text-base leading-tight">
-                {filteredArtists.length} proveedor{filteredArtists.length !== 1 ? 'es' : ''} encontrado{filteredArtists.length !== 1 ? 's' : ''}
+                {visibleArtists.length} proveedor{visibleArtists.length !== 1 ? 'es' : ''} encontrado{visibleArtists.length !== 1 ? 's' : ''}
               </p>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">Ordenar por:</span>
@@ -2051,10 +2160,16 @@ export default function App() {
               </div>
             </div>
 
+            {isFavoritesRoute && !currentUser && (
+              <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 text-sm">
+                Debes iniciar sesión para ver tus favoritos.
+              </div>
+            )}
+
             {/* Artist Grid */}
-            {filteredArtists.length > 0 ? (
+            {visibleArtists.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-2 md:gap-y-3">
-                {filteredArtists.map((artist) => (
+                {visibleArtists.map((artist) => (
                   <ArtistCard
                     key={artist.id}
                     artist={artist}
@@ -2064,7 +2179,11 @@ export default function App() {
               </div>
             ) : (
               <div className="text-center py-12">
-                <p className="text-gray-500">No se encontraron proveedores que coincidan con tus criterios</p>
+                <p className="text-gray-500">
+                  {isFavoritesRoute
+                    ? 'No tienes servicios favoritos que coincidan con tus criterios'
+                    : 'No se encontraron proveedores que coincidan con tus criterios'}
+                </p>
                 <Button
                   variant="outline"
                   className="mt-4"
@@ -2084,13 +2203,13 @@ export default function App() {
           </>
         ) : (
           currentUser?.isProvider ? (
-            <ArtistDashboard 
-              contracts={contracts} 
+            <ArtistDashboard
+              contracts={contracts}
               onContractUpdate={async (updated) => {
                 try {
                   const updatedContract = await supabase.updateContract(updated.id, updated);
                   setContracts(prev => prev.map(c => c.id === updatedContract.id ? updatedContract : c));
-                  
+
                   // If contract was marked as completed, reload services to update bookingsCompleted
                   if (updated.status === 'completed') {
                     console.log('Contract marked as completed, reloading services...');
@@ -2103,7 +2222,7 @@ export default function App() {
                   console.error('Error updating contract:', error);
                   toast.error('Error al actualizar contrato');
                 }
-              }} 
+              }}
             />
           ) : (
             currentUser && (
@@ -2149,7 +2268,7 @@ export default function App() {
       </main>
 
           {/* Footer */}
-          <Footer 
+          <Footer
             onAboutClick={() => setShowAbout(true)}
             onHowItWorksClick={() => setShowHowItWorks(true)}
             onForProvidersClick={() => setShowForProviders(true)}

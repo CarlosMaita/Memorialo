@@ -8,6 +8,10 @@ export interface User {
   avatar?: string;
   isProvider: boolean; // If true, user is a service provider
   providerId?: string; // If user is a provider, link to their provider profile
+  providerRequestStatus?: 'none' | 'pending' | 'approved' | 'rejected';
+  providerRequestedAt?: string;
+  providerApprovedAt?: string;
+  providerApprovedBy?: string;
   role?: 'user' | 'provider' | 'admin'; // User role for access control
   banned?: boolean; // If true, user is banned from the platform
   bannedAt?: string; // When the user was banned

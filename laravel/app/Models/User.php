@@ -23,6 +23,10 @@ use Illuminate\Notifications\Notifiable;
     'avatar',
     'is_provider',
     'provider_id',
+    'provider_request_status',
+    'provider_requested_at',
+    'provider_approved_at',
+    'provider_approved_by',
     'role',
     'banned',
     'banned_at',
@@ -51,6 +55,8 @@ class User extends Authenticatable
             'archived' => 'boolean',
             'banned_at' => 'datetime',
             'archived_at' => 'datetime',
+            'provider_requested_at' => 'datetime',
+            'provider_approved_at' => 'datetime',
         ];
     }
 
