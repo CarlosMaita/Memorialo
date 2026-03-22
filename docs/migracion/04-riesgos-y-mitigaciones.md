@@ -90,3 +90,17 @@
 - Probabilidad: Media.
 - Mitigacion: Mantener tabla complementaria `notification_deliveries` desde N1 y documentar la `dedupe_key` por caso de negocio.
 - Senal de alerta: No se puede responder si un correo fue enviado, fallo o se duplico para un usuario especifico.
+
+## Riesgo 14 - Fuga de datos por ownership deficiente en N2
+- Descripcion: Un endpoint de bandeja mal filtrado puede devolver notificaciones de terceros.
+- Impacto: Alto.
+- Probabilidad: Media.
+- Mitigacion: Forzar scope por `auth()->id()` en todas las consultas y cubrir con pruebas de autorizacion negativas.
+- Senal de alerta: Usuario visualiza contenido de otro perfil al abrir dropdown o al marcar como leido.
+
+## Riesgo 15 - Inconsistencia de contador no leido
+- Descripcion: `unread-count` puede desalinearse frente al listado por condiciones de carrera o cache agresivo.
+- Impacto: Medio.
+- Probabilidad: Media.
+- Mitigacion: Calcular sobre fuente de verdad (`read_at IS NULL`), invalidar cache en `read/read-all` y validar idempotencia.
+- Senal de alerta: Badge en header muestra un numero distinto al listado de no leidas.

@@ -156,3 +156,79 @@
 - Desactivar flags de notificaciones in-app o mail sin borrar historico.
 - Mantener persistencia creada en modo inactivo si ya se aplicaron migraciones.
 - Conservar temporalmente endpoints legacy de correo mientras N3 no este validado end-to-end.
+
+## 10. Diseno Objetivo N2 - API de Bandeja y Estado
+### 10.1 Principios de contrato
+- Resolver identidad de bandeja solo por usuario autenticado.
+- Exponer respuestas estables para header y dropdown.
+- Soportar crecimiento de volumen con paginacion por cursor.
+- Evitar N+1: toda info UX debe venir en `data` sin joins frontend.
+
+### 10.2 Endpoints propuestos
+- `GET /api/notifications`
+	- Objetivo: listar notificaciones para el usuario autenticado.
+	- Query params:
+		- `cursor` (opcional)
+		- `limit` (opcional, default 20, max 50)
+		- `unread` (opcional, `true|false`)
+		- `type` (opcional, tipo canonico)
+	- Respuesta 200:
+		- `items`: arreglo de notificaciones.
+		- `pageInfo`: `{ nextCursor, hasMore, limit }`.
+		- `unreadCount`: entero con no leidas totales.
+
+- `GET /api/notifications/unread-count`
+	- Objetivo: obtener contador rapido para badge del icono.
+	- Respuesta 200:
+		- `count`: entero.
+
+- `PATCH /api/notifications/{id}/read`
+	- Objetivo: marcar una notificacion como leida.
+	- Regla: solo permite ids pertenecientes al usuario autenticado.
+	- Respuesta 200:
+		- `id`, `readAt`.
+
+- `PATCH /api/notifications/read-all`
+	- Objetivo: marcar todas las no leidas del usuario autenticado.
+	- Respuesta 200:
+		- `updated`: cantidad de filas afectadas.
+		- `readAt`: timestamp aplicado.
+
+### 10.3 Forma del item de bandeja
+- `id`
+- `type`
+- `title`
+- `body`
+- `priority`
+- `entity`
+- `ctaUrl`
+- `createdAt`
+- `readAt`
+- `isRead`
+
+### 10.4 Errores esperados
+- `401` no autenticado.
+- `403` id de notificacion fuera de ownership.
+- `404` notificacion inexistente para el usuario.
+- `422` query params invalidos (`limit`, `unread`, `type`).
+- `429` exceso de requests para badge polling.
+
+### 10.5 Reglas de autorizacion N2
+- Middleware de auth obligatorio en los endpoints N2.
+- Scope por propietario: `notifiable_id == auth()->id()` y `notifiable_type == User::class`.
+- Prohibido exponer endpoints de administracion de bandeja cross-user en N2.
+
+### 10.6 Reglas de consistencia N2
+- Orden por defecto: `created_at DESC`.
+- `unreadCount` debe ser consistente con `read_at IS NULL`.
+- `mark-as-read` debe ser idempotente.
+- `read-all` debe ser atomico por usuario.
+
+### 10.7 Feature flags N2
+- Backend: `NOTIFICATIONS_IN_APP_ENABLED=true` habilita endpoints.
+- Frontend: `VITE_NOTIFICATIONS_HEADER_ENABLED=true` habilita icono y dropdown.
+
+### 10.8 Rollback N2
+- Frontend: apagar icono/dropdown via `VITE_NOTIFICATIONS_HEADER_ENABLED=false`.
+- Backend: mantener endpoints disponibles solo para soporte interno o apagarlos via `NOTIFICATIONS_IN_APP_ENABLED=false`.
+- Persistencia: no eliminar historico ni migraciones de N1.

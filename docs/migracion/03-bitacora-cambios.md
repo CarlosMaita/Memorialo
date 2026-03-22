@@ -200,3 +200,21 @@
 - Evidencia: Se agregaron en la documentacion tipos canonicos, matriz evento -> canal, payload canonico de bandeja, regla de `dedupe_key` y criterio de salida N1.
 - Riesgo generado/mitigado: Mitigado riesgo de no poder auditar correos o controlar duplicados si se usaba solo la tabla nativa de Laravel Notifications.
 - Accion siguiente: Avanzar a N2 con contrato API para listar notificaciones, obtener conteo no leido y marcar como leidas.
+
+### 2026-03-21
+- Fase: 1 (ejecucion documental Lote N2)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Definicion del contrato API para bandeja de notificaciones en header con operaciones de listado, conteo no leido, marcado individual y marcado masivo como leidas.
+- Motivo: Eliminar ambiguedad de implementacion del backend de lectura/estado y asegurar compatibilidad frontend para icono, badge y dropdown.
+- Evidencia: Actualizacion de 00-resumen-ejecutivo, 01-inventario-actual, 02-plan-fases, 04-riesgos-y-mitigaciones y 05-checklist-validacion con endpoints, reglas de autorizacion, errores esperados, consistencia y rollback N2.
+- Riesgo generado/mitigado: Mitigado riesgo de fuga de datos por ownership deficiente y de desalineacion del contador de no leidas respecto al listado.
+- Accion siguiente: Iniciar implementacion tecnica N2 en Laravel (`/api/notifications`) y luego habilitar N4 en frontend por feature flag.
+
+### 2026-03-21
+- Fase: 1 (implementacion tecnica Lotes N1 y N2)
+- Responsable: Copilot + Carlo
+- Cambio ejecutado: Implementacion backend de notificaciones en Laravel con persistencia N1 (`notifications`, `notification_deliveries`) y API N2 (`GET /api/notifications`, `GET /api/notifications/unread-count`, `PATCH /api/notifications/{id}/read`, `PATCH /api/notifications/read-all`) bajo `auth:sanctum`.
+- Motivo: Llevar a ejecucion real lo definido en la documentacion de N1/N2 y habilitar integracion inmediata de header/badge en frontend.
+- Evidencia: Nuevas migraciones en `database/migrations`, `NotificationController`, `NotificationDelivery`, `NotificationTypes`, rutas API y suite `tests/Feature/NotificationApiTest.php` en verde.
+- Riesgo generado/mitigado: Mitigado riesgo de ambiguedad de contrato y de acceso cross-user al forzar ownership por usuario autenticado y validar con pruebas negativas.
+- Accion siguiente: Implementar N4 en frontend para campana/badge/dropdown y conectar polling/refresh con feature flag.

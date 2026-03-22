@@ -3,11 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Provider;
+use App\Services\NotificationDispatchService;
+use App\Support\NotificationTypes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ProviderController extends Controller
 {
+    public function __construct(private NotificationDispatchService $notifications)
+    {
+    }
+
     public function index(): JsonResponse
     {
         $providers = Provider::query()->latest()->get()->map(fn (Provider $provider) => $this->formatProvider($provider));
@@ -49,6 +55,15 @@ class ProviderController extends Controller
             'is_provider' => true,
             'provider_id' => $provider->id,
             'role' => $authUser->role === 'admin' ? 'admin' : 'provider',
+        ]);
+
+        $this->notifications->dispatchToUser($authUser->fresh(), NotificationTypes::PROVIDER_ROLE_ACTIVATED, [
+            'channels' => ['database'],
+            'title' => 'Perfil de proveedor activado',
+            'body' => 'Tu perfil de proveedor fue creado correctamente. Ya puedes gestionar tu negocio.',
+            'ctaUrl' => '/',
+            'entity' => ['type' => 'provider', 'id' => (string) $provider->id],
+            'dedupeKey' => NotificationTypes::PROVIDER_ROLE_ACTIVATED.':provider:'.$provider->id,
         ]);
 
         return response()->json($this->formatProvider($provider), 201);

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase, Shield, Search } from 'lucide-react';
+import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase, Shield, Search, Bell, CheckCheck } from 'lucide-react';
 import { Artist, ServicePlan, Contract, User, Review, Booking, Provider, Event } from './types';
 import { mockArtists, mockEvents, mockUsers, mockProviders } from './data/mockData';
 import { mockReviews } from './data/mockReviews';
@@ -36,6 +36,18 @@ import { toast } from 'sonner@2.0.3';
 
 type ViewMode = 'client' | 'business' | 'admin';
 type DashboardView = 'provider' | 'client';
+
+type HeaderNotification = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  priority?: 'low' | 'normal' | 'high';
+  ctaUrl?: string | null;
+  createdAt?: string;
+  readAt?: string | null;
+  isRead: boolean;
+};
 
 export default function App() {
   // Supabase hook
@@ -86,6 +98,12 @@ export default function App() {
   // Admin
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
+  // Notifications (N2)
+  const notificationsEnabled = ((import.meta as any).env?.VITE_NOTIFICATIONS_HEADER_ENABLED ?? 'true') !== 'false';
+  const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+
   // Load initial data from Supabase
   useEffect(() => {
     loadData();
@@ -126,6 +144,54 @@ export default function App() {
       loadAllUsers();
     }
   }, [currentUser?.role]);
+
+  useEffect(() => {
+    if (!currentUser || !notificationsEnabled) {
+      setNotifications([]);
+      setUnreadNotificationsCount(0);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadInitialNotifications = async () => {
+      try {
+        const data = await supabase.getNotifications({ limit: 8 });
+        if (!cancelled) {
+          setNotifications(Array.isArray(data?.items) ? data.items : []);
+          setUnreadNotificationsCount(Number(data?.unreadCount || 0));
+        }
+      } catch (error: any) {
+        if (!cancelled) {
+          // Backend may have feature disabled - keep UI graceful.
+          if (!String(error?.message || '').includes('disabled')) {
+            console.error('Error loading notifications:', error);
+          }
+          setNotifications([]);
+          setUnreadNotificationsCount(0);
+        }
+      }
+    };
+
+    const refreshUnreadCount = async () => {
+      try {
+        const count = await supabase.getUnreadNotificationsCount();
+        if (!cancelled) {
+          setUnreadNotificationsCount(count);
+        }
+      } catch {
+        // Silent polling failure.
+      }
+    };
+
+    loadInitialNotifications();
+    const intervalId = setInterval(refreshUnreadCount, 30000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [currentUser?.id, notificationsEnabled]);
 
   // Handle URL routing
   useEffect(() => {
@@ -648,6 +714,55 @@ export default function App() {
     } catch (error) {
       console.error('Error deleting event:', error);
       toast.error('Error al eliminar evento');
+    }
+  };
+
+  const handleRefreshNotifications = async () => {
+    if (!currentUser || !notificationsEnabled) return;
+    setNotificationsLoading(true);
+    try {
+      const data = await supabase.getNotifications({ limit: 8 });
+      setNotifications(Array.isArray(data?.items) ? data.items : []);
+      setUnreadNotificationsCount(Number(data?.unreadCount || 0));
+    } catch (error: any) {
+      if (!String(error?.message || '').includes('disabled')) {
+        toast.error('No se pudieron cargar las notificaciones');
+      }
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const handleMarkNotificationRead = async (notification: HeaderNotification) => {
+    if (!notification || notification.isRead) {
+      if (notification?.ctaUrl) {
+        navigateTo(notification.ctaUrl);
+      }
+      return;
+    }
+
+    try {
+      const data = await supabase.markNotificationRead(notification.id);
+      setNotifications((prev) => prev.map((item) => item.id === notification.id ? { ...item, isRead: true, readAt: data?.readAt || new Date().toISOString() } : item));
+      setUnreadNotificationsCount(Number(data?.unreadCount ?? Math.max(0, unreadNotificationsCount - 1)));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    } finally {
+      if (notification.ctaUrl) {
+        navigateTo(notification.ctaUrl);
+      }
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    try {
+      const data = await supabase.markAllNotificationsRead();
+      setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true, readAt: data?.readAt || new Date().toISOString() })));
+      setUnreadNotificationsCount(0);
+      toast.success('Notificaciones marcadas como leidas');
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      toast.error('No se pudieron marcar todas como leidas');
     }
   };
 
@@ -1441,66 +1556,135 @@ export default function App() {
               
               {/* User Menu */}
               {currentUser ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 rounded-full p-0 hover:bg-white/10"
-                      aria-label="Abrir menú de usuario"
-                    >
-                      <Avatar className="h-9 w-9 border border-white/25">
-                        <AvatarImage src={currentUser.avatar || ''} alt={currentUser.name} className="object-cover" />
-                        <AvatarFallback className="text-xs font-semibold bg-white/20 text-white">
-                          {currentUser.name
-                            .split(' ')
-                            .filter(Boolean)
-                            .slice(0, 2)
-                            .map((part) => part[0]?.toUpperCase())
-                            .join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setShowUserProfile(true)}>
-                      <UserCircle className="w-4 h-4 mr-2" />
-                      Mi Perfil
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => {
-                      setViewMode('business');
-                      setDashboardView('client');
+                <>
+                  {notificationsEnabled && (
+                    <DropdownMenu onOpenChange={(open) => {
+                      if (open) {
+                        handleRefreshNotifications();
+                      }
                     }}>
-                      <LayoutDashboard className="w-4 h-4 mr-2" />
-                      Mis Reservas
-                    </DropdownMenuItem>
-                    {currentUser.isProvider && (
-                      <>
-                        <DropdownMenuItem onClick={() => {
-                          setViewMode('business');
-                          setDashboardView('provider');
-                        }}>
-                          <Briefcase className="w-4 h-4 mr-2" />
-                          Mi Negocio
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    {currentUser.role === 'admin' && (
-                      <>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="relative h-10 w-10 rounded-full p-0 hover:bg-white/10 text-white"
+                          aria-label="Abrir notificaciones"
+                        >
+                          <Bell className="h-5 w-5" />
+                          {unreadNotificationsCount > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-[10px] leading-[18px] font-semibold text-white text-center">
+                              {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                            </span>
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-80">
+                        <div className="px-2 py-1.5 flex items-center justify-between">
+                          <p className="text-sm font-semibold">Notificaciones</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleMarkAllNotificationsRead}
+                            disabled={unreadNotificationsCount === 0}
+                            className="h-7 px-2"
+                          >
+                            <CheckCheck className="w-3.5 h-3.5 mr-1" />
+                            Leer todo
+                          </Button>
+                        </div>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setViewMode('admin')}>
-                          <Shield className="w-4 h-4 mr-2" />
-                          Panel de Admin
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout}>
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Cerrar Sesión
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                        {notificationsLoading ? (
+                          <div className="px-3 py-4 text-sm text-muted-foreground">Cargando notificaciones...</div>
+                        ) : notifications.length === 0 ? (
+                          <div className="px-3 py-4 text-sm text-muted-foreground">No tienes notificaciones por ahora.</div>
+                        ) : (
+                          notifications.map((notification) => (
+                            <DropdownMenuItem
+                              key={notification.id}
+                              onClick={() => handleMarkNotificationRead(notification)}
+                              className="items-start py-2.5 cursor-pointer"
+                            >
+                              <div className="w-full">
+                                <div className="flex items-start gap-2">
+                                  {!notification.isRead && <span className="mt-1 h-2 w-2 rounded-full bg-blue-500 shrink-0" />}
+                                  <div className="min-w-0">
+                                    <p className={`text-sm ${notification.isRead ? 'font-normal' : 'font-semibold'}`}>
+                                      {notification.title || 'Notificacion'}
+                                    </p>
+                                    {notification.body && (
+                                      <p className="text-xs text-muted-foreground line-clamp-2">{notification.body}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </DropdownMenuItem>
+                          ))
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-full p-0 hover:bg-white/10"
+                        aria-label="Abrir menú de usuario"
+                      >
+                        <Avatar className="h-9 w-9 border border-white/25">
+                          <AvatarImage src={currentUser.avatar || ''} alt={currentUser.name} className="object-cover" />
+                          <AvatarFallback className="text-xs font-semibold bg-white/20 text-white">
+                            {currentUser.name
+                              .split(' ')
+                              .filter(Boolean)
+                              .slice(0, 2)
+                              .map((part) => part[0]?.toUpperCase())
+                              .join('')}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setShowUserProfile(true)}>
+                        <UserCircle className="w-4 h-4 mr-2" />
+                        Mi Perfil
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        setViewMode('business');
+                        setDashboardView('client');
+                      }}>
+                        <LayoutDashboard className="w-4 h-4 mr-2" />
+                        Mis Reservas
+                      </DropdownMenuItem>
+                      {currentUser.isProvider && (
+                        <>
+                          <DropdownMenuItem onClick={() => {
+                            setViewMode('business');
+                            setDashboardView('provider');
+                          }}>
+                            <Briefcase className="w-4 h-4 mr-2" />
+                            Mi Negocio
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      {currentUser.role === 'admin' && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setViewMode('admin')}>
+                            <Shield className="w-4 h-4 mr-2" />
+                            Panel de Admin
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleLogout}>
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Cerrar Sesión
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
               ) : (
                 <Button variant="secondary" onClick={() => setShowAuthDialog(true)}>
                   <LogIn className="w-4 h-4 mr-2" />

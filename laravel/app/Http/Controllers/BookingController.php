@@ -3,11 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Service;
+use App\Models\User;
+use App\Services\NotificationDispatchService;
+use App\Support\NotificationTypes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class BookingController extends Controller
 {
+    public function __construct(private NotificationDispatchService $notifications)
+    {
+    }
+
     public function index(): JsonResponse
     {
         $bookings = Booking::query()->latest()->get()->map(fn (Booking $booking) => $this->formatBooking($booking));
@@ -31,6 +39,24 @@ class BookingController extends Controller
             'id' => $bookingId,
             ...collect($payload)->except('id')->all(),
         ]);
+
+        $providerUser = $this->resolveProviderUser($payload);
+
+        if ($providerUser) {
+            $clientName = $payload['client_name'] ?? $payload['clientName'] ?? ($authUser?->name ?? 'Un usuario');
+            $serviceName = $payload['artist_name'] ?? $payload['artistName'] ?? 'tu servicio';
+
+            $this->notifications->dispatchToUser($providerUser, NotificationTypes::SERVICE_REQUEST_CREATED, [
+                'channels' => ['database', 'mail'],
+                'title' => 'Nueva solicitud de servicio',
+                'body' => $clientName.' solicito '.$serviceName.' para el '.$booking->date.'.',
+                'mailSubject' => 'Nueva solicitud de servicio',
+                'mailBody' => "Has recibido una nueva solicitud de servicio.\n\nCliente: {$clientName}\nServicio: {$serviceName}\nFecha: {$booking->date}\nUbicacion: ".($booking->location ?? 'No definida')."\n",
+                'ctaUrl' => '/',
+                'entity' => ['type' => 'booking', 'id' => (string) $booking->id],
+                'dedupeKey' => NotificationTypes::SERVICE_REQUEST_CREATED.':'.$booking->id,
+            ]);
+        }
 
         return response()->json($this->formatBooking($booking), 201);
     }
@@ -149,5 +175,24 @@ class BookingController extends Controller
             'metadata' => $booking->metadata,
             'createdAt' => optional($booking->created_at)?->toISOString(),
         ];
+    }
+
+    private function resolveProviderUser(array $payload): ?User
+    {
+        $artistUserId = $payload['artist_user_id'] ?? null;
+
+        if ($artistUserId && ctype_digit((string) $artistUserId)) {
+            return User::find((int) $artistUserId);
+        }
+
+        $artistId = $payload['artist_id'] ?? null;
+        if ($artistId && ctype_digit((string) $artistId)) {
+            $service = Service::find((int) $artistId);
+            if ($service && $service->user_id) {
+                return User::find((int) $service->user_id);
+            }
+        }
+
+        return null;
     }
 }

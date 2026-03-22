@@ -45,12 +45,15 @@
 
 ## D2. Checklist Especifico de Notificaciones
 - [x] Estructura objetivo documentada para `notifications` y `notification_deliveries`.
-- [ ] Estructura objetivo aprobada tecnicamente.
+- [x] Estructura objetivo aprobada tecnicamente.
 - [x] Tipos canonicos documentados (`welcome`, `service_request_created`, `contract_approved`, `review_requested`, `review_received`, `provider_role_activated`).
 - [x] Matriz evento -> canal documentada.
 - [x] Regla de `dedupe_key` documentada por caso de negocio.
-- [ ] Endpoint de bandeja para header implementado.
-- [ ] Endpoint para marcar leidas implementado.
+- [x] Contrato API N2 documentado (`list`, `unread-count`, `read`, `read-all`).
+- [x] Reglas de ownership y autorizacion N2 documentadas.
+- [x] Regla de consistencia `unread-count` documentada.
+- [x] Endpoint de bandeja para header implementado.
+- [x] Endpoint para marcar leidas implementado.
 - [ ] Badge de no leidas en header validado para usuario y proveedor.
 - [ ] Correo de bienvenida validado tras signup.
 - [ ] Correo al proveedor validado tras solicitud de servicio.
@@ -59,7 +62,7 @@
 - [ ] Notificacion/correo al proveedor validado al recibir reseña.
 - [ ] Notificacion al usuario validada al convertirse en proveedor.
 - [ ] Plantillas de correo revisadas por contenido y tono.
-- [ ] Trazabilidad de `read_at`, `sent_at` y `failed_at` validada.
+- [x] Trazabilidad de `read_at`, `sent_at` y `failed_at` validada a nivel de modelo persistente y contrato backend.
 
 ## E. Cutover
 - [ ] Runbook de cutover aprobado.

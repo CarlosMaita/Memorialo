@@ -3,11 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\NotificationDispatchService;
+use App\Support\NotificationTypes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    public function __construct(private NotificationDispatchService $notifications)
+    {
+    }
+
     public function show(string $id): JsonResponse
     {
         $user = User::find($id);
@@ -81,7 +87,21 @@ class UserController extends Controller
             $validated['role'] = $user->role === 'admin' ? 'admin' : 'provider';
         }
 
+        $wasProvider = (bool) $user->is_provider;
+
         $user->update($validated);
+
+        if (! $wasProvider && (bool) $user->fresh()->is_provider) {
+            $freshUser = $user->fresh();
+            $this->notifications->dispatchToUser($freshUser, NotificationTypes::PROVIDER_ROLE_ACTIVATED, [
+                'channels' => ['database'],
+                'title' => 'Ahora eres proveedor',
+                'body' => 'Tu perfil ya puede publicar servicios y gestionar solicitudes desde Mi Negocio.',
+                'ctaUrl' => '/',
+                'entity' => ['type' => 'user', 'id' => (string) $freshUser->id],
+                'dedupeKey' => NotificationTypes::PROVIDER_ROLE_ACTIVATED.':'.$freshUser->id,
+            ]);
+        }
 
         return response()->json($this->formatUser($user->fresh()));
     }

@@ -123,6 +123,34 @@ Reducir riesgo operativo moviendo la logica backend a Laravel 13 por dominios, c
 - Validacion de salida: header puede pintar badge y dropdown sin mock.
 - Rollback: volver a ocultar icono frontend y conservar persistencia sin consumo.
 
+#### Decision N2 adoptada
+- Definir contrato API bajo prefijo `/api/notifications` con cuatro operaciones:
+	- `GET /api/notifications`
+	- `GET /api/notifications/unread-count`
+	- `PATCH /api/notifications/{id}/read`
+	- `PATCH /api/notifications/read-all`
+
+#### Entregables N2
+- Contrato API documentado con payloads de respuesta y codigos de error.
+- Reglas de ownership y autorizacion por usuario autenticado.
+- Definicion de paginacion por cursor y limites de `limit`.
+- Definicion de feature flags backend/frontend para activacion gradual.
+- Estrategia de rollback sin perdida de historico N1.
+
+#### Criterio de salida N2
+- Header frontend puede construir badge y dropdown usando solo datos reales de API.
+- Operaciones de lectura y marcado no exponen datos de otros usuarios.
+- Marcado individual y masivo validan idempotencia.
+- Contrato estable y versionable para evolucion de N4.
+
+#### Validacion N2
+- Pruebas de autorizacion:
+	- usuario A no puede leer ni marcar notificaciones de usuario B.
+- Pruebas de consistencia:
+	- `unread-count` coincide con `read_at IS NULL` tras `read` y `read-all`.
+- Pruebas de UX contract:
+	- `items` incluye `isRead`, `createdAt`, `ctaUrl`, `type`, `title`, `body`.
+
 ### Lote N3 - Eventos de correo transaccional
 - Conectar eventos de negocio a listeners/notifications Laravel para envio asincrono.
 - Casos iniciales obligatorios:

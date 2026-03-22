@@ -4,11 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Contract;
 use App\Models\Service;
+use App\Models\User;
+use App\Services\NotificationDispatchService;
+use App\Support\NotificationTypes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ContractController extends Controller
 {
+    public function __construct(private NotificationDispatchService $notifications)
+    {
+    }
+
     public function index(): JsonResponse
     {
         $contracts = Contract::query()->latest()->get()->map(fn (Contract $contract) => $this->formatContract($contract));
@@ -118,10 +125,41 @@ class ContractController extends Controller
 
         $contract->update($payload);
 
+        $freshContract = $contract->fresh();
+
+        if (($payload['status'] ?? null) === 'active' && $previousStatus !== 'active') {
+            $clientUser = $this->resolveUserById($freshContract->client_id);
+
+            if ($clientUser) {
+                $this->notifications->dispatchToUser($clientUser, NotificationTypes::CONTRACT_APPROVED, [
+                    'channels' => ['database', 'mail'],
+                    'title' => 'Tu contrato fue aprobado',
+                    'body' => 'El proveedor '.$freshContract->artist_name.' aprobo tu contrato y el servicio ya esta activo.',
+                    'mailSubject' => 'Tu contrato fue aprobado',
+                    'mailBody' => "Tu contrato para {$freshContract->artist_name} ya fue aprobado y se encuentra activo.\n\nContrato: {$freshContract->id}\n",
+                    'ctaUrl' => '/',
+                    'entity' => ['type' => 'contract', 'id' => (string) $freshContract->id],
+                    'dedupeKey' => NotificationTypes::CONTRACT_APPROVED.':'.$freshContract->id,
+                ]);
+            }
+        }
+
         if (($payload['status'] ?? null) === 'completed' && $previousStatus !== 'completed') {
             $contract->completed_at = now();
             $contract->save();
             $this->incrementServiceBookings($contract->artist_id);
+
+            $clientUser = $this->resolveUserById($contract->client_id);
+            if ($clientUser) {
+                $this->notifications->dispatchToUser($clientUser, NotificationTypes::REVIEW_REQUESTED, [
+                    'channels' => ['database'],
+                    'title' => 'Deja tu reseña del servicio',
+                    'body' => 'Tu servicio con '.$contract->artist_name.' fue marcado como completado. Comparte tu experiencia.',
+                    'ctaUrl' => '/',
+                    'entity' => ['type' => 'contract', 'id' => (string) $contract->id],
+                    'dedupeKey' => NotificationTypes::REVIEW_REQUESTED.':'.$contract->id,
+                ]);
+            }
         }
 
         return response()->json($this->formatContract($contract->fresh()));
@@ -190,5 +228,14 @@ class ContractController extends Controller
             'completedAt' => optional($contract->completed_at)?->toISOString(),
             'createdAt' => optional($contract->created_at)?->toISOString(),
         ];
+    }
+
+    private function resolveUserById(?string $userId): ?User
+    {
+        if (! $userId || ! ctype_digit($userId)) {
+            return null;
+        }
+
+        return User::find((int) $userId);
     }
 }

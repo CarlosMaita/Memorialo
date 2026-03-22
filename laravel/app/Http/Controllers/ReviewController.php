@@ -4,11 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\Review;
 use App\Models\Service;
+use App\Models\User;
+use App\Services\NotificationDispatchService;
+use App\Support\NotificationTypes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ReviewController extends Controller
 {
+    public function __construct(private NotificationDispatchService $notifications)
+    {
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = Review::query()->latest();
@@ -91,6 +98,20 @@ class ReviewController extends Controller
         ]);
 
         $this->syncServiceRating($review->artist_id);
+
+        $service = Service::find($review->artist_id);
+        $providerUser = $service && $service->user_id ? User::find((int) $service->user_id) : null;
+
+        if ($providerUser) {
+            $this->notifications->dispatchToUser($providerUser, NotificationTypes::REVIEW_RECEIVED, [
+                'channels' => ['database'],
+                'title' => 'Recibiste una nueva reseña',
+                'body' => ($review->user_name ?: 'Un cliente').' dejo una reseña de '.$review->rating.'/5 en uno de tus servicios.',
+                'ctaUrl' => '/',
+                'entity' => ['type' => 'review', 'id' => (string) $review->id],
+                'dedupeKey' => NotificationTypes::REVIEW_RECEIVED.':'.$review->id,
+            ]);
+        }
 
         return response()->json($this->formatReview($review->fresh()), 201);
     }

@@ -801,6 +801,58 @@ export function useSupabase() {
     }
   };
 
+  const getNotifications = async (options?: {
+    cursor?: string;
+    limit?: number;
+    unread?: boolean;
+    type?: string;
+  }) => {
+    try {
+      const params = new URLSearchParams();
+
+      if (options?.cursor) params.set('cursor', options.cursor);
+      if (typeof options?.limit === 'number') params.set('limit', String(options.limit));
+      if (typeof options?.unread === 'boolean') params.set('unread', String(options.unread));
+      if (options?.type) params.set('type', options.type);
+
+      const query = params.toString();
+      const path = query ? `/notifications?${query}` : '/notifications';
+
+      return await apiRequest(path, 'GET', undefined, accessToken || undefined);
+    } catch (error) {
+      console.error('Get notifications error:', error);
+      throw error;
+    }
+  };
+
+  const getUnreadNotificationsCount = async (): Promise<number> => {
+    try {
+      const data = await apiRequest('/notifications/unread-count', 'GET', undefined, accessToken || undefined);
+      return Number(data?.count || 0);
+    } catch (error) {
+      console.error('Get unread notifications count error:', error);
+      throw error;
+    }
+  };
+
+  const markNotificationRead = async (notificationId: string) => {
+    try {
+      return await apiRequest(`/notifications/${notificationId}/read`, 'PATCH', {}, accessToken || undefined);
+    } catch (error) {
+      console.error('Mark notification read error:', error);
+      throw error;
+    }
+  };
+
+  const markAllNotificationsRead = async () => {
+    try {
+      return await apiRequest('/notifications/read-all', 'PATCH', {}, accessToken || undefined);
+    } catch (error) {
+      console.error('Mark all notifications read error:', error);
+      throw error;
+    }
+  };
+
   // Image upload function
   const uploadImage = async (file: File, folder: 'service-images' | 'avatar-images' = 'service-images'): Promise<string> => {
     try {
@@ -900,6 +952,10 @@ export function useSupabase() {
     unarchiveUser,
     deleteUser,
     getAllUsers,
+    getNotifications,
+    getUnreadNotificationsCount,
+    markNotificationRead,
+    markAllNotificationsRead,
     uploadImage,
     initializeAdmin,
     signInWithGoogle

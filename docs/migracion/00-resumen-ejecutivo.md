@@ -45,3 +45,12 @@ Al finalizar, Laravel 13 sera el backend principal para autenticacion, usuarios,
 - Se define una tabla complementaria `notification_deliveries` para trazabilidad de entrega por canal, idempotencia y auditoria de correo.
 - Esta separacion evita sobrecargar la bandeja UX con datos operativos como `dedupe_key`, `sent_at`, `failed_at`, proveedor de envio y reintentos.
 - El rollback de N1 podra ejecutarse por canal, desactivando consumo frontend y/o emision de correo sin perder trazabilidad de datos ya persistidos.
+
+## Decision Operativa N2 - Contrato de Lectura y Estado
+- El header consumira tres capacidades backend sobre `/api/notifications`:
+	- listado paginado de bandeja,
+	- conteo de no leidas,
+	- marcado de lectura (individual y masivo).
+- Todas las operaciones requieren sesion autenticada y se resuelven sobre el usuario autenticado, sin exponer `userId` por URL.
+- El contrato prioriza bajo acoplamiento con frontend: payload estable, pagina por cursor, filtros minimos (`unread`, `type`) y orden descendente por fecha de creacion.
+- Rollback N2: ocultar icono de header por feature flag frontend y mantener persistencia activa sin consumo UI.

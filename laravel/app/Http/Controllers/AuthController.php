@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\NotificationDispatchService;
+use App\Support\NotificationTypes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -10,6 +12,10 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    public function __construct(private NotificationDispatchService $notifications)
+    {
+    }
+
     public function register(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -30,6 +36,15 @@ class AuthController extends Controller
             'phone' => $validated['phone'] ?? null,
             'is_provider' => $isProvider,
             'role' => $isProvider ? 'provider' : 'user',
+        ]);
+
+        $this->notifications->dispatchToUser($user, NotificationTypes::WELCOME, [
+            'channels' => ['mail'],
+            'title' => 'Bienvenido a Memorialo',
+            'body' => 'Tu cuenta fue creada correctamente. Ya puedes explorar servicios y gestionar tus reservas.',
+            'mailSubject' => 'Bienvenido a Memorialo',
+            'mailBody' => "Hola {$user->name},\n\nTu cuenta fue creada correctamente en Memorialo.\n\nYa puedes explorar servicios, reservar y administrar tu perfil.\n",
+            'dedupeKey' => NotificationTypes::WELCOME.':'.$user->id,
         ]);
 
         $token = $user->createToken('api-token')->plainTextToken;

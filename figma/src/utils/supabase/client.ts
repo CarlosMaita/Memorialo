@@ -9,10 +9,26 @@ export const backendMode = (viteEnv.VITE_BACKEND_MODE || 'supabase').toLowerCase
 export const apiBaseUrl = viteEnv.VITE_API_BASE_URL || defaultSupabaseServerUrl;
 export const laravelApiBaseUrl = viteEnv.VITE_LARAVEL_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
-const laravelPrefixes = ['/health', '/auth', '/users', '/providers', '/services', '/contracts', '/bookings', '/events', '/billing', '/admin', '/upload-image', '/reviews'];
+const laravelPrefixes = ['/health', '/auth', '/users', '/providers', '/services', '/contracts', '/bookings', '/events', '/billing', '/admin', '/upload-image', '/reviews', '/notifications'];
+
+function normalizePath(path: string): string {
+  const queryIndex = path.indexOf('?');
+  const hashIndex = path.indexOf('#');
+
+  let endIndex = path.length;
+  if (queryIndex >= 0) {
+    endIndex = Math.min(endIndex, queryIndex);
+  }
+  if (hashIndex >= 0) {
+    endIndex = Math.min(endIndex, hashIndex);
+  }
+
+  return path.slice(0, endIndex);
+}
 
 function isLaravelPath(path: string): boolean {
-  return laravelPrefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+  const normalized = normalizePath(path);
+  return laravelPrefixes.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
 }
 
 function resolveServerUrl(path: string): string {
@@ -42,7 +58,7 @@ export function getSupabaseClient() {
 
 export async function apiRequest(
   path: string, 
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
   body?: any,
   accessToken?: string
 ) {
