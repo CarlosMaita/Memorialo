@@ -34,8 +34,8 @@ interface ClientDashboardProps {
 }
 
 const navItems: { id: SidebarSection; label: string; icon: React.ReactNode }[] = [
-  { id: 'events',   label: 'Eventos',  icon: <CalendarDays className="w-5 h-5" /> },
   { id: 'bookings', label: 'Reservas', icon: <BookOpen className="w-5 h-5" /> },
+  { id: 'events',   label: 'Eventos',  icon: <CalendarDays className="w-5 h-5" /> },
 ];
 
 export function ClientDashboard({
@@ -58,7 +58,7 @@ export function ClientDashboard({
   const [expandedContracts, setExpandedContracts] = useState<Set<string>>(new Set());
   const [showArchived, setShowArchived] = useState(false);
   const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
-  const [activeSection, setActiveSection] = useState<SidebarSection>('events');
+  const [activeSection, setActiveSection] = useState<SidebarSection>('bookings');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Filter contracts for current user
@@ -468,7 +468,7 @@ export function ClientDashboard({
                   </div>
                 )}
               </div>
-              {event.status === 'cancelled' && !event.archived && (
+              {!event.archived && (
                 <div className="pt-2">
                   <Button variant="outline" size="sm" onClick={() => handleArchiveEvent(event.id, true)} className="w-full text-gray-600 hover:text-gray-800">
                     <Archive className="w-4 h-4 mr-2" />Archivar evento
