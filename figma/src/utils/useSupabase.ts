@@ -1,8 +1,38 @@
 import { useState, useEffect, useRef } from 'react';
-import { getSupabaseClient, apiRequest, backendMode } from './supabase/client';
+import { getSupabaseClient, apiRequest, backendMode, laravelApiBaseUrl } from './supabase/client';
 import { User } from '../types';
 
 const LARAVEL_ACCESS_TOKEN_KEY = 'laravel_access_token';
+const LARAVEL_AUTH_ERROR_KEY = 'laravel_auth_error';
+
+function consumeLaravelAuthRedirectParams() {
+  if (backendMode !== 'laravel') {
+    return { token: null as string | null, error: null as string | null };
+  }
+
+  const url = new URL(window.location.href);
+  const token = url.searchParams.get('auth_token');
+  const error = url.searchParams.get('auth_error');
+
+  if (!token && !error) {
+    return { token: null as string | null, error: null as string | null };
+  }
+
+  if (token) {
+    window.localStorage.setItem(LARAVEL_ACCESS_TOKEN_KEY, token);
+  }
+
+  if (error) {
+    window.sessionStorage.setItem(LARAVEL_AUTH_ERROR_KEY, error);
+  }
+
+  url.searchParams.delete('auth_token');
+  url.searchParams.delete('auth_error');
+  const cleanUrl = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState({}, '', cleanUrl || '/');
+
+  return { token, error };
+}
 
 export function useSupabase() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -179,7 +209,8 @@ export function useSupabase() {
     isCheckingSession.current = true;
     try {
       if (backendMode === 'laravel') {
-        const token = window.localStorage.getItem(LARAVEL_ACCESS_TOKEN_KEY);
+        const redirectParams = consumeLaravelAuthRedirectParams();
+        const token = redirectParams.token || window.localStorage.getItem(LARAVEL_ACCESS_TOKEN_KEY);
 
         if (!token) {
           setCurrentUser(null);
@@ -393,7 +424,8 @@ export function useSupabase() {
   const signInWithGoogle = async () => {
     try {
       if (backendMode === 'laravel') {
-        throw new Error('Google Sign-In no esta disponible en modo Laravel por ahora');
+        window.location.assign(`${laravelApiBaseUrl}/auth/google/redirect`);
+        return;
       }
 
       // Do not forget to complete setup at https://supabase.com/docs/guides/auth/social-login/auth-google

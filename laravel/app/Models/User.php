@@ -16,6 +16,7 @@ use Illuminate\Notifications\Notifiable;
 #[Fillable([
     'name',
     'email',
+    'google_id',
     'password',
     'phone',
     'whatsapp_number',

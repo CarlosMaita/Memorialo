@@ -161,70 +161,68 @@ export function ServiceDetailPage({
         </div>
       </div>
 
-      {/* Image gallery */}
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 pt-6">
-        {artist.portfolio.length > 0 ? (
-          <div className="relative grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-2 rounded-xl overflow-hidden h-[300px] md:h-[420px]">
-            {/* Main image */}
-            <div
-              className="md:col-span-2 md:row-span-2 relative cursor-pointer group"
-              onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}
-            >
-              <ImageWithFallback
-                src={artist.image}
-                alt={artist.name}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-            </div>
-            {/* Secondary images */}
-            {artist.portfolio.slice(0, 4).map((img, i) => (
-              <div
-                key={i}
-                className="relative cursor-pointer group hidden md:block"
-                onClick={() => { setLightboxIndex(i + 1); setLightboxOpen(true); }}
-              >
-                <ImageWithFallback
-                  src={img}
-                  alt={`Trabajo ${i + 1}`}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                {i === 3 && artist.portfolio.length > 4 && (
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                    <span className="text-white font-semibold text-lg">
-                      +{artist.portfolio.length - 4} fotos
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
-            {/* Mobile: show all photos button */}
-            <button
-              className="md:hidden absolute bottom-4 right-4 bg-white text-gray-800 text-sm font-medium px-3 py-1.5 rounded-lg shadow-md border border-gray-200 cursor-pointer z-10"
-              onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}
-            >
-              Ver {allImages.length} fotos
-            </button>
-          </div>
-        ) : (
-          <div className="rounded-xl overflow-hidden h-[300px] md:h-[420px]">
-            <ImageWithFallback
-              src={artist.image}
-              alt={artist.name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
-      </div>
-
       {/* Content */}
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-8">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6 md:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left column - Details */}
           <div className="lg:col-span-2 space-y-8">
+            {/* Header gallery */}
+            {artist.portfolio.length > 0 ? (
+              <div className="relative grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-2 rounded-xl overflow-hidden h-[300px] md:h-[420px]">
+                {/* Main image */}
+                <div
+                  className="md:col-span-2 md:row-span-2 relative cursor-pointer group"
+                  onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}
+                >
+                  <ImageWithFallback
+                    src={artist.image}
+                    alt={artist.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                </div>
+                {/* Secondary images */}
+                {artist.portfolio.slice(0, 4).map((img, i) => (
+                  <div
+                    key={i}
+                    className="relative cursor-pointer group hidden md:block"
+                    onClick={() => { setLightboxIndex(i + 1); setLightboxOpen(true); }}
+                  >
+                    <ImageWithFallback
+                      src={img}
+                      alt={`Trabajo ${i + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                    {i === 3 && artist.portfolio.length > 4 && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <span className="text-white font-semibold text-lg">
+                          +{artist.portfolio.length - 4} fotos
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {/* Mobile: show all photos button */}
+                <button
+                  className="md:hidden absolute bottom-4 right-4 bg-white text-gray-800 text-sm font-medium px-3 py-1.5 rounded-lg shadow-md border border-gray-200 cursor-pointer z-10"
+                  onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}
+                >
+                  Ver {allImages.length} fotos
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-xl overflow-hidden h-[300px] md:h-[420px]">
+                <ImageWithFallback
+                  src={artist.image}
+                  alt={artist.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+
             {/* Title & badges */}
-            <div>
+            <div className="lg:hidden">
               <div className="flex items-start gap-2 mb-1">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
                   {artist.name}
@@ -516,6 +514,45 @@ export function ServiceDetailPage({
           <div className="lg:col-span-1">
             <div className="sticky top-20">
               <Card className="p-6 shadow-lg border-gray-200">
+                <div className="hidden lg:block mb-5">
+                  <div className="flex items-start gap-2 mb-1">
+                    <h1 className="text-2xl font-bold text-gray-900 leading-tight">
+                      {artist.name}
+                    </h1>
+                    {artist.verified && (
+                      <div
+                        className="p-1 rounded-full mt-1"
+                        style={{
+                          background: 'linear-gradient(135deg, var(--gold) 0%, var(--copper) 100%)',
+                        }}
+                      >
+                        <CheckCircle className="w-4 h-4" style={{ color: 'var(--navy-blue)' }} />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 text-gray-600 mb-3">
+                    <Badge variant="secondary" className="text-sm">
+                      {artist.subcategory || artist.category}
+                    </Badge>
+                    <span className="flex items-center gap-1 text-sm">
+                      <MapPin className="w-4 h-4" />
+                      {artist.location}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <div className="flex items-center gap-1">
+                      <Star className="w-4 h-4" style={{ fill: 'var(--gold)', color: 'var(--gold)' }} />
+                      <span className="font-semibold text-gray-800">{artist.rating.toFixed(1)}</span>
+                    </div>
+                    <span className="text-gray-500">· {artistReviews.length} reseñas</span>
+                    <span className="text-gray-500">· {artist.bookingsCompleted} servicios completados</span>
+                  </div>
+
+                  <Separator className="mt-4" />
+                </div>
+
                 <div className="flex items-baseline gap-1 mb-1">
                   <span className="text-sm text-gray-500">Desde</span>
                 </div>

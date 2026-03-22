@@ -109,6 +109,17 @@ export default function App() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const authError = window.sessionStorage.getItem('laravel_auth_error');
+
+    if (!authError) {
+      return;
+    }
+
+    toast.error(authError);
+    window.sessionStorage.removeItem('laravel_auth_error');
+  }, []);
+
   // Load provider when user changes
   useEffect(() => {
     console.log('currentUser changed:', {
