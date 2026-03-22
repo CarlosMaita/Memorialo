@@ -1901,7 +1901,7 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-[1400px] mx-auto px-6 py-8">
+      <main className="max-w-[1400px] mx-auto px-3 md:px-6 py-4 md:py-8">
         {viewMode === 'admin' ? (
           currentUser && currentUser.role === 'admin' ? (
             <AdminDashboard
@@ -2009,8 +2009,8 @@ export default function App() {
               structuredData={buildMarketplaceStructuredData(filteredArtists)}
             />
             {/* Search & Filters */}
-            <div className="mb-8">
-              <div className="mb-4 text-center">
+            <div className="mb-5 md:mb-8">
+              <div className="mb-4 text-center hidden md:block">
                 <h2 className="mb-2 font-[Carattere] text-[24px]">Tu Evento Inolvidable Empieza Aquí</h2>
               </div>
 
@@ -2021,8 +2021,8 @@ export default function App() {
             </div>
 
             {/* Results & Sort */}
-            <div className="mb-4 flex flex-col-reverse md:flex-row items-start md:items-center justify-between gap-3">
-              <p className="text-gray-600 text-xs md:text-base">
+            <div className="mb-3 md:mb-4 flex flex-col-reverse md:flex-row items-start md:items-center justify-between gap-2 md:gap-3">
+              <p className="text-gray-600 text-xs md:text-base leading-tight">
                 {filteredArtists.length} proveedor{filteredArtists.length !== 1 ? 'es' : ''} encontrado{filteredArtists.length !== 1 ? 's' : ''}
               </p>
               <div className="flex items-center gap-2">
@@ -2042,7 +2042,7 @@ export default function App() {
 
             {/* Artist Grid */}
             {filteredArtists.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-2 md:gap-y-3">
                 {filteredArtists.map((artist) => (
                   <ArtistCard
                     key={artist.id}

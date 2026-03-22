@@ -19,8 +19,8 @@ export function ArtistCard({ artist, onViewProfile }: ArtistCardProps) {
   const responseTime = artist.responseTime || 'No disponible';
 
   return (
-    <Card className="relative overflow-hidden cursor-pointer group rounded-3xl border border-transparent bg-transparent p-2 shadow-none transition-all duration-300 hover:-translate-y-1 hover:border-white/35 hover:bg-slate-900/5 hover:shadow-[0_18px_36px_-20px_rgba(15,23,42,0.7)]" onClick={() => onViewProfile(artist)}>
-      <div className="relative aspect-video overflow-hidden rounded-2xl" onClick={() => onViewProfile(artist)}>
+    <Card className="relative overflow-hidden cursor-pointer group rounded-3xl border border-transparent bg-transparent p-1.5 md:p-2 shadow-none transition-all duration-300 hover:-translate-y-1 hover:border-white/35 hover:bg-slate-950/10" onClick={() => onViewProfile(artist)}>
+      <div className="relative aspect-[2.15/1] md:aspect-video overflow-hidden rounded-2xl" onClick={() => onViewProfile(artist)}>
         <ImageWithFallback 
           src={artist.image} 
           alt={artist.name}
@@ -61,8 +61,8 @@ export function ArtistCard({ artist, onViewProfile }: ArtistCardProps) {
         </div>
       </div>
       
-      <CardContent className="px-2 pt-1 pb-2 transition-colors duration-300 group-hover:text-[#0A1F44]">
-        <div className="min-h-[3.25rem] mb-1.5" onClick={() => onViewProfile(artist)}>
+      <CardContent className="px-2 pt-0.5 pb-0 transition-colors duration-300 group-hover:text-[#0A1F44]">
+        <div className="min-h-0 md:min-h-[2.25rem] mb-0" onClick={() => onViewProfile(artist)}>
           <h3 className="line-clamp-2 leading-snug font-medium">{artist.name}</h3>
         </div>
       </CardContent>

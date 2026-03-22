@@ -86,7 +86,7 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
       {/* Mobile Search Button - visible only on mobile */}
       <button
         onClick={() => setMobileModalOpen(true)}
-        className="md:hidden w-full bg-white rounded-full shadow-lg border border-gray-200 px-6 py-4 flex items-center gap-3 hover:shadow-xl transition-shadow"
+        className="md:hidden w-full bg-white rounded-full shadow-lg border border-gray-200 px-5 py-3.5 flex items-center gap-2.5 hover:shadow-xl transition-shadow"
         style={{ maxWidth: '850px', margin: '0 auto' }}
       >
         <Search className="w-5 h-5" style={{ color: 'var(--gold)' }} />
