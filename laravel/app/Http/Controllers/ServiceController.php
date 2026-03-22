@@ -83,6 +83,10 @@ class ServiceController extends Controller
 
         $metadata = is_array($validated['metadata'] ?? null) ? $validated['metadata'] : [];
 
+        if (! array_key_exists('publicCode', $metadata) || ! is_string($metadata['publicCode']) || trim((string) $metadata['publicCode']) === '') {
+            $metadata['publicCode'] = $this->buildPublicCode((string) $authUser->id);
+        }
+
         foreach (['responseTime', 'specialties', 'availability', 'servicePlans', 'allowCustomHourly', 'image', 'portfolio', 'whatsappNumber', 'email', 'customTerms', 'isArchived'] as $metadataKey) {
             if (array_key_exists($metadataKey, $validated)) {
                 $metadata[$metadataKey] = $validated[$metadataKey];
@@ -207,6 +211,10 @@ class ServiceController extends Controller
             unset($validated['metadata']);
         }
 
+        if (! array_key_exists('publicCode', $metadata) || ! is_string($metadata['publicCode']) || trim((string) $metadata['publicCode']) === '') {
+            $metadata['publicCode'] = $this->buildPublicCode((string) $service->user_id);
+        }
+
         foreach (['responseTime', 'specialties', 'availability', 'servicePlans', 'allowCustomHourly', 'image', 'portfolio', 'whatsappNumber', 'email', 'customTerms', 'isArchived'] as $metadataKey) {
             if (array_key_exists($metadataKey, $validated)) {
                 $metadata[$metadataKey] = $validated[$metadataKey];
@@ -285,8 +293,25 @@ class ServiceController extends Controller
             'email' => $metadata['email'] ?? null,
             'customTerms' => $metadata['customTerms'] ?? null,
             'isArchived' => (bool) ($metadata['isArchived'] ?? false),
+            'publicCode' => $metadata['publicCode'] ?? null,
             'metadata' => $metadata,
             'createdAt' => optional($service->created_at)?->toISOString(),
         ];
+    }
+
+    private function buildPublicCode(string $userId): string
+    {
+        $numeric = preg_replace('/\D+/', '', $userId) ?: '';
+
+        if ($numeric !== '') {
+            return 'MEM-'.str_pad(substr($numeric, -7), 7, '0', STR_PAD_LEFT);
+        }
+
+        $hash = 0;
+        foreach (str_split($userId) as $char) {
+            $hash = (($hash * 31) + ord($char)) % 10000000;
+        }
+
+        return 'MEM-'.str_pad((string) $hash, 7, '0', STR_PAD_LEFT);
     }
 }

@@ -48,6 +48,46 @@ export function ServiceDetailPage({
   const artistReviews = reviews.filter((r) => r.artistId === artist.id);
   const allImages = [artist.image, ...artist.portfolio];
 
+  const slugify = (value?: string) => {
+    if (!value) return '';
+
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+  };
+
+  const seoCategorySlug = slugify(artist.subcategory || artist.category || 'servicios') || 'servicios';
+  const seoTitleSlug = slugify(artist.name || artist.bio || 'publicacion') || 'publicacion';
+  const persistedCode = ((artist as any).publicCode || (artist as any)?.metadata?.publicCode) as string | undefined;
+
+  const seoUserCode = (() => {
+    if (persistedCode && /^MEM-\d{7}$/i.test(persistedCode)) {
+      return persistedCode.toUpperCase();
+    }
+
+    const rawUserId = String((artist as any).userId || (artist as any).providerId || artist.id || '0');
+    const numericFromId = rawUserId.replace(/\D/g, '');
+
+    if (numericFromId) {
+      return `MEM-${numericFromId.slice(-7).padStart(7, '0')}`;
+    }
+
+    const hash = rawUserId
+      .split('')
+      .reduce((acc, char) => ((acc * 31) + char.charCodeAt(0)) % 10000000, 0)
+      .toString()
+      .padStart(7, '0');
+
+    return `MEM-${hash}`;
+  })();
+
+  const seoPath = `/${seoCategorySlug}/${seoUserCode}-${seoTitleSlug}`;
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -87,11 +127,11 @@ export function ServiceDetailPage({
       <SEOHead
         title={`${artist.name} - ${artist.subcategory || artist.category} en ${artist.location}`}
         description={artist.bio?.slice(0, 160) || `Contrata a ${artist.name}, servicio profesional de ${artist.subcategory || artist.category} en ${artist.location}. Desde $${artist.pricePerHour}/hr.`}
-        canonical={`/servicio/${artist.id}`}
+        canonical={seoPath}
         ogImage={artist.image}
         ogType="product"
         keywords={`${artist.category}, ${artist.subcategory || ''}, ${artist.location}, eventos, ${artist.specialties?.join(', ') || ''}`}
-        structuredData={buildServiceStructuredData(artist)}
+        structuredData={buildServiceStructuredData({ ...(artist as any), seoPath })}
       />
       {/* Sticky top bar */}
       <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">

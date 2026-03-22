@@ -358,7 +358,7 @@ export default function App() {
 
   const handleViewProfile = (artist: Artist) => {
     setSelectedArtist(artist);
-    navigateTo(`/servicio/${artist.id}`);
+    navigateTo(getServiceSeoPath(artist));
   };
 
   const handleBookNow = (artist: Artist, plan?: ServicePlan) => {
@@ -696,6 +696,89 @@ export default function App() {
     setShowForProviders(false);
     setShowForClients(false);
     window.scrollTo(0, 0);
+  };
+
+  const slugify = (value?: string) => {
+    if (!value) return '';
+
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+  };
+
+  const serviceCategorySlug = (artist: Artist) => {
+    const rawCategory = artist.subcategory || artist.category || 'servicios';
+    return slugify(rawCategory) || 'servicios';
+  };
+
+  const serviceTitleSlug = (artist: Artist) => {
+    return slugify(artist.name || artist.description || 'publicacion') || 'publicacion';
+  };
+
+  const serviceUserCode = (artist: Artist) => {
+    const persistedCode = (artist as any).publicCode || (artist as any)?.metadata?.publicCode;
+    if (typeof persistedCode === 'string' && /^MEM-\d{7}$/i.test(persistedCode)) {
+      return persistedCode.toUpperCase();
+    }
+
+    const rawUserId = String(artist.userId || artist.providerId || artist.id || '0');
+    const numericFromId = rawUserId.replace(/\D/g, '');
+
+    if (numericFromId) {
+      const code = numericFromId.slice(-7).padStart(7, '0');
+      return `MEM-${code}`;
+    }
+
+    const hash = rawUserId
+      .split('')
+      .reduce((acc, char) => ((acc * 31) + char.charCodeAt(0)) % 10000000, 0)
+      .toString()
+      .padStart(7, '0');
+
+    return `MEM-${hash}`;
+  };
+
+  const getServiceSeoPath = (artist: Artist) => {
+    return `/${serviceCategorySlug(artist)}/${serviceUserCode(artist)}-${serviceTitleSlug(artist)}`;
+  };
+
+  const resolveServiceByRoute = (path: string) => {
+    // Legacy route compatibility
+    if (path.startsWith('/servicio/')) {
+      const serviceId = path.replace('/servicio/', '');
+      return artists.find((a) => a.id === serviceId) || null;
+    }
+
+    const cleanPath = path.split('?')[0].replace(/\/+$/, '');
+    const parts = cleanPath.split('/').filter(Boolean);
+
+    if (parts.length !== 2) {
+      return null;
+    }
+
+    const [categorySlug, serviceSlug] = parts;
+    const match = serviceSlug.match(/^(MEM-\d{7})-(.+)$/i);
+
+    if (!match) {
+      return null;
+    }
+
+    const [, memCode, titleSlug] = match;
+
+    return (
+      artists.find((artist) => {
+        return (
+          serviceCategorySlug(artist) === categorySlug &&
+          serviceUserCode(artist).toLowerCase() === memCode.toLowerCase() &&
+          serviceTitleSlug(artist) === titleSlug
+        );
+      }) || null
+    );
   };
 
   const handleDeleteEvent = async (eventId: string) => {
@@ -1365,60 +1448,59 @@ export default function App() {
     return <CodeOfConduct onBack={() => navigateTo('/')} />;
   }
 
-  // Service detail page route
-  if (currentRoute.startsWith('/servicio/')) {
-    const serviceId = currentRoute.replace('/servicio/', '');
-    const serviceArtist = artists.find(a => a.id === serviceId);
-    
-    if (serviceArtist) {
-      return (
-        <div className="min-h-screen bg-background">
-          <Toaster />
-          <ServiceDetailPage
-            artist={serviceArtist}
-            reviews={reviews}
-            isAuthenticated={!!currentUser}
-            onBack={() => {
-              navigateTo('/');
-              setViewMode('client');
-            }}
-            onBookNow={handleBookNow}
-          />
+  // Service detail page route (SEO + legacy)
+  const serviceArtist = resolveServiceByRoute(currentRoute);
+  if (serviceArtist) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Toaster />
+        <ServiceDetailPage
+          artist={serviceArtist}
+          reviews={reviews}
+          isAuthenticated={!!currentUser}
+          onBack={() => {
+            navigateTo('/');
+            setViewMode('client');
+          }}
+          onBookNow={handleBookNow}
+        />
 
-          <BookingDialog
-            artist={bookingArtist}
-            selectedPlan={selectedPlan}
-            open={showBooking}
-            onClose={() => {
-              setShowBooking(false);
-              setSelectedPlan(null);
-            }}
-            onContractCreated={handleContractCreated}
-            onBookingCreated={handleBookingCreate}
-            onBookingUpdate={handleBookingUpdate}
-            user={currentUser}
-            onLoginRequired={() => setShowAuthDialog(true)}
-            events={events}
-          />
+        <BookingDialog
+          artist={bookingArtist}
+          selectedPlan={selectedPlan}
+          open={showBooking}
+          onClose={() => {
+            setShowBooking(false);
+            setSelectedPlan(null);
+          }}
+          onContractCreated={handleContractCreated}
+          onBookingCreated={handleBookingCreate}
+          onBookingUpdate={handleBookingUpdate}
+          user={currentUser}
+          onLoginRequired={() => setShowAuthDialog(true)}
+          events={events}
+        />
 
-          <AuthDialog
-            open={showAuthDialog}
-            onClose={() => setShowAuthDialog(false)}
-            onLogin={(user, accessToken) => {
-              if (user.isProvider) {
-                setViewMode('provider');
-              }
-            }}
-            onSignUp={handleSignUp}
-            onSignIn={handleSignIn}
-            onSignInWithGoogle={handleSignInWithGoogle}
-          />
-        </div>
-      );
-    } else {
-      // Service not found - redirect home
-      navigateTo('/');
-    }
+        <AuthDialog
+          open={showAuthDialog}
+          onClose={() => setShowAuthDialog(false)}
+          onLogin={(user, accessToken) => {
+            if (user.isProvider) {
+              setViewMode('provider');
+            }
+          }}
+          onSignUp={handleSignUp}
+          onSignIn={handleSignIn}
+          onSignInWithGoogle={handleSignInWithGoogle}
+        />
+      </div>
+    );
+  }
+
+  // Redirect unknown SEO service routes to home
+  const serviceLikeRoute = currentRoute.split('/').filter(Boolean);
+  if (serviceLikeRoute.length === 2 && /^MEM-\d{7}-.+/i.test(serviceLikeRoute[1] || '')) {
+    navigateTo('/');
   }
 
   return (

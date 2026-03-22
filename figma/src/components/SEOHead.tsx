@@ -159,15 +159,17 @@ export function buildServiceStructuredData(service: {
   location: string;
   verified?: boolean;
   portfolio?: string[];
+  seoPath?: string;
 }) {
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const serviceUrl = service.seoPath ? `${origin}${service.seoPath}` : `${origin}/servicio/${service.id}`;
 
   const schema: any = {
     '@context': 'https://schema.org',
     '@type': 'Service',
     name: service.name,
     description: service.bio || `Servicio profesional de ${service.subcategory || service.category} en ${service.location}`,
-    url: `${origin}/servicio/${service.id}`,
+    url: serviceUrl,
     image: service.image,
     provider: {
       '@type': 'LocalBusiness',
@@ -228,7 +230,7 @@ export function buildServiceStructuredData(service: {
         '@type': 'ListItem',
         position: 3,
         name: service.name,
-        item: `${origin}/servicio/${service.id}`,
+        item: serviceUrl,
       },
     ],
   };
