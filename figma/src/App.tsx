@@ -4,6 +4,8 @@ import { Artist, ServicePlan, Contract, User, Review, Booking, Provider, Event }
 import { mockArtists, mockEvents, mockUsers, mockProviders } from './data/mockData';
 import { mockReviews } from './data/mockReviews';
 import { mockContracts } from './data/mockContracts';
+import { VENEZUELAN_CITIES } from './data/cities';
+import { SERVICE_CATEGORIES } from './data/serviceCategories';
 import { useSupabase } from './utils/useSupabase';
 import { ArtistCard } from './components/ArtistCard';
 import { AirbnbSearchBar, SearchCriteria } from './components/AirbnbSearchBar';
@@ -49,6 +51,18 @@ type HeaderNotification = {
   isRead: boolean;
 };
 
+type TaxonomyTarget = {
+  label: string;
+  filterBy: 'category' | 'subcategory';
+};
+
+type MarketplaceRouteContext = {
+  city?: string;
+  taxonomy?: TaxonomyTarget;
+  query?: string;
+  canonicalPath: string;
+};
+
 export default function App() {
   // Supabase hook
   const supabase = useSupabase();
@@ -64,6 +78,7 @@ export default function App() {
     subcategory: '',
     priceRange: [0, 5000]
   });
+  const [headerSearchInput, setHeaderSearchInput] = useState('');
   const [sortBy, setSortBy] = useState('rating');
   const [selectedArtist, setSelectedArtist] = useState<Artist | null>(null);
   const [showBooking, setShowBooking] = useState(false);
@@ -758,6 +773,18 @@ export default function App() {
       .replace(/-+/g, '-');
   };
 
+  const normalizeForSearch = (value?: string) => {
+    if (!value) return '';
+
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
   const serviceCategorySlug = (artist: Artist) => {
     const rawCategory = artist.subcategory || artist.category || 'servicios';
     return slugify(rawCategory) || 'servicios';
@@ -793,6 +820,438 @@ export default function App() {
   const getServiceSeoPath = (artist: Artist) => {
     return `/${serviceCategorySlug(artist)}/${serviceUserCode(artist)}-${serviceTitleSlug(artist)}`;
   };
+
+  const citySlugLookup = useMemo(() => {
+    const lookup = new Map<string, string>();
+
+    VENEZUELAN_CITIES.forEach((city) => {
+      lookup.set(slugify(city), city);
+    });
+
+    return lookup;
+  }, []);
+
+  const taxonomySlugLookup = useMemo(() => {
+    const lookup = new Map<string, TaxonomyTarget>();
+
+    const register = (rawValue: string | undefined, target: TaxonomyTarget) => {
+      const key = slugify(rawValue);
+      if (!key) return;
+      lookup.set(key, target);
+    };
+
+    Object.entries(SERVICE_CATEGORIES).forEach(([category, entry]) => {
+      register(category, { label: category, filterBy: 'category' });
+      entry.subcategories.forEach((subcategory) => {
+        register(subcategory, { label: subcategory, filterBy: 'subcategory' });
+      });
+    });
+
+    artists.forEach((artist) => {
+      if (artist.category) {
+        register(artist.category, { label: artist.category, filterBy: 'category' });
+      }
+      if (artist.subcategory) {
+        register(artist.subcategory, { label: artist.subcategory, filterBy: 'subcategory' });
+      }
+      artist.specialties?.forEach((specialty) => {
+        register(specialty, { label: specialty, filterBy: 'subcategory' });
+      });
+    });
+
+    const aliases: Record<string, string> = {
+      dj: 'Música y DJs',
+      djs: 'Música y DJs',
+      mariachis: 'Cultura y Ceremonia',
+      'salones-y-baquetes': 'Salones y Banquetes'
+    };
+
+    Object.entries(aliases).forEach(([alias, canonicalLabel]) => {
+      const canonical = lookup.get(slugify(canonicalLabel));
+      if (canonical) {
+        lookup.set(alias, canonical);
+      }
+    });
+
+    return lookup;
+  }, [artists]);
+
+  const typeQuerySlugLookup = useMemo(() => {
+    const lookup = new Map<string, string>();
+
+    const register = (alias: string, slug: string) => {
+      lookup.set(normalizeForSearch(alias), slug);
+      lookup.set(slugify(alias), slug);
+    };
+
+    register('dj', 'djs');
+    register('djs', 'djs');
+    register('musica y djs', 'djs');
+    register('salones', 'salones-y-banquetes');
+    register('salon', 'salones-y-banquetes');
+    register('salones y banquetes', 'salones-y-banquetes');
+    register('salones y baquetes', 'salones-y-banquetes');
+    register('mariachi', 'mariachis');
+    register('mariachis', 'mariachis');
+
+    return lookup;
+  }, []);
+
+  const citySlugEntries = useMemo(
+    () => Array.from(citySlugLookup.entries()),
+    [citySlugLookup]
+  );
+
+  const levenshteinDistance = (a: string, b: string) => {
+    const matrix = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+
+    for (let j = 1; j <= b.length; j += 1) {
+      matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= a.length; i += 1) {
+      for (let j = 1; j <= b.length; j += 1) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
+        );
+      }
+    }
+
+    return matrix[a.length][b.length];
+  };
+
+  const resolveCityFromText = (rawText?: string) => {
+    const normalized = normalizeForSearch(rawText);
+    if (!normalized) {
+      return null;
+    }
+
+    const tokens = normalized.split(' ').filter(Boolean);
+
+    for (let size = Math.min(3, tokens.length); size >= 1; size -= 1) {
+      for (let i = 0; i <= tokens.length - size; i += 1) {
+        const candidate = tokens.slice(i, i + size).join(' ');
+        const slug = slugify(candidate);
+
+        if (citySlugLookup.has(slug)) {
+          const city = citySlugLookup.get(slug) as string;
+          return { city, citySlug: slug };
+        }
+      }
+    }
+
+    let bestMatch: { city: string; citySlug: string; distance: number } | null = null;
+    tokens.forEach((token) => {
+      citySlugEntries.forEach(([citySlug, city]) => {
+        const distance = levenshteinDistance(token, citySlug);
+        if (distance <= 2 && (!bestMatch || distance < bestMatch.distance)) {
+          bestMatch = { city, citySlug, distance };
+        }
+      });
+    });
+
+    return bestMatch ? { city: bestMatch.city, citySlug: bestMatch.citySlug } : null;
+  };
+
+  const resolveTypeSlugFromText = (rawText?: string) => {
+    const normalized = normalizeForSearch(rawText);
+    if (!normalized) {
+      return '';
+    }
+
+    if (typeQuerySlugLookup.has(normalized)) {
+      return typeQuerySlugLookup.get(normalized) as string;
+    }
+
+    const slug = slugify(normalized);
+    if (typeQuerySlugLookup.has(slug)) {
+      return typeQuerySlugLookup.get(slug) as string;
+    }
+
+    const directTaxonomy = taxonomySlugLookup.get(slug);
+    if (directTaxonomy) {
+      return slug;
+    }
+
+    if (normalized.includes('dj')) {
+      return 'djs';
+    }
+    if (normalized.includes('salon')) {
+      return 'salones-y-banquetes';
+    }
+
+    return '';
+  };
+
+  const extractSemanticQueryAndCity = (rawQuery: string) => {
+    const normalized = normalizeForSearch(rawQuery);
+    if (!normalized) {
+      return { semanticQuery: '', citySlug: '', city: '' };
+    }
+
+    const enSeparator = normalized.match(/(.+)\sen\s(.+)/);
+    if (enSeparator) {
+      const semanticQuery = enSeparator[1].trim();
+      const cityMatch = resolveCityFromText(enSeparator[2].trim());
+      if (cityMatch) {
+        return {
+          semanticQuery,
+          citySlug: cityMatch.citySlug,
+          city: cityMatch.city
+        };
+      }
+    }
+
+    const cityMatch = resolveCityFromText(normalized);
+    if (cityMatch) {
+      const cityText = normalizeForSearch(cityMatch.city);
+      const semanticQuery = normalized.replace(new RegExp(`\\b${cityText}\\b`, 'i'), '').replace(/\ben\b/i, '').trim();
+      return {
+        semanticQuery,
+        citySlug: cityMatch.citySlug,
+        city: cityMatch.city
+      };
+    }
+
+    return {
+      semanticQuery: normalized,
+      citySlug: '',
+      city: ''
+    };
+  };
+
+  const buildMarketplacePathFromCriteria = (criteria: SearchCriteria) => {
+    const explicitCitySlug = slugify(criteria.city);
+    const taxonomySlug = slugify(criteria.subcategory || criteria.category);
+
+    if (explicitCitySlug && taxonomySlug) {
+      return `/servicios/${explicitCitySlug}/${taxonomySlug}`;
+    }
+
+    if (taxonomySlug) {
+      return `/servicios/venezuela/${taxonomySlug}`;
+    }
+
+    const normalizedQuery = normalizeForSearch(criteria.query);
+
+    if (normalizedQuery) {
+      const semantic = extractSemanticQueryAndCity(normalizedQuery);
+      const inferredCitySlug = explicitCitySlug || semantic.citySlug;
+      const typeSlug = resolveTypeSlugFromText(semantic.semanticQuery || normalizedQuery);
+
+      if (typeSlug && inferredCitySlug) {
+        return `/servicios/${inferredCitySlug}/${typeSlug}`;
+      }
+
+      if (typeSlug) {
+        return `/servicios/venezuela/${typeSlug}`;
+      }
+
+      if (inferredCitySlug) {
+        return `/s/${slugify(semantic.semanticQuery || normalizedQuery)}-en-${inferredCitySlug}`;
+      }
+
+      return `/s/${slugify(normalizedQuery)}`;
+    }
+
+    if (explicitCitySlug) {
+      return `/servicio/${explicitCitySlug}`;
+    }
+
+    return '/';
+  };
+
+  const parseMarketplaceRoute = (path: string): MarketplaceRouteContext | null => {
+    const cleanPath = path.split('?')[0].replace(/\/+$/, '');
+    const parts = cleanPath.split('/').filter(Boolean);
+
+    if (parts.length === 0) {
+      return null;
+    }
+
+    const [prefix, second, third] = parts;
+
+    if (prefix === 's' && parts.length === 2) {
+      const semanticSlug = second;
+      const citySuffix = citySlugEntries
+        .map(([citySlug]) => citySlug)
+        .sort((a, b) => b.length - a.length)
+        .find((citySlug) => semanticSlug.endsWith(`-en-${citySlug}`));
+
+      const querySlug = citySuffix
+        ? semanticSlug.replace(new RegExp(`-en-${citySuffix}$`), '')
+        : semanticSlug;
+
+      const semanticQuery = querySlug.replace(/-/g, ' ').trim();
+      const taxonomyFromQuerySlug = resolveTypeSlugFromText(semanticQuery);
+      const taxonomy = taxonomyFromQuerySlug ? taxonomySlugLookup.get(taxonomyFromQuerySlug) : undefined;
+
+      return {
+        city: citySuffix ? citySlugLookup.get(citySuffix) : undefined,
+        taxonomy,
+        query: semanticQuery,
+        canonicalPath: `/s/${semanticSlug}`
+      };
+    }
+
+    if (prefix === 'servicio' && parts.length === 2) {
+      const city = citySlugLookup.get(second);
+      if (!city) {
+        return null;
+      }
+
+      return {
+        city,
+        canonicalPath: `/servicio/${slugify(city)}`
+      };
+    }
+
+    if (prefix === 'servicios' && parts.length === 2) {
+      const city = citySlugLookup.get(second);
+      if (!city) {
+        return null;
+      }
+
+      return {
+        city,
+        canonicalPath: `/servicios/${slugify(city)}`
+      };
+    }
+
+    const supportsMarketplace = prefix === 'proveedores' || prefix === 'servicios';
+    if (!supportsMarketplace) {
+      return null;
+    }
+
+    if (parts.length === 2) {
+      const city = citySlugLookup.get(second);
+      if (city) {
+        return {
+          city,
+          canonicalPath: `/servicio/${slugify(city)}`
+        };
+      }
+
+      const taxonomy = taxonomySlugLookup.get(second);
+      if (taxonomy) {
+        return {
+          taxonomy,
+          canonicalPath: `/servicios/venezuela/${slugify(taxonomy.label)}`
+        };
+      }
+
+      return null;
+    }
+
+    if (parts.length === 3) {
+      const taxonomy = taxonomySlugLookup.get(third);
+
+      if (!taxonomy) {
+        return null;
+      }
+
+      if (second === 'venezuela') {
+        return {
+          taxonomy,
+          canonicalPath: `/servicios/venezuela/${third}`
+        };
+      }
+
+      const city = citySlugLookup.get(second);
+
+      if (!city) {
+        return null;
+      }
+
+      return {
+        city,
+        taxonomy,
+        canonicalPath: `/servicios/${slugify(city)}/${third}`
+      };
+    }
+
+    return null;
+  };
+
+  const handleSearchCriteriaChange = (nextCriteria: SearchCriteria) => {
+    const normalized: SearchCriteria = {
+      query: nextCriteria.query || '',
+      city: nextCriteria.city || '',
+      category: nextCriteria.category || '',
+      subcategory: nextCriteria.subcategory || '',
+      priceRange: nextCriteria.priceRange || [0, 5000]
+    };
+
+    setSearchCriteria(normalized);
+
+    if (viewMode !== 'client') {
+      setViewMode('client');
+    }
+
+    const targetPath = buildMarketplacePathFromCriteria(normalized);
+    if (currentRoute !== targetPath) {
+      navigateTo(targetPath);
+    }
+  };
+
+  const handleHeaderSearchSubmit = () => {
+    const nextQuery = (headerSearchInput || '').trim();
+
+    handleSearchCriteriaChange({
+      ...searchCriteria,
+      query: nextQuery
+    });
+
+    // Keep the header input ready for a new search after submit.
+    setHeaderSearchInput('');
+  };
+
+  const marketplaceRouteContext = useMemo(
+    () => parseMarketplaceRoute(currentRoute),
+    [currentRoute, citySlugLookup, taxonomySlugLookup]
+  );
+
+  useEffect(() => {
+    if (!marketplaceRouteContext) {
+      return;
+    }
+
+    if (viewMode !== 'client') {
+      setViewMode('client');
+    }
+
+    setSearchCriteria((previous) => {
+      const next: SearchCriteria = {
+        ...previous,
+        query: marketplaceRouteContext.query || '',
+        city: marketplaceRouteContext.city || '',
+        category: '',
+        subcategory: ''
+      };
+
+      if (marketplaceRouteContext.taxonomy) {
+        if (marketplaceRouteContext.taxonomy.filterBy === 'category') {
+          next.category = marketplaceRouteContext.taxonomy.label;
+        } else {
+          next.subcategory = marketplaceRouteContext.taxonomy.label;
+        }
+      }
+
+      if (
+        previous.query === next.query &&
+        previous.city === next.city &&
+        previous.category === next.category &&
+        previous.subcategory === next.subcategory
+      ) {
+        return previous;
+      }
+
+      return next;
+    });
+  }, [marketplaceRouteContext, viewMode]);
 
   const resolveServiceByRoute = (path: string) => {
     // Legacy route compatibility
@@ -1410,14 +1869,29 @@ export default function App() {
 
     // Filter by text query
     if (searchCriteria.query) {
-      const query = searchCriteria.query.toLowerCase();
-      filtered = filtered.filter(artist =>
-        (artist.name?.toLowerCase() || '').includes(query) ||
-        (artist.description?.toLowerCase() || '').includes(query) ||
-        (artist.category?.toLowerCase() || '').includes(query) ||
-        (artist.subcategory?.toLowerCase() || '').includes(query) ||
-        artist.specialties?.some(s => s.toLowerCase().includes(query))
-      );
+      const query = normalizeForSearch(searchCriteria.query);
+      const queryTokens = query.split(' ').filter((token) => token.length > 1);
+
+      filtered = filtered.filter((artist) => {
+        const searchableText = normalizeForSearch([
+          artist.name,
+          artist.description,
+          artist.category,
+          artist.subcategory,
+          ...(artist.specialties || [])
+        ].filter(Boolean).join(' '));
+
+        if (searchableText.includes(query)) {
+          return true;
+        }
+
+        if (queryTokens.length === 0) {
+          return false;
+        }
+
+        const matchedTokens = queryTokens.filter((token) => searchableText.includes(token)).length;
+        return matchedTokens >= Math.max(1, Math.ceil(queryTokens.length * 0.6));
+      });
     }
 
     // Filter by city
@@ -1476,6 +1950,27 @@ export default function App() {
   }, [artists, searchCriteria, sortBy, allUsers, providers]);
 
   const isFavoritesRoute = currentRoute === '/favoritos';
+
+  const marketplaceCanonical = marketplaceRouteContext
+    ? marketplaceRouteContext.canonicalPath
+    : (isFavoritesRoute ? '/favoritos' : '/');
+
+  const marketplaceKeywords = marketplaceRouteContext
+    ? [
+        marketplaceRouteContext.taxonomy?.label,
+        marketplaceRouteContext.city,
+        'proveedores de eventos',
+        'eventos en Venezuela'
+      ].filter(Boolean).join(', ')
+    : 'servicios eventos Venezuela, bodas, fiestas, DJ, catering, fotografia, decoracion';
+
+  const marketplaceHeading = marketplaceRouteContext
+    ? marketplaceRouteContext.taxonomy && marketplaceRouteContext.city
+      ? `${marketplaceRouteContext.taxonomy.label} en ${marketplaceRouteContext.city}`
+      : marketplaceRouteContext.city
+        ? `Proveedores en ${marketplaceRouteContext.city}`
+        : `Proveedores de ${marketplaceRouteContext.taxonomy?.label}`
+    : (isFavoritesRoute ? 'Tus Favoritos' : 'Tu Evento Inolvidable Empieza Aquí');
 
   const visibleArtists = useMemo(() => {
     if (!isFavoritesRoute) {
@@ -1717,12 +2212,23 @@ export default function App() {
                   placeholder="Buscar proveedores de servicio..."
                   className="w-full h-10 px-4 pr-12 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500 bg-white"
                   style={{ borderRadius: '2px' }}
-                  value={searchCriteria.query || ''}
-                  onChange={(e) => setSearchCriteria({...searchCriteria, query: e.target.value})}
+                  value={headerSearchInput}
+                  onChange={(e) => setHeaderSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleHeaderSearchSubmit();
+                    }
+                  }}
                 />
-                <div className="absolute right-0 top-0 h-10 w-12 flex items-center justify-center border-l border-gray-300 bg-white">
+                <button
+                  type="button"
+                  onClick={handleHeaderSearchSubmit}
+                  className="absolute right-0 top-0 h-10 w-12 flex items-center justify-center border-l border-gray-300 bg-white hover:bg-gray-50"
+                  aria-label="Buscar"
+                >
                   <Search className="w-5 h-5 text-gray-500" />
-                </div>
+                </button>
               </div>
 
               {/* Mobile Search */}
@@ -1735,8 +2241,14 @@ export default function App() {
                   placeholder="Estoy buscando..."
                   className="w-full h-9 pl-10 pr-4 rounded-sm text-sm focus:outline-none text-gray-900 placeholder:text-gray-400 bg-white"
                   style={{ borderRadius: '4px' }}
-                  value={searchCriteria.query || ''}
-                  onChange={(e) => setSearchCriteria({...searchCriteria, query: e.target.value})}
+                  value={headerSearchInput}
+                  onChange={(e) => setHeaderSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleHeaderSearchSubmit();
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -2175,20 +2687,21 @@ export default function App() {
           <>
             {/* SEO for marketplace home */}
             <SEOHead
-              canonical={isFavoritesRoute ? '/favoritos' : '/'}
-              keywords="servicios eventos Venezuela, bodas, fiestas, DJ, catering, fotografia, decoracion"
+              canonical={marketplaceCanonical}
+              keywords={marketplaceKeywords}
+              noindex={visibleArtists.length === 0}
               structuredData={buildMarketplaceStructuredData(visibleArtists)}
             />
             {/* Search & Filters */}
             <div className="mb-5 md:mb-8">
               <div className="mb-4 text-center hidden md:block">
                 <h2 className="mb-2 font-[Carattere] text-[24px]">
-                  {isFavoritesRoute ? 'Tus Favoritos' : 'Tu Evento Inolvidable Empieza Aquí'}
+                  {marketplaceHeading}
                 </h2>
               </div>
 
               <AirbnbSearchBar
-                onSearch={setSearchCriteria}
+                onSearch={handleSearchCriteriaChange}
                 searchCriteria={searchCriteria}
               />
             </div>
@@ -2241,7 +2754,8 @@ export default function App() {
                   variant="outline"
                   className="mt-4"
                   onClick={() => {
-                    setSearchCriteria({
+                    handleSearchCriteriaChange({
+                      query: '',
                       city: '',
                       category: '',
                       subcategory: '',
@@ -2331,6 +2845,7 @@ export default function App() {
             onCancellationClick={() => navigateTo('/politica-cancelacion')}
             onRefundClick={() => navigateTo('/politica-reembolso')}
             onConductClick={() => navigateTo('/codigo-conducta')}
+            onNavigate={navigateTo}
           />
         </>
       )}

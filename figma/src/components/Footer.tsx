@@ -1,4 +1,5 @@
 import { Music, Mail, Phone, MapPin, Facebook, Instagram, Twitter, Linkedin } from 'lucide-react';
+import { SERVICE_CATEGORIES } from '../data/serviceCategories';
 
 interface FooterProps {
   onAboutClick?: () => void;
@@ -10,6 +11,7 @@ interface FooterProps {
   onCancellationClick?: () => void;
   onRefundClick?: () => void;
   onConductClick?: () => void;
+  onNavigate?: (path: string) => void;
 }
 
 export function Footer({ 
@@ -21,17 +23,49 @@ export function Footer({
   onPrivacyClick,
   onCancellationClick,
   onRefundClick,
-  onConductClick
+  onConductClick,
+  onNavigate
 }: FooterProps = {}) {
   const currentYear = new Date().getFullYear();
+
+  const slugify = (value?: string) => {
+    if (!value) return '';
+
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+  };
+
+  const navigate = (path: string) => {
+    if (onNavigate) {
+      onNavigate(path);
+      return;
+    }
+
+    window.location.href = path;
+  };
+
+  const topCategoryLinks = Object.keys(SERVICE_CATEGORIES).slice(0, 5).map((category) => {
+    const normalized = category.toLowerCase();
+
+    return {
+      label: normalized.charAt(0).toUpperCase() + normalized.slice(1),
+      path: `/servicios/venezuela/${slugify(category)}`
+    };
+  });
 
   return (
     <footer style={{ backgroundColor: 'var(--navy-blue)', color: 'white' }}>
       {/* Main Footer Content */}
       <div className="max-w-[1400px] mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           {/* Brand Section */}
-          <div className="space-y-4">
+          <div className="space-y-4 lg:col-span-2">
             <div className="flex items-center gap-3">
               {/* Logo */}
               <div className="relative" style={{ width: '40px', height: '40px' }}>
@@ -155,6 +189,23 @@ export function Footer({
                   Código de Conducta
                 </button>
               </li>
+            </ul>
+          </div>
+
+          {/* Categories */}
+          <div>
+            <h4 className="font-bold mb-4" style={{ color: 'var(--gold)' }}>Categorías</h4>
+            <ul className="space-y-2 text-sm">
+              {topCategoryLinks.map((link) => (
+                <li key={link.path}>
+                  <button
+                    onClick={() => navigate(link.path)}
+                    className="opacity-80 hover:opacity-100 transition-opacity text-left cursor-pointer bg-transparent border-none p-0 text-inherit"
+                  >
+                    {link.label}
+                  </button>
+                </li>
+              ))}
             </ul>
           </div>
 
