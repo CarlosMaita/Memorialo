@@ -89,10 +89,22 @@ class NotificationDispatchService
         }
 
         try {
-            Mail::raw($payload['mailBody'] ?? $payload['body'] ?? '', function ($message) use ($recipient, $payload): void {
+            $subject = (string) ($payload['mailSubject'] ?? $payload['title'] ?? 'Nueva notificacion');
+            $bodyText = (string) ($payload['mailBody'] ?? $payload['body'] ?? 'Tienes una nueva notificacion en Memorialo.');
+            $frontendUrl = rtrim((string) env('FRONTEND_URL', config('app.url', 'http://127.0.0.1:8000')), '/');
+            $trimmedBody = ltrim($bodyText);
+            $bodyHasGreeting = (bool) preg_match('/^hola\b/i', $trimmedBody);
+
+            Mail::send('emails.notification', [
+                'appName' => (string) config('app.name', 'Memorialo'),
+                'title' => (string) ($payload['title'] ?? $subject),
+                'bodyText' => $bodyText,
+                'ctaUrl' => (string) ($payload['ctaUrl'] ?? $frontendUrl),
+                'recipientName' => $bodyHasGreeting ? '' : (string) ($recipient->name ?? ''),
+            ], function ($message) use ($recipient, $subject): void {
                 $message
                     ->to($recipient->email, $recipient->name)
-                    ->subject($payload['mailSubject'] ?? $payload['title'] ?? 'Nueva notificacion');
+                    ->subject($subject);
             });
 
             NotificationDelivery::create([
