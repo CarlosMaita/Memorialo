@@ -739,6 +739,7 @@ export default function App() {
     window.history.pushState({}, '', path);
     setCurrentRoute(path);
     setShowAbout(false);
+    setShowHowItWorks(false);
     setShowForProviders(false);
     setShowForClients(false);
     window.scrollTo(0, 0);
@@ -1542,6 +1543,58 @@ export default function App() {
   if (currentRoute === '/codigo-conducta') {
     return <CodeOfConduct onBack={() => navigateTo('/')} />;
   }
+  if (currentRoute === '/nosotros') {
+    return (
+      <AboutPage
+        onClose={() => navigateTo('/')}
+        onGetStarted={() => {
+          navigateTo('/');
+          if (!currentUser) {
+            setShowAuthDialog(true);
+          }
+        }}
+      />
+    );
+  }
+  if (currentRoute === '/como-funciona') {
+    return (
+      <HowItWorksPage
+        onClose={() => navigateTo('/')}
+        onGetStarted={() => {
+          navigateTo('/');
+          if (!currentUser) {
+            setShowAuthDialog(true);
+          }
+        }}
+      />
+    );
+  }
+  if (currentRoute === '/proveedores') {
+    return (
+      <ForProvidersPage
+        onClose={() => navigateTo('/')}
+        onGetStarted={() => {
+          navigateTo('/');
+          if (!currentUser) {
+            setShowAuthDialog(true);
+          } else if (!currentUser.isProvider) {
+            toast.info('Completa tu perfil de proveedor para comenzar');
+          }
+        }}
+      />
+    );
+  }
+  if (currentRoute === '/clientes') {
+    return (
+      <ForClientsPage
+        onClose={() => navigateTo('/')}
+        onGetStarted={() => {
+          navigateTo('/');
+          setViewMode('client');
+        }}
+      />
+    );
+  }
 
   // Service detail page route (SEO + legacy)
   const serviceArtist = resolveServiceByRoute(currentRoute);
@@ -2269,10 +2322,10 @@ export default function App() {
 
           {/* Footer */}
           <Footer
-            onAboutClick={() => setShowAbout(true)}
-            onHowItWorksClick={() => setShowHowItWorks(true)}
-            onForProvidersClick={() => setShowForProviders(true)}
-            onForClientsClick={() => setShowForClients(true)}
+            onAboutClick={() => navigateTo('/nosotros')}
+            onHowItWorksClick={() => navigateTo('/como-funciona')}
+            onForProvidersClick={() => navigateTo('/proveedores')}
+            onForClientsClick={() => navigateTo('/clientes')}
             onTermsClick={() => navigateTo('/terminos-condiciones')}
             onPrivacyClick={() => navigateTo('/politicas-privacidad')}
             onCancellationClick={() => navigateTo('/politica-cancelacion')}
