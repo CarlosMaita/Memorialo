@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { 
   Shield, 
   ShieldCheck, 
@@ -20,7 +19,12 @@ import {
   Calendar,
   DollarSign,
   Star,
-  AlertTriangle
+  AlertTriangle,
+  Menu,
+  X,
+  Activity,
+  LayoutDashboard,
+  BookOpen
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Textarea } from './ui/textarea';
@@ -49,6 +53,15 @@ interface AdminDashboardProps {
   onRevokeProviderAccess: (userId: string) => Promise<void>;
 }
 
+type AdminSection = 'overview' | 'providers' | 'users' | 'services';
+
+const adminNavItems = [
+  { id: 'overview' as const, label: 'Resumen', icon: <LayoutDashboard className="w-5 h-5" /> },
+  { id: 'providers' as const, label: 'Proveedores', icon: <Briefcase className="w-5 h-5" /> },
+  { id: 'users' as const, label: 'Usuarios', icon: <Users className="w-5 h-5" /> },
+  { id: 'services' as const, label: 'Servicios', icon: <BookOpen className="w-5 h-5" /> },
+];
+
 export function AdminDashboard({
   currentUser,
   providers,
@@ -75,6 +88,8 @@ export function AdminDashboard({
   const [banReason, setBanReason] = useState('');
   const [banType, setBanType] = useState<'provider' | 'user'>('provider');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<AdminSection>('overview');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Check if current user is admin
   if (currentUser.role !== 'admin') {
@@ -208,6 +223,11 @@ export function AdminDashboard({
     setShowBanDialog(true);
   };
 
+  const handleNavClick = (section: AdminSection) => {
+    setActiveSection(section);
+    setSidebarOpen(false);
+  };
+
   // Get provider's services
   const getProviderServices = (providerId: string) => {
     const provider = providers.find(p => p.id === providerId);
@@ -220,19 +240,96 @@ export function AdminDashboard({
     return users.find(u => u.id === provider.userId);
   };
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Shield className="h-8 w-8" style={{ color: '#D4AF37' }} />
-          <h1 className="text-3xl">Panel de Administración</h1>
-        </div>
-        <p className="text-gray-600">Gestiona y modera el marketplace de Memorialo</p>
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full">
+      <div className="px-5 py-5 border-b border-[#1B2A47]/10">
+        <p className="text-xs uppercase tracking-widest text-[#D4AF37] font-semibold mb-0.5">Panel Admin</p>
+        <p className="text-sm text-gray-500 truncate">{currentUser.name}</p>
       </div>
 
-      {/* Statistics Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <nav className="flex-1 py-4 px-3 space-y-1">
+        {adminNavItems.map((item) => {
+          const isActive = activeSection === item.id;
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleNavClick(item.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all duration-150 ${
+                isActive
+                  ? 'bg-[#1B2A47] text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
+            >
+              <span className={isActive ? 'text-[#D4AF37]' : ''}>{item.icon}</span>
+              <span className="flex-1 text-left font-medium">{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      <div className="p-4 border-t border-gray-100">
+        <div className="bg-gradient-to-r from-[#1B2A47] to-[#2d4270] rounded-xl p-3 text-white text-xs">
+          <div className="flex items-center gap-2 mb-1">
+            <Activity className="w-4 h-4 text-[#D4AF37]" />
+            <span className="font-semibold">Resumen</span>
+          </div>
+          <p className="text-gray-300">
+            {stats.totalUsers} usuarios · {stats.totalProviders} proveedores · {stats.activeServices} servicios activos
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex min-h-[calc(100vh-64px)] bg-gray-50">
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+          <div className="relative w-72 bg-white h-full shadow-2xl z-10">
+            <button onClick={() => setSidebarOpen(false)} className="absolute top-4 right-4 text-gray-500 hover:text-gray-900 p-1">
+              <X className="w-5 h-5" />
+            </button>
+            <SidebarContent />
+          </div>
+        </div>
+      )}
+
+      <aside className="hidden md:flex flex-col w-72 bg-white border-r border-gray-200 shrink-0 sticky top-0 h-screen">
+        <SidebarContent />
+      </aside>
+
+      <main className="flex-1 min-w-0">
+        <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 sticky top-0 z-40">
+          <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg bg-[#1B2A47] text-white">
+            <Menu className="w-5 h-5" />
+          </button>
+          <div>
+            <p className="text-sm font-semibold text-[#1B2A47]">
+              {adminNavItems.find((item) => item.id === activeSection)?.label}
+            </p>
+            <p className="text-xs text-gray-500">{currentUser.name}</p>
+          </div>
+        </div>
+
+        <div className="p-4 md:p-6 lg:p-8 space-y-6">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <Shield className="h-8 w-8" style={{ color: '#D4AF37' }} />
+              <h1 className="text-3xl text-[#1B2A47]">Panel de Administración</h1>
+            </div>
+            <p className="text-gray-600">Gestiona y modera el marketplace de Memorialo</p>
+          </div>
+
+          {activeSection === 'overview' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-[#1B2A47] mb-1">Resumen</h2>
+                <p className="text-gray-500 text-sm">Vista general del ecosistema y métricas principales</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Usuarios Totales</CardTitle>
@@ -295,10 +392,7 @@ export function AdminDashboard({
             </div>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Additional Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Servicios</CardTitle>
@@ -328,27 +422,71 @@ export function AdminDashboard({
             <div className="text-xs text-gray-600">Requieren atención</div>
           </CardContent>
         </Card>
-      </div>
+              </div>
 
-      {/* Main Content */}
-      <Tabs defaultValue="providers" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="providers">
-            <Briefcase className="h-4 w-4 mr-2" />
-            Proveedores
-          </TabsTrigger>
-          <TabsTrigger value="users">
-            <Users className="h-4 w-4 mr-2" />
-            Usuarios
-          </TabsTrigger>
-          <TabsTrigger value="services">
-            <FileText className="h-4 w-4 mr-2" />
-            Servicios
-          </TabsTrigger>
-        </TabsList>
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                <Card className="xl:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Estado del Marketplace</CardTitle>
+                    <CardDescription>Indicadores principales para seguimiento operativo</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="rounded-xl border border-gray-200 p-4 bg-white">
+                        <p className="text-sm text-gray-500 mb-1">Contratos activos</p>
+                        <p className="text-2xl font-semibold text-[#1B2A47]">{stats.activeContracts}</p>
+                        <p className="text-xs text-gray-500">{stats.totalContracts} contratos totales</p>
+                      </div>
+                      <div className="rounded-xl border border-gray-200 p-4 bg-white">
+                        <p className="text-sm text-gray-500 mb-1">Reservas completadas</p>
+                        <p className="text-2xl font-semibold text-[#1B2A47]">{stats.completedBookings}</p>
+                        <p className="text-xs text-gray-500">{stats.totalBookings} reservas totales</p>
+                      </div>
+                      <div className="rounded-xl border border-gray-200 p-4 bg-white">
+                        <p className="text-sm text-gray-500 mb-1">Promedio de reputación</p>
+                        <p className="text-2xl font-semibold text-[#1B2A47]">{stats.avgRating.toFixed(1)}</p>
+                        <p className="text-xs text-gray-500">{reviews.length} reseñas registradas</p>
+                      </div>
+                      <div className="rounded-xl border border-gray-200 p-4 bg-white">
+                        <p className="text-sm text-gray-500 mb-1">Proveedores baneados</p>
+                        <p className="text-2xl font-semibold text-red-600">{stats.bannedProviders}</p>
+                        <p className="text-xs text-gray-500">Requieren seguimiento administrativo</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-        {/* Providers Tab */}
-        <TabsContent value="providers" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Acciones sugeridas</CardTitle>
+                    <CardDescription>Puntos de control inmediatos del panel</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm text-gray-600">
+                    <div className="rounded-lg border border-gray-200 p-3">
+                      <p className="font-medium text-[#1B2A47]">Proveedores pendientes</p>
+                      <p>{providers.filter((provider) => !provider.verified && !provider.banned).length} sin verificar</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 p-3">
+                      <p className="font-medium text-[#1B2A47]">Usuarios con solicitud</p>
+                      <p>{users.filter((user) => user.providerRequestStatus === 'pending').length} esperando aprobación</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 p-3">
+                      <p className="font-medium text-[#1B2A47]">Servicios publicados</p>
+                      <p>{stats.activeServices} activos sobre {stats.totalServices} cargados</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'providers' && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[#1B2A47] mb-1">Proveedores</h2>
+                <p className="text-gray-500 text-sm">Verifica y modera los proveedores del marketplace</p>
+              </div>
+
           <Card>
             <CardHeader>
               <CardTitle>Gestión de Proveedores</CardTitle>
@@ -495,10 +633,16 @@ export function AdminDashboard({
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+            </div>
+          )}
 
-        {/* Users Tab */}
-        <TabsContent value="users" className="space-y-4">
+          {activeSection === 'users' && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[#1B2A47] mb-1">Usuarios</h2>
+                <p className="text-gray-500 text-sm">Vista general y acciones administrativas sobre usuarios</p>
+              </div>
+
           <Card>
             <CardHeader>
               <CardTitle>Gestión de Usuarios</CardTitle>
@@ -709,10 +853,16 @@ export function AdminDashboard({
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+            </div>
+          )}
 
-        {/* Services Tab */}
-        <TabsContent value="services" className="space-y-4">
+          {activeSection === 'services' && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[#1B2A47] mb-1">Servicios</h2>
+                <p className="text-gray-500 text-sm">Inventario publicado y estado general del catálogo</p>
+              </div>
+
           <Card>
             <CardHeader>
               <CardTitle>Servicios Publicados</CardTitle>
@@ -792,8 +942,10 @@ export function AdminDashboard({
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+          )}
+        </div>
+      </main>
 
       {/* Ban Dialog */}
       <Dialog open={showBanDialog} onOpenChange={setShowBanDialog}>
