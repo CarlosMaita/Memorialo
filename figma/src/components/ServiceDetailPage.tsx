@@ -129,7 +129,7 @@ export function ServiceDetailPage({
       {/* SEO meta tags for this service */}
       <SEOHead
         title={`${artist.name} - ${artist.subcategory || artist.category} en ${artist.location}`}
-        description={artist.bio?.slice(0, 160) || `Contrata a ${artist.name}, servicio profesional de ${artist.subcategory || artist.category} en ${artist.location}. Desde $${artist.pricePerHour}/hr.`}
+        description={artist.bio?.slice(0, 160) || `Contrata a ${artist.name}, servicio profesional de ${artist.subcategory || artist.category} en ${artist.location}. Desde $${artist.pricePerHour}.`}
         canonical={seoPath}
         ogImage={artist.image}
         ogType="product"
@@ -360,7 +360,11 @@ export function ServiceDetailPage({
                           <span className="text-2xl font-bold" style={{ color: 'var(--gold)' }}>
                             ${plan.price}
                           </span>
-                          <span className="text-sm text-gray-500">/ {plan.duration}h</span>
+                          <span className="text-sm text-gray-500">
+                            / {(plan as any).saleType === 'unit'
+                              ? `${plan.duration} ${String((plan as any).unitLabel || 'unidad(es)')}`
+                              : `${plan.duration}h`}
+                          </span>
                         </div>
                         <p className="text-sm text-gray-600 mb-4">{plan.description}</p>
                         <ul className="space-y-2 mb-5">
@@ -565,7 +569,6 @@ export function ServiceDetailPage({
                   <span className="text-3xl font-bold" style={{ color: 'var(--gold)' }}>
                     ${minPrice}
                   </span>
-                  <span className="text-gray-500">/hr</span>
                 </div>
 
                 <div className="flex items-center gap-2 mb-4 text-sm text-gray-600">
@@ -634,7 +637,6 @@ export function ServiceDetailPage({
               <span className="text-xl font-bold" style={{ color: 'var(--gold)' }}>
                 ${minPrice}
               </span>
-              <span className="text-sm text-gray-500">/hr</span>
             </div>
           </div>
           <Button

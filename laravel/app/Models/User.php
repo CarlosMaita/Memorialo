@@ -69,4 +69,19 @@ class User extends Authenticatable
     {
         return $this->hasMany(Service::class);
     }
+
+    public function chatParticipantEntries(): HasMany
+    {
+        return $this->hasMany(ChatParticipant::class);
+    }
+
+    public function chatAuthoredMessages(): HasMany
+    {
+        return $this->hasMany(ChatMessage::class, 'author_user_id');
+    }
+
+    public function chatReadMessages(): HasMany
+    {
+        return $this->hasMany(ChatMessageRead::class);
+    }
 }

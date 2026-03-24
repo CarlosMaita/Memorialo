@@ -261,7 +261,7 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
                   <ul className="space-y-3">
                     <li className="flex items-start gap-3">
                       <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
-                      <span className="text-gray-700">Galería de fotos y videos ilimitada</span>
+                      <span className="text-gray-700">Galería de fotos</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
@@ -273,7 +273,7 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
                     </li>
                     <li className="flex items-start gap-3">
                       <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
-                      <span className="text-gray-700">Especialidades y certificaciones destacadas</span>
+                      <span className="text-gray-700">Especialidades y certificaciones</span>
                     </li>
                   </ul>
                 </div>
@@ -300,11 +300,11 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
                   <ul className="space-y-3">
                     <li className="flex items-start gap-3">
                       <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
-                      <span className="text-gray-700">Calendario de disponibilidad inteligente</span>
+                      <span className="text-gray-700">Chat con clientes</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
-                      <span className="text-gray-700">Gestión de contratos y documentos</span>
+                      <span className="text-gray-700">Gestión de contratos</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />

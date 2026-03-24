@@ -189,7 +189,9 @@ export function ArtistProfile({
                                   ${plan.price}
                                 </span>
                                 <span className="text-sm text-gray-500">
-                                  / {plan.duration}h
+                                  / {(plan as any).saleType === 'unit'
+                                    ? `${plan.duration} ${String((plan as any).unitLabel || 'unidad(es)')}`
+                                    : `${plan.duration}h`}
                                 </span>
                               </div>
                             </div>

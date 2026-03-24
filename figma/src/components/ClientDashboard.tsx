@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Calendar, Clock, DollarSign, FileText, Star, CheckCircle, XCircle,
   AlertCircle, MessageSquare, FolderOpen, Package, Edit2, ChevronDown,
@@ -21,6 +21,8 @@ type SidebarSection = 'events' | 'bookings';
 interface ClientDashboardProps {
   contracts: Contract[];
   user: User;
+  initialSection?: SidebarSection;
+  focusContractId?: string | null;
   onReviewCreate: (contractId: string) => void;
   reviews: Review[];
   events: Event[];
@@ -41,6 +43,8 @@ const navItems: { id: SidebarSection; label: string; icon: React.ReactNode }[] =
 export function ClientDashboard({
   contracts,
   user,
+  initialSection,
+  focusContractId,
   onReviewCreate,
   reviews,
   events,
@@ -61,12 +65,42 @@ export function ClientDashboard({
   const [activeSection, setActiveSection] = useState<SidebarSection>('bookings');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const getMeasureType = (contract: any): 'time' | 'unit' => {
+    if (contract?.metadata?.saleType === 'unit' || contract?.terms?.measureType === 'unit') {
+      return 'unit';
+    }
+
+    return 'time';
+  };
+
+  const getMeasureLabel = (contract: any, amount: number) => {
+    if (getMeasureType(contract) === 'unit') {
+      return `${amount} ${String(contract?.metadata?.unitLabel || contract?.terms?.measureLabel || 'unidad(es)')}`;
+    }
+
+    return `${amount} ${amount === 1 ? 'hora' : 'horas'}`;
+  };
+
+  const getMeasureTitle = (contract: any) => {
+    if (getMeasureType(contract) === 'unit') {
+      return contract?.terms?.startTime ? 'Hora y Cantidad' : 'Cantidad';
+    }
+
+    return contract?.terms?.startTime ? 'Hora y Duración' : 'Duración';
+  };
+
   // Filter contracts for current user
   const userContracts = contracts.filter(c => c.clientId === user.id);
   const allUserEvents = events.filter(e => e.userId === user.id);
   const userEvents = showArchived
     ? allUserEvents
     : allUserEvents.filter(e => !e.archived);
+
+  useEffect(() => {
+    if (initialSection) {
+      setActiveSection(initialSection);
+    }
+  }, [initialSection]);
 
   // Group contracts by event
   const contractsByEvent = new Map<string | null, Contract[]>();
@@ -76,6 +110,25 @@ export function ClientDashboard({
     contractsByEvent.get(eventId)!.push(contract);
   });
   const unassignedContracts = contractsByEvent.get(null) || [];
+
+  useEffect(() => {
+    if (!focusContractId) {
+      return;
+    }
+
+    setActiveSection('bookings');
+    setExpandedContracts((previous) => {
+      const next = new Set(previous);
+      next.add(focusContractId);
+      return next;
+    });
+
+    const focusedContract = userContracts.find((contract) => contract.id === focusContractId);
+    if (focusedContract) {
+      setSelectedContract(focusedContract);
+      setShowContractView(true);
+    }
+  }, [focusContractId, userContracts]);
 
   // Pending signatures count
   const pendingSignature = userContracts.filter(c => c.status === 'pending_client').length;
@@ -254,8 +307,8 @@ export function ClientDashboard({
             <div className="flex items-center gap-2 text-sm">
               <Clock className="w-4 h-4 text-gray-500 shrink-0" />
               <div>
-                <p className="text-xs text-gray-500">{contract.terms.startTime ? 'Hora y Duración' : 'Duración'}</p>
-                <p>{contract.terms.startTime && `${contract.terms.startTime} • `}{contract.terms.duration} {contract.terms.duration === 1 ? 'hora' : 'horas'}</p>
+                <p className="text-xs text-gray-500">{getMeasureTitle(contract)}</p>
+                <p>{contract.terms.startTime && `${contract.terms.startTime} • `}{getMeasureLabel(contract, contract.terms.duration)}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 text-sm">

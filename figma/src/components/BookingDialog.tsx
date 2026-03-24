@@ -26,7 +26,21 @@ interface BookingDialogProps {
 }
 
 export function BookingDialog({ artist, selectedPlan, open, onClose, onContractCreated, onBookingCreated, onBookingUpdate, user, onLoginRequired, events = [] }: BookingDialogProps) {
-  const allowCustomHourly = artist?.allowCustomHourly !== false;
+  const allowCustomHourly = artist?.allowCustomHourly === true;
+
+  const getPlanSaleType = (plan?: ServicePlan | null): 'time' | 'unit' => {
+    return (plan as any)?.saleType === 'unit' ? 'unit' : 'time';
+  };
+
+  const formatPlanMeasure = (plan?: ServicePlan | null) => {
+    if (!plan) return '';
+
+    if (getPlanSaleType(plan) === 'unit') {
+      return `${plan.duration} ${String((plan as any)?.unitLabel || 'unidad(es)')}`;
+    }
+
+    return `${plan.duration} ${plan.duration === 1 ? 'hora' : 'horas'}`;
+  };
 
   const buildPlanOptionValue = (plan: ServicePlan, index: number): string => {
     const rawId = (plan as any)?.id;
@@ -144,6 +158,10 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
   if (!artist) return null;
 
   const selectedServicePlan = selectedPlan || getPlanByOptionValue(selectedPlanValue) || (formData.planId ? artist.servicePlans?.find(p => String((p as any).id) === formData.planId) : null);
+  const selectedPlanSaleType = getPlanSaleType(selectedServicePlan);
+  const selectedPlanMeasureLabel = selectedPlanSaleType === 'unit'
+    ? String((selectedServicePlan as any)?.unitLabel || 'unidad(es)')
+    : 'hora(s)';
   const totalPrice = selectedServicePlan ? selectedServicePlan.price : artist.pricePerHour * parseInt(formData.duration || '0');
   const isEventSelected = selectedEventId && selectedEventId !== 'new';
   const userEvents = events.filter(e => e.userId === user?.id && e.status !== 'cancelled');
@@ -194,12 +212,20 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
         serviceDescription,
         price: totalPrice,
         duration: parseInt(formData.duration),
+        measureType: selectedPlanSaleType,
+        measureLabel: selectedPlanMeasureLabel,
         date: formData.date,
         startTime: formData.startTime,
         location: formData.location,
         paymentTerms: serviceTerms.paymentTerms,
         cancellationPolicy: serviceTerms.cancellationPolicy,
         additionalTerms: additionalTerms
+      },
+      metadata: {
+        saleType: selectedPlanSaleType,
+        unitLabel: selectedPlanMeasureLabel,
+        planId: formData.planId || undefined,
+        planName: selectedServicePlan?.name,
       },
       status: 'pending_client'
     };
@@ -248,6 +274,10 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
       status: 'pending',
       planId: formData.planId || undefined,
       planName: selectedServicePlan?.name,
+      metadata: {
+        saleType: selectedPlanSaleType,
+        unitLabel: selectedPlanMeasureLabel,
+      },
       contractId: contract.id
     };
     setGeneratedBooking(booking);
@@ -339,7 +369,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
                 <div className="text-right ml-4">
                   <p className="text-gray-600 text-xs">Precio</p>
                   <p className="text-green-600">${selectedServicePlan.price}</p>
-                  <p className="text-xs text-gray-500">{selectedServicePlan.duration}h</p>
+                  <p className="text-xs text-gray-500">{formatPlanMeasure(selectedServicePlan)}</p>
                 </div>
               </div>
             </div>
@@ -379,7 +409,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
                   )}
                   {artist.servicePlans.map((plan, index) => (
                     <SelectItem key={buildPlanOptionValue(plan, index)} value={buildPlanOptionValue(plan, index)}>
-                      {plan.name} - ${plan.price} ({plan.duration}h)
+                      {plan.name} - ${plan.price} ({formatPlanMeasure(plan)})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -503,25 +533,35 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
             </div>
 
             <div>
-              <Label htmlFor="duration" className="mb-1 block">Duración (horas) *</Label>
+              <Label htmlFor="duration" className="mb-1 block">
+                {selectedServicePlan && getPlanSaleType(selectedServicePlan) === 'unit' ? 'Cantidad' : 'Duración (horas)'} *
+              </Label>
               <div className="relative">
                 <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Select 
-                  value={formData.duration} 
-                  onValueChange={(value) => setFormData({ ...formData, duration: value, planId: '' })}
-                  disabled={!!selectedServicePlan}
-                >
-                  <SelectTrigger className="pl-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4, 5, 6, 8, 10].map((hours) => (
-                      <SelectItem key={hours} value={hours.toString()}>
-                        {hours} {hours === 1 ? 'hora' : 'horas'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {selectedServicePlan ? (
+                  <Input
+                    id="duration"
+                    value={formatPlanMeasure(selectedServicePlan)}
+                    className="pl-10"
+                    disabled
+                  />
+                ) : (
+                  <Select
+                    value={formData.duration}
+                    onValueChange={(value) => setFormData({ ...formData, duration: value, planId: '' })}
+                  >
+                    <SelectTrigger className="pl-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5, 6, 8, 10].map((hours) => (
+                        <SelectItem key={hours} value={hours.toString()}>
+                          {hours} {hours === 1 ? 'hora' : 'horas'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
 
@@ -586,8 +626,8 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
                   <span>{selectedServicePlan.name}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Duración</span>
-                  <span>{selectedServicePlan.duration} {selectedServicePlan.duration === 1 ? 'hora' : 'horas'}</span>
+                  <span className="text-gray-600">{getPlanSaleType(selectedServicePlan) === 'unit' ? 'Cantidad' : 'Duración'}</span>
+                  <span>{formatPlanMeasure(selectedServicePlan)}</span>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t">
                   <span className="flex items-center gap-2">

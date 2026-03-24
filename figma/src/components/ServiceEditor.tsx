@@ -42,14 +42,16 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     whatsappNumber: '',
     email: '',
     isPublished: true, // Por defecto los servicios están publicados
-    allowCustomHourly: true // Permite reservas personalizadas por hora
+    allowCustomHourly: false // Por defecto desactivado
   });
 
   const [servicePlans, setServicePlans] = useState<ServicePlan[]>([]);
   const [currentPlan, setCurrentPlan] = useState({
+    saleType: 'time',
     name: '',
     price: '',
     duration: '',
+    unitLabel: 'unidad(es)',
     description: '',
     includes: [''],
     popular: false
@@ -129,13 +131,15 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
         whatsappNumber: '',
         email: '',
         isPublished: true,
-        allowCustomHourly: true
+        allowCustomHourly: false
       });
       setServicePlans([]);
       setCurrentPlan({
+        saleType: 'time',
         name: '',
         price: '',
         duration: '',
+        unitLabel: 'unidad(es)',
         description: '',
         includes: [''],
         popular: false
@@ -225,7 +229,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
           whatsappNumber: existingService.whatsappNumber || '',
           email: existingService.email || '',
           isPublished: existingService.isPublished !== undefined ? existingService.isPublished : true,
-          allowCustomHourly: existingService.allowCustomHourly !== undefined ? existingService.allowCustomHourly : true
+          allowCustomHourly: existingService.allowCustomHourly !== undefined ? existingService.allowCustomHourly : false
         };
         
         setFormData(loadedFormData);
@@ -241,9 +245,11 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
         });
         setEditingPlanId(null);
         setCurrentPlan({
+          saleType: 'time',
           name: '',
           price: '',
           duration: '',
+          unitLabel: 'unidad(es)',
           description: '',
           includes: [''],
           popular: false
@@ -362,15 +368,22 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
       return;
     }
 
+    if (currentPlan.saleType === 'unit' && !currentPlan.unitLabel.trim()) {
+      toast.error('Indica la unidad de venta para este plan');
+      return;
+    }
+
     if (editingPlanId) {
       // Actualizar plan existente
       const updatedPlans = servicePlans.map(plan => 
         plan.id === editingPlanId 
           ? {
               ...plan,
+              saleType: currentPlan.saleType,
               name: currentPlan.name,
               price: parseFloat(currentPlan.price),
               duration: parseFloat(currentPlan.duration),
+              unitLabel: currentPlan.saleType === 'unit' ? currentPlan.unitLabel.trim() : 'hora(s)',
               description: currentPlan.description,
               includes: currentPlan.includes.filter(i => i.trim() !== ''),
               popular: currentPlan.popular
@@ -383,9 +396,11 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
       // Agregar nuevo plan
       const newPlan: ServicePlan = {
         id: `plan-${Date.now()}`,
+        saleType: currentPlan.saleType as any,
         name: currentPlan.name,
         price: parseFloat(currentPlan.price),
         duration: parseFloat(currentPlan.duration),
+        unitLabel: currentPlan.saleType === 'unit' ? currentPlan.unitLabel.trim() : 'hora(s)',
         description: currentPlan.description,
         includes: currentPlan.includes.filter(i => i.trim() !== ''),
         popular: currentPlan.popular
@@ -396,9 +411,11 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
 
     // Resetear formulario
     setCurrentPlan({
+      saleType: 'time',
       name: '',
       price: '',
       duration: '',
+      unitLabel: 'unidad(es)',
       description: '',
       includes: [''],
       popular: false
@@ -407,10 +424,13 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
   };
 
   const handleEditPlan = (plan: ServicePlan) => {
+    const saleType = (plan as any).saleType === 'unit' ? 'unit' : 'time';
     setCurrentPlan({
+      saleType,
       name: plan.name,
       price: plan.price.toString(),
       duration: plan.duration.toString(),
+      unitLabel: saleType === 'unit' ? String((plan as any).unitLabel || 'unidad(es)') : 'hora(s)',
       description: plan.description,
       includes: plan.includes.length > 0 ? plan.includes : [''],
       popular: plan.popular || false
@@ -421,9 +441,11 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
 
   const handleCancelEditPlan = () => {
     setCurrentPlan({
+      saleType: 'time',
       name: '',
       price: '',
       duration: '',
+      unitLabel: 'unidad(es)',
       description: '',
       includes: [''],
       popular: false
@@ -492,6 +514,11 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
       return;
     }
 
+    if (formData.allowCustomHourly && (!formData.pricePerHour || parseFloat(formData.pricePerHour) <= 0)) {
+      toast.error('El precio base por hora es obligatorio cuando el plan personalizado por horas está activado');
+      return;
+    }
+
     const filteredPortfolio = portfolioImages.filter(img => img.trim() !== '');
     
     const service = {
@@ -501,7 +528,9 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
       subcategory: formData.subcategory,
       bio: formData.bio || formData.description,
       location: formData.location,
-      pricePerHour: parseFloat(formData.pricePerHour) || servicePlans[0].price / servicePlans[0].duration,
+      pricePerHour: formData.allowCustomHourly
+        ? parseFloat(formData.pricePerHour)
+        : (parseFloat(formData.pricePerHour) || servicePlans[0].price / servicePlans[0].duration),
       responseTime: formData.responseTime,
       specialties: specialties.filter(s => s.trim() !== ''),
       availability: availability,
@@ -674,16 +703,6 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="pricePerHour">Precio Base por Hora</Label>
-                  <Input
-                    id="pricePerHour"
-                    type="number"
-                    value={formData.pricePerHour}
-                    onChange={(e) => setFormData({ ...formData, pricePerHour: e.target.value })}
-                    placeholder="100"
-                  />
-                </div>
-                <div>
                   <Label htmlFor="responseTime">Tiempo de Respuesta</Label>
                   {formReady && (
                     <Select
@@ -703,27 +722,6 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                     </Select>
                   )}
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between p-4 border rounded-lg" style={{ borderColor: formData.allowCustomHourly ? '#10b981' : '#94a3b8', backgroundColor: formData.allowCustomHourly ? '#f0fdf4' : '#f8fafc' }}>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className={`w-5 h-5 ${formData.allowCustomHourly ? 'text-green-600' : 'text-slate-600'}`} />
-                    <Label htmlFor="allowCustomHourly" className="text-base cursor-pointer mb-0">
-                      Plan personalizado por horas
-                    </Label>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    {formData.allowCustomHourly
-                      ? 'Los clientes pueden crear reservas personalizadas por duración.'
-                      : 'Los clientes solo podrán reservar usando los planes predefinidos.'}
-                  </p>
-                </div>
-                <Switch
-                  id="allowCustomHourly"
-                  checked={formData.allowCustomHourly}
-                  onCheckedChange={(checked) => setFormData({ ...formData, allowCustomHourly: checked })}
-                />
               </div>
 
               <div>
@@ -968,6 +966,43 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
               <CardTitle className="text-lg">Planes de Servicio *</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 border rounded-lg" style={{ borderColor: formData.allowCustomHourly ? '#10b981' : '#94a3b8', backgroundColor: formData.allowCustomHourly ? '#f0fdf4' : '#f8fafc' }}>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className={`w-5 h-5 ${formData.allowCustomHourly ? 'text-green-600' : 'text-slate-600'}`} />
+                    <Label htmlFor="allowCustomHourly" className="text-base cursor-pointer mb-0">
+                      Plan personalizado por horas
+                    </Label>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    {formData.allowCustomHourly
+                      ? 'Los clientes pueden crear reservas personalizadas por duración.'
+                      : 'Los clientes solo podrán reservar usando los planes predefinidos.'}
+                  </p>
+                </div>
+                <Switch
+                  id="allowCustomHourly"
+                  checked={formData.allowCustomHourly}
+                  onCheckedChange={(checked) => setFormData({ ...formData, allowCustomHourly: checked })}
+                />
+              </div>
+
+              {formData.allowCustomHourly && (
+                <div>
+                  <Label htmlFor="pricePerHour">Precio Base por Hora *</Label>
+                  <Input
+                    id="pricePerHour"
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    value={formData.pricePerHour}
+                    onChange={(e) => setFormData({ ...formData, pricePerHour: e.target.value })}
+                    placeholder="100"
+                    required={formData.allowCustomHourly}
+                  />
+                </div>
+              )}
+
               {/* Existing Plans */}
               {servicePlans.length > 0 && (
                 <div className="space-y-2">
@@ -1002,7 +1037,9 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {plan.duration}h
+                            {(plan as any).saleType === 'unit'
+                              ? `${plan.duration} ${String((plan as any).unitLabel || 'unidad(es)')}`
+                              : `${plan.duration}h`}
                           </span>
                           <span>{plan.includes.length} incluidos</span>
                         </div>
@@ -1049,7 +1086,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                     </Button>
                   )}
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input
                     placeholder="Nombre del plan"
                     value={currentPlan.name}
@@ -1061,13 +1098,40 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                     value={currentPlan.price}
                     onChange={(e) => setCurrentPlan({ ...currentPlan, price: e.target.value })}
                   />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Select
+                    value={currentPlan.saleType}
+                    onValueChange={(value) => setCurrentPlan({
+                      ...currentPlan,
+                      saleType: value,
+                      unitLabel: value === 'unit' ? (currentPlan.unitLabel || 'unidad(es)') : 'hora(s)'
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="time">Por tiempo</SelectItem>
+                      <SelectItem value="unit">Por unidad</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Input
                     type="number"
-                    placeholder="Duración (hrs)"
+                    placeholder={currentPlan.saleType === 'unit' ? 'Cantidad' : 'Duración (hrs)'}
                     value={currentPlan.duration}
                     onChange={(e) => setCurrentPlan({ ...currentPlan, duration: e.target.value })}
                   />
                 </div>
+
+                {currentPlan.saleType === 'unit' && (
+                  <Input
+                    placeholder="Unidad de venta (ej: unidad(es), porción(es), caja(s))"
+                    value={currentPlan.unitLabel}
+                    onChange={(e) => setCurrentPlan({ ...currentPlan, unitLabel: e.target.value })}
+                  />
+                )}
                 <Textarea
                   placeholder="Descripción del plan"
                   value={currentPlan.description}

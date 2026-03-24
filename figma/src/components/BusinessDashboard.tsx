@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -47,6 +47,8 @@ interface BusinessDashboardProps {
   allArtists?: Artist[];
   contracts: Contract[];
   bookings: Booking[];
+  initialSection?: SidebarSection;
+  focusBookingId?: string | null;
   onServiceCreate: (service: Artist) => void;
   onServiceUpdate: (service: Artist) => void;
   onServiceDelete: (serviceId: string) => void;
@@ -89,6 +91,8 @@ export function BusinessDashboard({
   allArtists = [],
   contracts,
   bookings,
+  initialSection,
+  focusBookingId,
   onServiceCreate, 
   onServiceUpdate, 
   onServiceDelete,
@@ -145,6 +149,30 @@ export function BusinessDashboard({
     date: '',
     startTime: ''
   });
+
+  const getMeasureType = (item: any): 'time' | 'unit' => {
+    if (item?.metadata?.saleType === 'unit' || item?.terms?.measureType === 'unit') {
+      return 'unit';
+    }
+
+    return 'time';
+  };
+
+  const getMeasureLabel = (item: any, amount: number) => {
+    if (getMeasureType(item) === 'unit') {
+      return `${amount} ${String(item?.metadata?.unitLabel || item?.terms?.measureLabel || 'unidad(es)')}`;
+    }
+
+    return `${amount} ${amount === 1 ? 'hora' : 'horas'}`;
+  };
+
+  const getMeasureTitle = (item: any, includeTime: boolean) => {
+    if (getMeasureType(item) === 'unit') {
+      return includeTime ? 'Hora / Cantidad' : 'Cantidad';
+    }
+
+    return includeTime ? 'Hora / Duración' : 'Duración';
+  };
 
   const handleProviderSetup = () => {
     if (!providerForm.businessName || !providerForm.category) {
@@ -266,6 +294,21 @@ export function BusinessDashboard({
   const filteredBookings = sortedBookings.filter(booking => 
     booking.clientName.toLowerCase().includes(searchBooking.toLowerCase())
   );
+
+  useEffect(() => {
+    if (initialSection) {
+      setActiveSection(initialSection);
+    }
+  }, [initialSection]);
+
+  useEffect(() => {
+    if (!focusBookingId) {
+      return;
+    }
+
+    setActiveSection('bookings');
+    setExpandedBookingId(focusBookingId);
+  }, [focusBookingId]);
 
   const handleEditService = (service: Artist) => {
     setEditingService(service);
@@ -1099,7 +1142,7 @@ export function BusinessDashboard({
                               <p className="text-sm text-gray-600">{contract.terms.serviceDescription.split('\n')[0]}</p>
                               <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div><p className="text-gray-400">Fecha</p><p className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(contract.terms.date).toLocaleDateString('es-ES')}</p></div>
-                                <div><p className="text-gray-400">Hora / Duración</p><p className="flex items-center gap-1"><Clock className="w-3 h-3" />{contract.terms.startTime || 'N/A'} · {contract.terms.duration}h</p></div>
+                                <div><p className="text-gray-400">{getMeasureTitle(contract, true)}</p><p className="flex items-center gap-1"><Clock className="w-3 h-3" />{contract.terms.startTime || 'N/A'} · {getMeasureLabel(contract, contract.terms.duration)}</p></div>
                                 <div><p className="text-gray-400">Precio</p><p className="text-green-600">${contract.terms.price}</p></div>
                                 <div><p className="text-gray-400">Ubicación</p><p className="truncate">{contract.terms.location}</p></div>
                               </div>
@@ -1212,7 +1255,7 @@ export function BusinessDashboard({
                               <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div><p className="text-gray-400">Fecha</p><p className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(booking.date).toLocaleDateString('es-ES')}</p></div>
                                 <div><p className="text-gray-400">Hora</p><p className="flex items-center gap-1"><Clock className="w-3 h-3" />{booking.startTime || 'N/A'}</p></div>
-                                <div><p className="text-gray-400">Duración</p><p>{booking.duration} horas</p></div>
+                                <div><p className="text-gray-400">{getMeasureTitle(booking, false)}</p><p>{getMeasureLabel(booking, booking.duration)}</p></div>
                                 <div><p className="text-gray-400">Ubicación</p><p className="truncate">{booking.location}</p></div>
                                 <div><p className="text-gray-400">Precio</p><p className="text-green-600">${booking.totalPrice}</p></div>
                               </div>

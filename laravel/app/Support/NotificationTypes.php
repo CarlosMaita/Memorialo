@@ -16,6 +16,10 @@ class NotificationTypes
 
     public const PROVIDER_ROLE_ACTIVATED = 'provider_role_activated';
 
+    public const CHAT_MESSAGE_RECEIVED = 'chat_message_received';
+
+    public const CHAT_INTERVENTION_REQUESTED = 'chat_intervention_requested';
+
     public const ALL = [
         self::WELCOME,
         self::SERVICE_REQUEST_CREATED,
@@ -23,5 +27,7 @@ class NotificationTypes
         self::REVIEW_REQUESTED,
         self::REVIEW_RECEIVED,
         self::PROVIDER_ROLE_ACTIVATED,
+        self::CHAT_MESSAGE_RECEIVED,
+        self::CHAT_INTERVENTION_REQUESTED,
     ];
 }

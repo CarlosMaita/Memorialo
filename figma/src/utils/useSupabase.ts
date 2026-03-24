@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { getSupabaseClient, apiRequest, backendMode, laravelApiBaseUrl } from './supabase/client';
-import { User } from '../types';
+import { ChatConversation, ChatMessage, ChatStreamPayload, User } from '../types';
 
 const LARAVEL_ACCESS_TOKEN_KEY = 'laravel_access_token';
 const LARAVEL_AUTH_ERROR_KEY = 'laravel_auth_error';
@@ -949,6 +949,164 @@ export function useSupabase() {
     }
   };
 
+  const getChatConversations = async (): Promise<ChatConversation[]> => {
+    const data = await apiRequest('/chat/conversations', 'GET', undefined, accessToken || undefined);
+    return Array.isArray(data?.items) ? data.items : [];
+  };
+
+  const ensureChatConversation = async (payload: {
+    bookingId?: string;
+    serviceId?: string;
+    clientUserId?: string;
+    providerUserId?: string;
+  }): Promise<ChatConversation> => {
+    return await apiRequest('/chat/conversations', 'POST', payload, accessToken || undefined);
+  };
+
+  const getChatMessages = async (conversationId: string, options?: { before?: string; limit?: number }): Promise<ChatMessage[]> => {
+    const params = new URLSearchParams();
+
+    if (options?.before) params.set('before', options.before);
+    if (typeof options?.limit === 'number') params.set('limit', String(options.limit));
+
+    const query = params.toString();
+    const path = query
+      ? `/chat/conversations/${conversationId}/messages?${query}`
+      : `/chat/conversations/${conversationId}/messages`;
+
+    const data = await apiRequest(path, 'GET', undefined, accessToken || undefined);
+    return Array.isArray(data?.items) ? data.items : [];
+  };
+
+  const sendChatMessage = async (
+    conversationId: string,
+    body: string,
+    attachments?: Array<{ imageData: string; fileName: string; contentType: string }>
+  ): Promise<ChatMessage> => {
+    return await apiRequest(`/chat/conversations/${conversationId}/messages`, 'POST', {
+      body,
+      attachments: attachments && attachments.length > 0 ? attachments : undefined,
+    }, accessToken || undefined);
+  };
+
+  const markChatConversationRead = async (conversationId: string): Promise<{ unreadCount: number; readCount: number }> => {
+    return await apiRequest(`/chat/conversations/${conversationId}/read`, 'PATCH', {}, accessToken || undefined);
+  };
+
+  const requestChatIntervention = async (conversationId: string): Promise<{ requiresAdminIntervention: boolean }> => {
+    return await apiRequest(`/chat/conversations/${conversationId}/intervention`, 'PATCH', {}, accessToken || undefined);
+  };
+
+  const subscribeChatStream = (
+    onEvent: (payload: ChatStreamPayload) => void,
+    onError?: (error: Error) => void,
+  ) => {
+    if (!accessToken) {
+      return () => undefined;
+    }
+
+    let active = true;
+    let abortController: AbortController | null = null;
+    let since = new Date(Date.now() - 30 * 1000).toISOString();
+
+    const processSseChunk = (chunk: string) => {
+      const events = chunk.split('\n\n');
+
+      for (const rawEvent of events) {
+        const lines = rawEvent.split('\n').map(line => line.trim()).filter(Boolean);
+        if (lines.length === 0) continue;
+
+        let eventName = 'message';
+        let dataLine = '';
+
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            eventName = line.slice(6).trim();
+          }
+          if (line.startsWith('data:')) {
+            dataLine += line.slice(5).trim();
+          }
+        }
+
+        if (!dataLine || eventName === 'heartbeat') {
+          continue;
+        }
+
+        try {
+          const parsed = JSON.parse(dataLine) as ChatStreamPayload;
+          if (parsed?.message?.createdAt) {
+            since = parsed.message.createdAt;
+          }
+          onEvent(parsed);
+        } catch {
+          // Ignore malformed SSE payloads.
+        }
+      }
+    };
+
+    const connect = async () => {
+      while (active) {
+        abortController = new AbortController();
+
+        try {
+          const url = `${laravelApiBaseUrl}/chat/stream?since=${encodeURIComponent(since)}`;
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+              Accept: 'text/event-stream',
+              Authorization: `Bearer ${accessToken}`,
+            },
+            signal: abortController.signal,
+          });
+
+          if (!response.ok || !response.body) {
+            throw new Error(`Chat stream failed (${response.status})`);
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (active) {
+            const { done, value } = await reader.read();
+
+            if (done) {
+              break;
+            }
+
+            buffer += decoder.decode(value, { stream: true });
+
+            const boundary = buffer.lastIndexOf('\n\n');
+            if (boundary >= 0) {
+              const complete = buffer.slice(0, boundary);
+              buffer = buffer.slice(boundary + 2);
+              processSseChunk(complete);
+            }
+          }
+        } catch (error: any) {
+          if (!active || error?.name === 'AbortError') {
+            break;
+          }
+
+          if (onError) {
+            onError(error instanceof Error ? error : new Error('Chat stream error'));
+          }
+        }
+
+        if (active) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+    };
+
+    void connect();
+
+    return () => {
+      active = false;
+      abortController?.abort();
+    };
+  };
+
   // Image upload function
   const uploadImage = async (file: File, folder: 'service-images' | 'avatar-images' = 'service-images'): Promise<string> => {
     try {
@@ -1058,6 +1216,13 @@ export function useSupabase() {
     getFavorites,
     addFavorite,
     removeFavorite,
+    getChatConversations,
+    ensureChatConversation,
+    getChatMessages,
+    sendChatMessage,
+    markChatConversationRead,
+    requestChatIntervention,
+    subscribeChatStream,
     uploadImage,
     initializeAdmin,
     signInWithGoogle

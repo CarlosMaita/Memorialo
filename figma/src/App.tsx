@@ -28,6 +28,7 @@ import { CancellationPolicy } from './components/legal/CancellationPolicy';
 import { RefundPolicy } from './components/legal/RefundPolicy';
 import { CodeOfConduct } from './components/legal/CodeOfConduct';
 import { ServiceDetailPage } from './components/ServiceDetailPage';
+import { ChatWidget } from './components/ChatWidget';
 import { SEOHead, buildMarketplaceStructuredData } from './components/SEOHead';
 import { Button } from './components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
@@ -38,6 +39,13 @@ import { toast } from 'sonner@2.0.3';
 
 type ViewMode = 'client' | 'business' | 'admin';
 type DashboardView = 'provider' | 'client';
+type ProviderDashboardSection = 'dashboard' | 'services' | 'contracts' | 'bookings' | 'billing';
+type ClientDashboardSection = 'bookings' | 'events';
+
+type NotificationEntity = {
+  type?: string;
+  id?: string;
+};
 
 type HeaderNotification = {
   id: string;
@@ -46,6 +54,7 @@ type HeaderNotification = {
   body: string;
   priority?: 'low' | 'normal' | 'high';
   ctaUrl?: string | null;
+  entity?: NotificationEntity | null;
   createdAt?: string;
   readAt?: string | null;
   isRead: boolean;
@@ -118,6 +127,10 @@ export default function App() {
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [providerDashboardSection, setProviderDashboardSection] = useState<ProviderDashboardSection | undefined>(undefined);
+  const [providerFocusedBookingId, setProviderFocusedBookingId] = useState<string | null>(null);
+  const [clientDashboardSection, setClientDashboardSection] = useState<ClientDashboardSection | undefined>(undefined);
+  const [clientFocusedContractId, setClientFocusedContractId] = useState<string | null>(null);
   const [favoriteServiceIds, setFavoriteServiceIds] = useState<string[]>([]);
 
   // Load initial data from Supabase
@@ -275,6 +288,7 @@ export default function App() {
       // Load services (artists) - use mock data as fallback
       const servicesData = await supabase.getServices();
       let loadedArtists: Artist[] = [];
+      let usingMockServices = false;
       let hasEmptyTables = false;
 
       if (servicesData && servicesData.length > 0) {
@@ -282,6 +296,7 @@ export default function App() {
       } else {
         // If no data in DB, use mock data
         loadedArtists = mockArtists;
+        usingMockServices = true;
         hasEmptyTables = true;
       }
 
@@ -300,8 +315,12 @@ export default function App() {
       if (reviewsData && reviewsData.length > 0) {
         loadedReviews = reviewsData;
       } else {
-        loadedReviews = mockReviews;
-        hasEmptyTables = true;
+        // Only inject demo reviews when services are also in demo mode.
+        // If services are real and reviews table is empty, keep reviews empty.
+        loadedReviews = usingMockServices ? mockReviews : [];
+        if (usingMockServices) {
+          hasEmptyTables = true;
+        }
       }
       setReviews(loadedReviews);
 
@@ -1322,10 +1341,122 @@ export default function App() {
     }
   };
 
+  const normalizeNotificationText = (...values: Array<string | undefined | null>) => {
+    return values
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  };
+
+  type NotificationDestination = {
+    path: string;
+    viewMode?: ViewMode;
+    dashboardView?: DashboardView;
+    providerSection?: ProviderDashboardSection;
+    providerFocusedBookingId?: string | null;
+    clientSection?: ClientDashboardSection;
+    clientFocusedContractId?: string | null;
+  };
+
+  const resolveNotificationDestination = (notification: HeaderNotification): NotificationDestination => {
+    const notificationType = String(notification.type || '').toLowerCase();
+    const entityType = String(notification.entity?.type || '').toLowerCase();
+    const entityId = notification.entity?.id ? String(notification.entity.id) : null;
+    const ctaUrl = typeof notification.ctaUrl === 'string' ? notification.ctaUrl.trim() : '';
+    const normalizedText = normalizeNotificationText(notification.title, notification.body);
+    const hasExplicitCta = !!ctaUrl && ctaUrl !== '/';
+
+    if (hasExplicitCta) {
+      return { path: ctaUrl };
+    }
+
+    const openProviderDashboard = (section: ProviderDashboardSection, bookingId: string | null = null): NotificationDestination => ({
+      path: '/',
+      viewMode: 'business',
+      dashboardView: 'provider',
+      providerSection: section,
+      providerFocusedBookingId: bookingId,
+    });
+
+    const openClientBookings = (contractId: string | null = null): NotificationDestination => ({
+      path: '/',
+      viewMode: 'business',
+      dashboardView: 'client',
+      clientSection: 'bookings',
+      clientFocusedContractId: contractId,
+    });
+
+    if (
+      notificationType === 'provider_role_activated' ||
+      entityType === 'provider' ||
+      normalizedText.includes('mi negocio') ||
+      normalizedText.includes('perfil de proveedor') ||
+      normalizedText.includes('ahora eres proveedor')
+    ) {
+      return openProviderDashboard('dashboard');
+    }
+
+    if (notificationType === 'service_request_created') {
+      return openProviderDashboard('bookings', entityId);
+    }
+
+    if (
+      notificationType === 'contract_approved' ||
+      notificationType === 'review_requested' ||
+      entityType === 'contract' ||
+      normalizedText.includes('reserva aprobada') ||
+      normalizedText.includes('contrato fue aprobado')
+    ) {
+      return openClientBookings(entityId);
+    }
+
+    if (entityType === 'booking') {
+      if (currentUser?.isProvider) {
+        return openProviderDashboard('bookings', entityId);
+      }
+
+      return openClientBookings(null);
+    }
+
+    return { path: ctaUrl || '/' };
+  };
+
+  const applyNotificationNavigation = (notification: HeaderNotification) => {
+    const destination = resolveNotificationDestination(notification);
+
+    if (destination.viewMode) {
+      setViewMode(destination.viewMode);
+    }
+
+    if (destination.dashboardView) {
+      setDashboardView(destination.dashboardView);
+    }
+
+    if (destination.providerSection !== undefined) {
+      setProviderDashboardSection(destination.providerSection);
+    }
+
+    if (destination.providerFocusedBookingId !== undefined) {
+      setProviderFocusedBookingId(destination.providerFocusedBookingId);
+    }
+
+    if (destination.clientSection !== undefined) {
+      setClientDashboardSection(destination.clientSection);
+    }
+
+    if (destination.clientFocusedContractId !== undefined) {
+      setClientFocusedContractId(destination.clientFocusedContractId);
+    }
+
+    navigateTo(destination.path);
+  };
+
   const handleMarkNotificationRead = async (notification: HeaderNotification) => {
     if (!notification || notification.isRead) {
-      if (notification?.ctaUrl) {
-        navigateTo(notification.ctaUrl);
+      if (notification) {
+        applyNotificationNavigation(notification);
       }
       return;
     }
@@ -1337,9 +1468,7 @@ export default function App() {
     } catch (error) {
       console.error('Error marking notification as read:', error);
     } finally {
-      if (notification.ctaUrl) {
-        navigateTo(notification.ctaUrl);
-      }
+      applyNotificationNavigation(notification);
     }
   };
 
@@ -2618,6 +2747,8 @@ export default function App() {
               allArtists={artists}
               contracts={contracts}
               bookings={bookings}
+              initialSection={providerDashboardSection}
+              focusBookingId={providerFocusedBookingId}
               onServiceCreate={handleServiceCreate}
               onServiceUpdate={handleServiceUpdate}
               onServiceDelete={handleServiceDelete}
@@ -2649,6 +2780,8 @@ export default function App() {
               <ClientDashboard
                 contracts={contracts}
                 user={currentUser}
+                initialSection={clientDashboardSection}
+                focusContractId={clientFocusedContractId}
                 onReviewCreate={(contractId) => {
                   const contract = contracts.find(c => c.id === contractId);
                   if (contract) {
@@ -2796,6 +2929,8 @@ export default function App() {
               <ClientDashboard
                 contracts={contracts}
                 user={currentUser}
+                initialSection={clientDashboardSection}
+                focusContractId={clientFocusedContractId}
                 onReviewCreate={(contractId) => {
                   // Find the contract to get booking info
                   const contract = contracts.find(c => c.id === contractId);
@@ -2851,6 +2986,20 @@ export default function App() {
       )}
 
       {/* Dialogs */}
+      <ChatWidget
+        user={currentUser}
+        bookings={bookings}
+        api={{
+          getChatConversations: supabase.getChatConversations,
+          ensureChatConversation: supabase.ensureChatConversation,
+          getChatMessages: supabase.getChatMessages,
+          sendChatMessage: supabase.sendChatMessage,
+          markChatConversationRead: supabase.markChatConversationRead,
+          requestChatIntervention: supabase.requestChatIntervention,
+          subscribeChatStream: supabase.subscribeChatStream,
+        }}
+      />
+
       <BookingDialog
         artist={bookingArtist}
         selectedPlan={selectedPlan}

@@ -29,6 +29,30 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
 
   if (!contract) return null;
 
+  const getMeasureType = (): 'time' | 'unit' => {
+    if (contract?.metadata?.saleType === 'unit' || contract?.terms?.measureType === 'unit') {
+      return 'unit';
+    }
+
+    return 'time';
+  };
+
+  const getMeasureLabel = () => {
+    if (getMeasureType() === 'unit') {
+      return `${contract.terms.duration} ${String(contract?.metadata?.unitLabel || contract?.terms?.measureLabel || 'unidad(es)')}`;
+    }
+
+    return `${contract.terms.duration} ${contract.terms.duration === 1 ? 'hora' : 'horas'}`;
+  };
+
+  const getMeasureTitle = () => {
+    if (getMeasureType() === 'unit') {
+      return contract.terms.startTime ? 'Hora y Cantidad' : 'Cantidad';
+    }
+
+    return contract.terms.startTime ? 'Hora y Duración' : 'Duración';
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -240,8 +264,8 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                 <div class="value">${contract.terms.startTime || 'Por coordinar'}</div>
               </div>
               <div class="info-item">
-                <div class="label">Duración</div>
-                <div class="value">${contract.terms.duration} ${contract.terms.duration === 1 ? 'hora' : 'horas'}</div>
+                <div class="label">${getMeasureTitle()}</div>
+                <div class="value">${contract.terms.startTime ? `${contract.terms.startTime} • ` : ''}${getMeasureLabel()}</div>
               </div>
               <div class="info-item">
                 <div class="label">Precio Total</div>
@@ -542,11 +566,11 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                 <div>
                   <div className="flex items-center gap-1 mb-1">
                     <Clock className="w-4 h-4 text-gray-500" />
-                    <p className="text-xs text-gray-600">{contract.terms.startTime ? 'Hora y Duración' : 'Duración'}</p>
+                    <p className="text-xs text-gray-600">{getMeasureTitle()}</p>
                   </div>
                   <p className="text-sm">
                     {contract.terms.startTime && `${contract.terms.startTime} • `}
-                    {contract.terms.duration} {contract.terms.duration === 1 ? 'hora' : 'horas'}
+                    {getMeasureLabel()}
                   </p>
                 </div>
                 <div>
@@ -614,7 +638,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                       de cada parte.
                     </p>
                   </div>
-                </div>
+                </div>ok continua
               </div>
             </CardContent>
           </Card>
@@ -638,7 +662,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                         <ul className="list-disc list-inside space-y-1 text-xs ml-2">
                           <li>Hora exacta del evento</li>
                           <li>Detalles específicos del servicio</li>
-                          <li>Pago del depósito (50% adelantado)</li>
+                          <li>Pago del depósito</li>
                           <li>Cualquier requisito especial</li>
                         </ul>
                         <p className="mt-2 text-xs">
