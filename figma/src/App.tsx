@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, type MouseEvent } from 'react';
 import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase, Shield, Search, Bell, CheckCheck, Heart } from 'lucide-react';
 import { Artist, ServicePlan, Contract, User, Review, Booking, Provider, Event } from './types';
 import { mockArtists, mockEvents, mockUsers, mockProviders } from './data/mockData';
@@ -58,6 +58,34 @@ type HeaderNotification = {
   createdAt?: string;
   readAt?: string | null;
   isRead: boolean;
+};
+
+const getDismissedNotificationsStorageKey = (userId: string) => `memorialo:dismissed-notifications:${userId}`;
+
+const loadDismissedNotificationIds = (userId: string) => {
+  try {
+    const rawValue = window.localStorage.getItem(getDismissedNotificationsStorageKey(userId));
+    if (!rawValue) {
+      return new Set<string>();
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    if (!Array.isArray(parsedValue)) {
+      return new Set<string>();
+    }
+
+    return new Set(parsedValue.map((value) => String(value)));
+  } catch {
+    return new Set<string>();
+  }
+};
+
+const persistDismissedNotificationIds = (userId: string, ids: Set<string>) => {
+  try {
+    window.localStorage.setItem(getDismissedNotificationsStorageKey(userId), JSON.stringify(Array.from(ids)));
+  } catch {
+    // Ignore storage failures and keep runtime state.
+  }
 };
 
 type TaxonomyTarget = {
@@ -127,6 +155,7 @@ export default function App() {
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const dismissedNotificationIdsRef = useRef<Set<string>>(new Set());
   const [providerDashboardSection, setProviderDashboardSection] = useState<ProviderDashboardSection | undefined>(undefined);
   const [providerFocusedBookingId, setProviderFocusedBookingId] = useState<string | null>(null);
   const [clientDashboardSection, setClientDashboardSection] = useState<ClientDashboardSection | undefined>(undefined);
@@ -193,8 +222,11 @@ export default function App() {
     if (!currentUser || !notificationsEnabled) {
       setNotifications([]);
       setUnreadNotificationsCount(0);
+      dismissedNotificationIdsRef.current = new Set();
       return;
     }
+
+    dismissedNotificationIdsRef.current = loadDismissedNotificationIds(currentUser.id);
 
     let cancelled = false;
 
@@ -202,7 +234,8 @@ export default function App() {
       try {
         const data = await supabase.getNotifications({ limit: 8 });
         if (!cancelled) {
-          setNotifications(Array.isArray(data?.items) ? data.items : []);
+          const nextItems = Array.isArray(data?.items) ? data.items : [];
+          setNotifications(nextItems.filter((item: HeaderNotification) => !dismissedNotificationIdsRef.current.has(item.id)));
           setUnreadNotificationsCount(Number(data?.unreadCount || 0));
         }
       } catch (error: any) {
@@ -1228,6 +1261,10 @@ export default function App() {
     setHeaderSearchInput('');
   };
 
+  const handleHeaderHomeRefresh = () => {
+    window.location.assign('/');
+  };
+
   const marketplaceRouteContext = useMemo(
     () => parseMarketplaceRoute(currentRoute),
     [currentRoute, citySlugLookup, taxonomySlugLookup]
@@ -1330,7 +1367,8 @@ export default function App() {
     setNotificationsLoading(true);
     try {
       const data = await supabase.getNotifications({ limit: 8 });
-      setNotifications(Array.isArray(data?.items) ? data.items : []);
+      const nextItems = Array.isArray(data?.items) ? data.items : [];
+      setNotifications(nextItems.filter((item: HeaderNotification) => !dismissedNotificationIdsRef.current.has(item.id)));
       setUnreadNotificationsCount(Number(data?.unreadCount || 0));
     } catch (error: any) {
       if (!String(error?.message || '').includes('disabled')) {
@@ -1463,12 +1501,50 @@ export default function App() {
 
     try {
       const data = await supabase.markNotificationRead(notification.id);
-      setNotifications((prev) => prev.map((item) => item.id === notification.id ? { ...item, isRead: true, readAt: data?.readAt || new Date().toISOString() } : item));
+      setNotifications((prev) => prev.map((item) => item.id === notification.id ? {
+        ...item,
+        isRead: true,
+        readAt: data?.readAt || new Date().toISOString(),
+      } : item));
       setUnreadNotificationsCount(Number(data?.unreadCount ?? Math.max(0, unreadNotificationsCount - 1)));
     } catch (error) {
       console.error('Error marking notification as read:', error);
     } finally {
       applyNotificationNavigation(notification);
+    }
+  };
+
+  const handleDismissNotification = async (event: MouseEvent<HTMLButtonElement>, notification: HeaderNotification) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!notification) {
+      return;
+    }
+
+    const previousNotifications = notifications;
+    const previousUnreadCount = unreadNotificationsCount;
+    const optimisticUnreadCount = notification.isRead
+      ? unreadNotificationsCount
+      : Math.max(0, unreadNotificationsCount - 1);
+
+    dismissedNotificationIdsRef.current.add(notification.id);
+    if (currentUser?.id) {
+      persistDismissedNotificationIds(currentUser.id, dismissedNotificationIdsRef.current);
+    }
+    setNotifications((prev) => prev.filter((item) => item.id !== notification.id));
+    setUnreadNotificationsCount(optimisticUnreadCount);
+
+    if (notification.isRead) {
+      return;
+    }
+
+    try {
+      const data = await supabase.markNotificationRead(notification.id);
+      setUnreadNotificationsCount(Number(data?.unreadCount ?? optimisticUnreadCount));
+    } catch (error) {
+      console.error('Error dismissing notification:', error);
+      setUnreadNotificationsCount(previousUnreadCount);
     }
   };
 
@@ -2288,11 +2364,7 @@ export default function App() {
         <div className="max-w-[1400px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <button
-              onClick={() => {
-                setShowAbout(false);
-                setViewMode('client');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
+              onClick={handleHeaderHomeRefresh}
               className="flex items-center gap-3 cursor-pointer bg-transparent border-none p-0 hover:opacity-90 transition-opacity shrink-0"
             >
               {/* Logo: El Enlace Armónico */}
@@ -2393,7 +2465,7 @@ export default function App() {
               </Button>
               <Button
                 variant={viewMode === 'client' ? 'secondary' : 'ghost'}
-                onClick={() => setViewMode('client')}
+                onClick={handleHeaderHomeRefresh}
                 className={viewMode === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}
               >
                 <Users className="w-4 h-4 mr-2" />
@@ -2475,12 +2547,12 @@ export default function App() {
                             <DropdownMenuItem
                               key={notification.id}
                               onClick={() => handleMarkNotificationRead(notification)}
-                              className="items-start py-2.5 cursor-pointer"
+                              className="items-start rounded-md bg-white py-2.5 cursor-pointer text-foreground focus:bg-zinc-100 data-[highlighted]:bg-zinc-100 hover:bg-zinc-100"
                             >
                               <div className="w-full">
                                 <div className="flex items-start gap-2">
                                   {!notification.isRead && <span className="mt-1 h-2 w-2 rounded-full bg-blue-500 shrink-0" />}
-                                  <div className="min-w-0">
+                                  <div className="min-w-0 flex-1">
                                     <p className={`text-sm ${notification.isRead ? 'font-normal' : 'font-semibold'}`}>
                                       {notification.title || 'Notificacion'}
                                     </p>
@@ -2488,6 +2560,14 @@ export default function App() {
                                       <p className="text-xs text-muted-foreground line-clamp-2">{notification.body}</p>
                                     )}
                                   </div>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => void handleDismissNotification(event, notification)}
+                                    className="mt-0.5 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    aria-label="Marcar como leida"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
                                 </div>
                               </div>
                             </DropdownMenuItem>
@@ -2589,10 +2669,7 @@ export default function App() {
             <div className="md:hidden mt-4 pt-4 border-t border-white/20 space-y-2">
               <Button
                 variant={viewMode === 'client' ? 'secondary' : 'ghost'}
-                onClick={() => {
-                  setViewMode('client');
-                  setMobileMenuOpen(false);
-                }}
+                onClick={handleHeaderHomeRefresh}
                 className={`w-full ${viewMode === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
               >
                 <Users className="w-4 h-4 mr-2" />
@@ -2782,6 +2859,7 @@ export default function App() {
                 user={currentUser}
                 initialSection={clientDashboardSection}
                 focusContractId={clientFocusedContractId}
+                onFocusContractHandled={() => setClientFocusedContractId(null)}
                 onReviewCreate={(contractId) => {
                   const contract = contracts.find(c => c.id === contractId);
                   if (contract) {
@@ -2813,6 +2891,8 @@ export default function App() {
                 onDeleteEvent={handleDeleteEvent}
                 onAssignContractToEvent={handleAssignContractToEvent}
                 onContractUpdate={handleContractUpdate}
+                bookings={bookings}
+                onBookingUpdate={handleBookingUpdate}
               />
             )
           )
@@ -2931,6 +3011,7 @@ export default function App() {
                 user={currentUser}
                 initialSection={clientDashboardSection}
                 focusContractId={clientFocusedContractId}
+                onFocusContractHandled={() => setClientFocusedContractId(null)}
                 onReviewCreate={(contractId) => {
                   // Find the contract to get booking info
                   const contract = contracts.find(c => c.id === contractId);
@@ -2963,6 +3044,8 @@ export default function App() {
                 onDeleteEvent={handleDeleteEvent}
                 onAssignContractToEvent={handleAssignContractToEvent}
                 onContractUpdate={handleContractUpdate}
+                bookings={bookings}
+                onBookingUpdate={handleBookingUpdate}
               />
             )
           )

@@ -15,10 +15,13 @@ import {
   Edit, 
   Trash2, 
   FileText, 
+  Download,
+  MessageCircle,
+  ChevronDown,
+  ChevronUp,
   Calendar, 
   DollarSign,
   Star,
-  Eye,
   EyeOff,
   CheckCircle2,
   Clock,
@@ -39,6 +42,7 @@ import {
 import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ConfirmDialog } from './ConfirmDialog';
+import { downloadContractPdf } from '../utils/contractPdf';
 
 interface BusinessDashboardProps {
   user: User;
@@ -79,7 +83,6 @@ type SidebarSection = 'dashboard' | 'services' | 'contracts' | 'bookings' | 'bil
 const navItems: { id: SidebarSection; label: string; icon: React.ReactNode }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
   { id: 'services', label: 'Mis Servicios', icon: <Briefcase className="w-5 h-5" /> },
-  { id: 'contracts', label: 'Contratos', icon: <FileText className="w-5 h-5" /> },
   { id: 'bookings', label: 'Reservas', icon: <Calendar className="w-5 h-5" /> },
   { id: 'billing', label: 'Facturación', icon: <Receipt className="w-5 h-5" /> },
 ];
@@ -297,7 +300,7 @@ export function BusinessDashboard({
 
   useEffect(() => {
     if (initialSection) {
-      setActiveSection(initialSection);
+      setActiveSection(initialSection === 'contracts' ? 'bookings' : initialSection);
     }
   }, [initialSection]);
 
@@ -335,6 +338,31 @@ export function BusinessDashboard({
   const handleViewContract = (contract: Contract) => {
     setSelectedContract(contract);
     setShowContractView(true);
+  };
+
+  const handleDownloadContractPDF = (contract: Contract, eventName?: string) => {
+    try {
+      downloadContractPdf(contract, 'artist', {
+        providerName: user.name,
+        providerEmail: contract.artistEmail || user.email,
+        providerPhone: contract.artistWhatsapp || user.whatsappNumber || user.phone,
+        serviceName: contract.artistName,
+        eventName
+      });
+    } catch (error) {
+      console.error('Business contract PDF download error:', error);
+      toast.error('No se pudo descargar el contrato.');
+    }
+  };
+
+  const handleStartChatFromBooking = (bookingId?: string | null) => {
+    if (!bookingId) {
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent('memorialo:open-chat', {
+      detail: { bookingId },
+    }));
   };
 
   const handleCreateBooking = (contract: Contract) => {
@@ -641,9 +669,7 @@ export function BusinessDashboard({
         {navItems.map((item) => {
           const isActive = activeSection === item.id;
           const badge =
-            item.id === 'contracts' && pendingContracts.length > 0
-              ? pendingContracts.length
-              : item.id === 'bookings' && pendingBookings > 0
+            item.id === 'bookings' && pendingBookings > 0
               ? pendingBookings
               : null;
 
@@ -738,9 +764,6 @@ export function BusinessDashboard({
             </p>
             <p className="text-xs text-gray-500">{provider?.businessName || 'Mi Negocio'}</p>
           </div>
-          {(activeSection === 'contracts' && pendingContracts.length > 0) && (
-            <Badge className="ml-auto bg-orange-500 text-white">{pendingContracts.length}</Badge>
-          )}
           {(activeSection === 'bookings' && pendingBookings > 0) && (
             <Badge className="ml-auto bg-yellow-500 text-white">{pendingBookings}</Badge>
           )}
@@ -811,10 +834,10 @@ export function BusinessDashboard({
                         ))}
                         {providerContracts.length > 3 && (
                           <button
-                            onClick={() => setActiveSection('contracts')}
+                            onClick={() => setActiveSection('bookings')}
                             className="text-xs text-[#1B2A47] hover:text-[#D4AF37] font-medium mt-1 transition-colors"
                           >
-                            Ver todos los contratos →
+                            Ver todas las reservas →
                           </button>
                         )}
                       </>
@@ -840,12 +863,12 @@ export function BusinessDashboard({
                       <>
                         {pendingContracts.length > 0 && (
                           <button
-                            onClick={() => setActiveSection('contracts')}
+                            onClick={() => setActiveSection('bookings')}
                             className="w-full flex items-center gap-2 p-2 bg-orange-50 border border-orange-200 rounded-lg text-left hover:bg-orange-100 transition-colors"
                           >
                             <AlertCircle className="w-4 h-4 text-orange-500 shrink-0" />
                             <p className="text-xs text-orange-800 font-medium">
-                              {pendingContracts.length} contrato{pendingContracts.length !== 1 ? 's' : ''} pendiente{pendingContracts.length !== 1 ? 's' : ''}
+                              {pendingContracts.length} contrato{pendingContracts.length !== 1 ? 's' : ''} pendiente{pendingContracts.length !== 1 ? 's' : ''} en reservas
                             </p>
                           </button>
                         )}
@@ -1238,14 +1261,52 @@ export function BusinessDashboard({
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
-                              <Button size="sm" variant="ghost" onClick={() => setExpandedBookingId(isExpanded ? null : booking.id)} className="h-8 w-8 p-0">
-                                <Eye className="w-4 h-4 text-gray-700" />
-                              </Button>
                               {booking.contractId && (
-                                <Button size="sm" variant="ghost" onClick={() => { const c = providerContracts.find(c => c.id === booking.contractId); if (c) handleViewContract(c); }} className="h-8 w-8 p-0">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    const c = providerContracts.find(c => c.id === booking.contractId);
+                                    if (c) handleViewContract(c);
+                                  }}
+                                  className="h-8 w-8 p-0"
+                                  title="Ver contrato"
+                                >
                                   <FileText className="w-4 h-4 text-gray-700" />
                                 </Button>
                               )}
+                              {booking.contractId && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    const c = providerContracts.find(c => c.id === booking.contractId);
+                                    if (c) handleDownloadContractPDF(c, booking.eventType);
+                                  }}
+                                  className="h-8 w-8 p-0"
+                                  title="Descargar contrato"
+                                >
+                                  <Download className="w-4 h-4 text-gray-700" />
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleStartChatFromBooking(booking.id)}
+                                className="h-8 w-8 p-0"
+                                title="Iniciar conversación"
+                              >
+                                <MessageCircle className="w-4 h-4 text-gray-700" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setExpandedBookingId(isExpanded ? null : booking.id)}
+                                className="ml-1 h-8 w-8 p-0"
+                                title={isExpanded ? 'Ocultar detalles' : 'Mostrar detalles'}
+                              >
+                                {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-700" /> : <ChevronDown className="w-4 h-4 text-gray-700" />}
+                              </Button>
                             </div>
                           </div>
 

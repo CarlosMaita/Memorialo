@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import {
   Calendar, Clock, DollarSign, FileText, Star, CheckCircle, XCircle,
   AlertCircle, MessageSquare, FolderOpen, Package, Edit2, ChevronDown,
-  ChevronUp, Eye, Archive, Menu, X, CalendarDays, BookOpen, Activity
+  ChevronUp, Eye, Archive, Menu, X, CalendarDays, BookOpen, Activity, MessageCircle,
+  Search, Download
 } from 'lucide-react';
 import { Contract, User, Review, Event } from '../types';
 import { Card, CardContent, CardHeader } from './ui/card';
@@ -11,10 +12,13 @@ import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { ContractView } from './ContractView';
 import { EventManager } from './EventManager';
+import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
+import { Switch } from './ui/switch';
+import { downloadContractPdf } from '../utils/contractPdf';
 
 type SidebarSection = 'events' | 'bookings';
 
@@ -23,6 +27,7 @@ interface ClientDashboardProps {
   user: User;
   initialSection?: SidebarSection;
   focusContractId?: string | null;
+  onFocusContractHandled?: () => void;
   onReviewCreate: (contractId: string) => void;
   reviews: Review[];
   events: Event[];
@@ -37,7 +42,6 @@ interface ClientDashboardProps {
 
 const navItems: { id: SidebarSection; label: string; icon: React.ReactNode }[] = [
   { id: 'bookings', label: 'Reservas', icon: <BookOpen className="w-5 h-5" /> },
-  { id: 'events',   label: 'Eventos',  icon: <CalendarDays className="w-5 h-5" /> },
 ];
 
 export function ClientDashboard({
@@ -45,6 +49,7 @@ export function ClientDashboard({
   user,
   initialSection,
   focusContractId,
+  onFocusContractHandled,
   onReviewCreate,
   reviews,
   events,
@@ -64,6 +69,9 @@ export function ClientDashboard({
   const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
   const [activeSection, setActiveSection] = useState<SidebarSection>('bookings');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchBooking, setSearchBooking] = useState('');
+  const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
+  const [showEventBookings, setShowEventBookings] = useState(true);
 
   const getMeasureType = (contract: any): 'time' | 'unit' => {
     if (contract?.metadata?.saleType === 'unit' || contract?.terms?.measureType === 'unit') {
@@ -91,15 +99,66 @@ export function ClientDashboard({
 
   // Filter contracts for current user
   const userContracts = contracts.filter(c => c.clientId === user.id);
+  const userBookings = bookings.filter((booking: any) => booking.userId === user.id);
+  const sortedUserBookings = [...userBookings].sort((a: any, b: any) => {
+    const aDate = new Date(`${a.date}T${a.startTime || '00:00'}`).getTime();
+    const bDate = new Date(`${b.date}T${b.startTime || '00:00'}`).getTime();
+    return bDate - aDate;
+  });
+  const filteredUserBookings = sortedUserBookings.filter((booking: any) => {
+    const q = searchBooking.trim().toLowerCase();
+    if (!q) return true;
+
+    return [booking.artistName, booking.eventType, booking.location]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(q);
+  });
   const allUserEvents = events.filter(e => e.userId === user.id);
   const userEvents = showArchived
     ? allUserEvents
     : allUserEvents.filter(e => !e.archived);
+  const userContractsById = new Map(userContracts.map(contract => [contract.id, contract]));
+  const userEventsById = new Map(userEvents.map(event => [event.id, event]));
+
+  const getBookingContract = (booking: any) => {
+    if (!booking.contractId) {
+      return null;
+    }
+
+    return userContractsById.get(booking.contractId) || null;
+  };
+
+  const assignedBookings = filteredUserBookings.filter((booking: any) => Boolean(getBookingContract(booking)?.eventId));
+  const unassignedBookings = filteredUserBookings.filter((booking: any) => !getBookingContract(booking)?.eventId);
+
+  const bookingsByEvent = assignedBookings.reduce((map, booking: any) => {
+    const linkedContract = getBookingContract(booking);
+    const eventId = linkedContract?.eventId;
+    if (!eventId) {
+      return map;
+    }
+
+    const existing = map.get(eventId) || [];
+    map.set(eventId, [...existing, booking]);
+    return map;
+  }, new Map<string, any[]>());
+
+  const eventBookingGroups = Array.from(bookingsByEvent.entries())
+    .map(([eventId, eventBookings]) => ({
+      eventId,
+      event: userEventsById.get(eventId),
+      bookings: eventBookings,
+    }))
+    .sort((a, b) => {
+      const aDate = a.event?.eventDate ? new Date(a.event.eventDate).getTime() : 0;
+      const bDate = b.event?.eventDate ? new Date(b.event.eventDate).getTime() : 0;
+      return aDate - bDate;
+    });
 
   useEffect(() => {
-    if (initialSection) {
-      setActiveSection(initialSection);
-    }
+    setActiveSection('bookings');
   }, [initialSection]);
 
   // Group contracts by event
@@ -127,11 +186,14 @@ export function ClientDashboard({
     if (focusedContract) {
       setSelectedContract(focusedContract);
       setShowContractView(true);
+      onFocusContractHandled?.();
     }
-  }, [focusContractId, userContracts]);
+  }, [focusContractId, onFocusContractHandled, userContracts]);
 
   // Pending signatures count
   const pendingSignature = userContracts.filter(c => c.status === 'pending_client').length;
+  const pendingBookings = userBookings.filter((booking: any) => booking.status === 'pending').length;
+  const visibleBookings = showEventBookings ? assignedBookings : unassignedBookings;
 
   const toggleEventExpanded = (eventId: string) => {
     const s = new Set(expandedEvents);
@@ -188,6 +250,103 @@ export function ClientDashboard({
   const hasReviewed = (contractId: string): boolean =>
     reviews.some(r => r.contractId === contractId);
 
+  const handleStartChatFromContract = (contract: Contract) => {
+    if (!contract.bookingId) {
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent('memorialo:open-chat', {
+      detail: { bookingId: contract.bookingId },
+    }));
+  };
+
+  const handleStartChatFromBooking = (bookingId?: string | null) => {
+    if (!bookingId) {
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent('memorialo:open-chat', {
+      detail: { bookingId },
+    }));
+  };
+
+  const getBookingStatusText = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'Pendiente';
+      case 'confirmed':
+        return 'Confirmada';
+      case 'completed':
+        return 'Completada';
+      case 'cancelled':
+        return 'Cancelada';
+      default:
+        return status;
+    }
+  };
+
+  const getBookingStatusBadgeClass = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-50 text-yellow-700 border-yellow-300';
+      case 'confirmed':
+        return 'bg-blue-50 text-blue-700 border-blue-300';
+      case 'completed':
+        return 'bg-green-50 text-green-700 border-green-300';
+      case 'cancelled':
+        return 'bg-red-50 text-red-700 border-red-300';
+      default:
+        return 'bg-gray-50 text-gray-700 border-gray-300';
+    }
+  };
+
+  const getBookingStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Clock className="w-3 h-3" />;
+      case 'confirmed':
+      case 'completed':
+        return <CheckCircle className="w-3 h-3" />;
+      case 'cancelled':
+        return <XCircle className="w-3 h-3" />;
+      default:
+        return <AlertCircle className="w-3 h-3" />;
+    }
+  };
+
+  const handleViewContractFromBooking = (booking: any) => {
+    if (!booking.contractId) {
+      return;
+    }
+
+    const contract = userContracts.find((candidate) => candidate.id === booking.contractId);
+    if (!contract) {
+      return;
+    }
+
+    setSelectedContract(contract);
+    setShowContractView(true);
+  };
+
+  const handleDownloadContractFromBooking = (booking: any) => {
+    if (!booking.contractId) {
+      return;
+    }
+
+    const contract = userContracts.find((candidate) => candidate.id === booking.contractId);
+    if (!contract) {
+      return;
+    }
+
+    downloadContractPdf(contract, 'client', {
+      providerName: contract.artistName,
+      providerEmail: contract.artistEmail,
+      providerPhone: contract.artistWhatsapp,
+      serviceName: contract.artistName,
+      eventName: booking.eventType,
+    });
+  };
+
   const handleArchiveEvent = (eventId: string, archived: boolean) => {
     onUpdateEvent(eventId, { archived });
   };
@@ -198,6 +357,133 @@ export function ClientDashboard({
   const handleNavClick = (section: SidebarSection) => {
     setActiveSection(section);
     setSidebarOpen(false);
+  };
+
+  const renderBookingRow = (booking: any) => {
+    const isExpanded = expandedBookingId === booking.id;
+    const linkedContract = getBookingContract(booking);
+    const canLeaveReview = Boolean(linkedContract && canReview(linkedContract) && !hasReviewed(linkedContract.id));
+    const canDownloadContract = Boolean(linkedContract && booking.contractId);
+
+    return (
+      <Card key={booking.id} className={booking.status === 'pending' ? 'border-2 border-yellow-400 bg-yellow-50/30' : ''}>
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="text-sm truncate">{booking.artistName || 'Proveedor'}</h4>
+                <Badge variant="outline" className={`${getBookingStatusBadgeClass(booking.status)} text-xs`}>
+                  <span className="flex items-center gap-1">{getBookingStatusIcon(booking.status)}{getBookingStatusText(booking.status)}</span>
+                </Badge>
+                {linkedContract?.eventId && (
+                  <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                    {userEventsById.get(linkedContract.eventId)?.name || 'Evento'}
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(booking.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
+                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{booking.startTime || 'N/A'}</span>
+                <span className="text-green-600 font-medium">${booking.totalPrice}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              {booking.contractId && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleViewContractFromBooking(booking)}
+                  className="h-8 w-8 p-0"
+                  title="Ver contrato"
+                >
+                  <FileText className="w-4 h-4 text-gray-700" />
+                </Button>
+              )}
+              {canDownloadContract && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleDownloadContractFromBooking(booking)}
+                  className="h-8 w-8 p-0"
+                  title="Descargar contrato"
+                >
+                  <Download className="w-4 h-4 text-gray-700" />
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleStartChatFromBooking(booking.id)}
+                className="h-8 w-8 p-0"
+                title="Iniciar conversación"
+              >
+                <MessageCircle className="w-4 h-4 text-gray-700" />
+              </Button>
+              {canLeaveReview && linkedContract && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onReviewCreate(linkedContract.id)}
+                  className="h-8 w-8 p-0 text-[#D4AF37] hover:text-[#D4AF37]"
+                  title="Dejar reseña"
+                >
+                  <Star className="w-4 h-4" />
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setExpandedBookingId(isExpanded ? null : booking.id)}
+                className="ml-1 h-8 w-8 p-0"
+                title={isExpanded ? 'Ocultar detalles' : 'Mostrar detalles'}
+              >
+                {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-700" /> : <ChevronDown className="w-4 h-4 text-gray-700" />}
+              </Button>
+            </div>
+          </div>
+
+          {isExpanded && (
+            <div className="mt-3 pt-3 border-t space-y-3">
+              <p className="text-sm text-gray-600">{booking.eventType || 'Evento'}</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div><p className="text-gray-400">Fecha</p><p className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(booking.date).toLocaleDateString('es-ES')}</p></div>
+                <div><p className="text-gray-400">Hora</p><p className="flex items-center gap-1"><Clock className="w-3 h-3" />{booking.startTime || 'N/A'}</p></div>
+                <div><p className="text-gray-400">Duración</p><p>{getMeasureLabel(booking, booking.duration)}</p></div>
+                <div><p className="text-gray-400">Ubicación</p><p className="truncate">{booking.location}</p></div>
+                <div><p className="text-gray-400">Precio</p><p className="text-green-600">${booking.totalPrice}</p></div>
+              </div>
+
+              {linkedContract && (
+                <div>
+                  <Label className="text-xs text-gray-500 mb-1 block">Asignar a Evento</Label>
+                  <Select
+                    value={linkedContract.eventId || 'none'}
+                    onValueChange={(value) => onAssignContractToEvent(linkedContract.id, value === 'none' ? null : value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Sin asignar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sin asignar</SelectItem>
+                      {userEvents.map(event => (
+                        <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {booking.specialRequests && (
+                <div>
+                  <p className="text-gray-400 text-xs mb-1">Solicitud adicional</p>
+                  <p className="text-sm text-gray-700">{booking.specialRequests}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
   };
 
   // ── Sidebar ──────────────────────────────────────────────────────────────
@@ -343,6 +629,15 @@ export function ClientDashboard({
             >
               <FileText className="w-4 h-4 mr-2" />
               Ver Contrato
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleStartChatFromContract(contract)}
+              className="w-full sm:w-auto"
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Iniciar conversación
             </Button>
             {showReview && (
               <Button size="sm" onClick={() => onReviewCreate(contract.id)} className="w-full sm:w-auto">
@@ -657,15 +952,43 @@ export function ClientDashboard({
           {activeSection === 'bookings' && (
             <div className="space-y-4">
               {/* Header */}
-              <div>
-                <h1 className="text-2xl font-bold text-[#1B2A47] mb-1">Reservas</h1>
-                <p className="text-gray-500 text-sm">
-                  {userContracts.length} reserva{userContracts.length !== 1 ? 's' : ''}
-                  {pendingSignature > 0 && ` · ${pendingSignature} pendiente${pendingSignature !== 1 ? 's' : ''} de firma`}
-                </p>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-[#1B2A47] mb-1">Reservas</h1>
+                  <p className="text-gray-500 text-sm">
+                    {userBookings.length} reserva{userBookings.length !== 1 ? 's' : ''}
+                    {pendingBookings > 0 && ` · ${pendingBookings} pendiente${pendingBookings !== 1 ? 's' : ''}`}
+                  </p>
+                </div>
+                <EventManager
+                  events={allUserEvents}
+                  onCreateEvent={onCreateEvent}
+                  onUpdateEvent={onUpdateEvent}
+                  onDeleteEvent={onDeleteEvent}
+                />
               </div>
 
-              {userContracts.length === 0 ? (
+              {userBookings.length > 0 && (
+                <div className="flex flex-col md:flex-row md:items-center gap-3 md:justify-between">
+                  <div className="relative w-full md:max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#D4AF37' }} />
+                    <Input
+                      type="text"
+                      placeholder="Buscar por nombre de proveedor..."
+                      value={searchBooking}
+                      onChange={(e) => setSearchBooking(e.target.value)}
+                      className="h-10 pl-10 border-2 border-gray-200 focus:border-[#D4AF37]"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 bg-white border rounded-lg px-3 py-2">
+                    <span className="text-xs text-gray-600">Sin evento</span>
+                    <Switch checked={showEventBookings} onCheckedChange={setShowEventBookings} />
+                    <span className="text-xs text-gray-600">En eventos</span>
+                  </div>
+                </div>
+              )}
+
+              {userBookings.length === 0 ? (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12">
                     <MessageSquare className="w-12 h-12 text-gray-400 mb-3" />
@@ -673,9 +996,16 @@ export function ClientDashboard({
                     <p className="text-sm text-gray-500">Explora proveedores y haz tu primera reserva</p>
                   </CardContent>
                 </Card>
+              ) : filteredUserBookings.length === 0 ? (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <Search className="w-12 h-12 text-gray-300 mb-3" />
+                    <p className="text-gray-600 mb-1">No se encontraron reservas</p>
+                    <p className="text-sm text-gray-500">Prueba otro término de búsqueda</p>
+                  </CardContent>
+                </Card>
               ) : (
-                <div>
-                  {/* Pending signature alert */}
+                <div className="space-y-2">
                   {pendingSignature > 0 && (
                     <div className="flex items-start gap-3 bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
                       <AlertCircle className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
@@ -689,9 +1019,50 @@ export function ClientDashboard({
                       </div>
                     </div>
                   )}
-                  {userContracts.map(contract => (
-                    <ContractCard key={contract.id} contract={contract} showEventSelector={true} />
-                  ))}
+
+                  {showEventBookings ? (
+                    eventBookingGroups.length === 0 ? (
+                      <Card>
+                        <CardContent className="flex flex-col items-center justify-center py-10">
+                          <CalendarDays className="w-10 h-10 text-gray-300 mb-3" />
+                          <p className="text-gray-600 mb-1">No hay reservas asignadas a eventos</p>
+                          <p className="text-sm text-gray-500">Asigna una reserva a un evento desde los detalles</p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      eventBookingGroups.map((group) => (
+                        <Card key={group.eventId} className="mb-3">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-[#1B2A47] truncate">{group.event?.name || 'Evento'}</p>
+                                <p className="text-xs text-gray-500">
+                                  {group.event?.eventDate ? new Date(group.event.eventDate).toLocaleDateString('es-ES') : 'Sin fecha'}
+                                  {group.event?.location ? ` • ${group.event.location}` : ''}
+                                </p>
+                              </div>
+                              <Badge variant="outline">{group.bookings.length} reserva{group.bookings.length !== 1 ? 's' : ''}</Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-2 pt-0">
+                            {group.bookings.map((booking: any) => renderBookingRow(booking))}
+                          </CardContent>
+                        </Card>
+                      ))
+                    )
+                  ) : (
+                    visibleBookings.length === 0 ? (
+                      <Card>
+                        <CardContent className="flex flex-col items-center justify-center py-10">
+                          <FolderOpen className="w-10 h-10 text-gray-300 mb-3" />
+                          <p className="text-gray-600 mb-1">No hay reservas sin evento asignado</p>
+                          <p className="text-sm text-gray-500">Activa el switch para ver las reservas en eventos</p>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      visibleBookings.map((booking: any) => renderBookingRow(booking))
+                    )
+                  )}
                 </div>
               )}
             </div>

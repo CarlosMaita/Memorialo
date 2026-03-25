@@ -45,6 +45,10 @@ type PendingAttachment = {
   previewUrl: string;
 };
 
+type OpenChatEventDetail = {
+  bookingId?: string;
+};
+
 export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
   const [conversationListOpen, setConversationListOpen] = useState(false);
   const [chatWindowOpen, setChatWindowOpen] = useState(false);
@@ -277,6 +281,47 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
       console.error(error?.message || 'No se pudo crear la conversacion.');
     }
   };
+
+  const ensureAndOpenConversationByBooking = async (bookingId: string) => {
+    try {
+      const created = await api.ensureChatConversation({ bookingId });
+
+      setConversations(prev => {
+        const exists = prev.some(conversation => conversation.id === created.id);
+
+        if (exists) {
+          return prev;
+        }
+
+        return [created, ...prev];
+      });
+
+      setActiveConversationId(created.id);
+      setConversationListOpen(false);
+      setChatWindowOpen(true);
+    } catch (error: any) {
+      console.error(error?.message || 'No se pudo abrir la conversacion del chat.');
+    }
+  };
+
+  useEffect(() => {
+    const handleOpenChatEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<OpenChatEventDetail>;
+      const bookingId = customEvent.detail?.bookingId;
+
+      if (!user || !bookingId) {
+        return;
+      }
+
+      void ensureAndOpenConversationByBooking(bookingId);
+    };
+
+    window.addEventListener('memorialo:open-chat', handleOpenChatEvent);
+
+    return () => {
+      window.removeEventListener('memorialo:open-chat', handleOpenChatEvent);
+    };
+  }, [api, user]);
 
   const handleOpenConversation = (conversationId: string) => {
     setActiveConversationId(conversationId);
@@ -613,9 +658,9 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
                                 {getInitials(counterpart?.name)}
                               </AvatarFallback>
                             </Avatar>
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm font-semibold">{counterpart?.name || 'Conversacion'}</div>
-                              <div className={`mt-1 truncate text-xs ${isActive ? 'text-white/80' : 'text-gray-500'}`}>
+                            <div className="min-w-0 flex-1 overflow-hidden">
+                              <div className="block w-full truncate text-sm font-semibold">{counterpart?.name || 'Conversacion'}</div>
+                              <div className={`mt-1 block w-full truncate text-xs ${isActive ? 'text-white/80' : 'text-gray-500'}`}>
                                 {conversation.lastMessage?.body || 'Sin mensajes'}
                               </div>
                             </div>

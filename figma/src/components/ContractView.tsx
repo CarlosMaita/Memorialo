@@ -1,6 +1,5 @@
-import { useState, useRef } from 'react';
-import { FileText, CheckCircle, AlertCircle, Calendar, DollarSign, Clock, MapPin, User, MessageCircle, Mail, Download, Printer } from 'lucide-react';
-import { Contract } from '../types';
+import { useState } from 'react';
+import { FileText, CheckCircle, AlertCircle, Calendar, DollarSign, Clock, MapPin, User, MessageCircle, Mail, Download } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -10,336 +9,141 @@ import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { toast } from 'sonner@2.0.3';
 import { ConfirmDialog } from './ConfirmDialog';
+import { downloadContractPdf } from '../utils/contractPdf';
+
+interface ContractSignature {
+  signedBy: string;
+  signedAt: string;
+}
+
+interface ContractRecord {
+  id: string;
+  createdAt: string;
+  status: 'active' | 'completed' | 'pending_client' | 'pending_artist' | 'draft' | 'cancelled';
+  artistName: string;
+  clientName: string;
+  artistWhatsapp?: string;
+  clientWhatsapp?: string;
+  clientEmail?: string;
+  specialRequests?: string;
+  artistSignature?: ContractSignature;
+  clientSignature?: ContractSignature;
+  metadata?: {
+    saleType?: 'time' | 'unit';
+    unitLabel?: string;
+  };
+  terms: {
+    measureType?: 'time' | 'unit';
+    measureLabel?: string;
+    duration: number;
+    startTime?: string;
+    date: string;
+    price: number | string;
+    location: string;
+    serviceDescription: string;
+    paymentTerms: string;
+    cancellationPolicy: string;
+    additionalTerms: string[];
+    specialRequests?: string;
+  };
+}
+
+const SPECIAL_REQUEST_PREFIX_REGEX = /^solicitudes?\s+especial(?:es)?\s+del\s+cliente\s*:\s*/i;
+
+const extractSpecialRequest = (contract: ContractRecord) => {
+  const explicitSpecialRequest = String(contract.terms.specialRequests || contract.specialRequests || '').trim();
+  const filteredAdditionalTerms: string[] = [];
+  let parsedSpecialRequest = '';
+
+  contract.terms.additionalTerms.forEach((term) => {
+    const trimmed = String(term || '').trim();
+    if (!trimmed) {
+      return;
+    }
+
+    if (SPECIAL_REQUEST_PREFIX_REGEX.test(trimmed)) {
+      if (!parsedSpecialRequest) {
+        parsedSpecialRequest = trimmed.replace(SPECIAL_REQUEST_PREFIX_REGEX, '').trim();
+      }
+      return;
+    }
+
+    filteredAdditionalTerms.push(trimmed);
+  });
+
+  return {
+    specialRequest: explicitSpecialRequest || parsedSpecialRequest,
+    additionalTermsWithoutSpecialRequest: filteredAdditionalTerms,
+  };
+};
 
 interface ContractViewProps {
-  contract: Contract | null;
+  contract: ContractRecord | null;
   open: boolean;
   onClose: () => void;
   userType: 'client' | 'artist';
-  onSign?: (contract: Contract) => void;
-  onReject?: (contract: Contract) => void;
+  onSign?: (contract: ContractRecord) => void;
+  onReject?: (contract: ContractRecord) => void;
 }
+
+const formatDate = (date: string) => new Date(date).toLocaleDateString('es-ES');
+
+const getMeasureType = (contract: ContractRecord): 'time' | 'unit' => {
+  if (contract.metadata?.saleType === 'unit' || contract.terms.measureType === 'unit') {
+    return 'unit';
+  }
+
+  return 'time';
+};
+
+const getMeasureLabel = (contract: ContractRecord) => {
+  if (getMeasureType(contract) === 'unit') {
+    return `${contract.terms.duration} ${String(contract.metadata?.unitLabel || contract.terms.measureLabel || 'unidad(es)')}`;
+  }
+
+  return `${contract.terms.duration} ${contract.terms.duration === 1 ? 'hora' : 'horas'}`;
+};
+
+const getMeasureTitle = (contract: ContractRecord) => {
+  if (getMeasureType(contract) === 'unit') {
+    return contract.terms.startTime ? 'Hora y Cantidad' : 'Cantidad';
+  }
+
+  return contract.terms.startTime ? 'Hora y Duración' : 'Duración';
+};
+
 
 export function ContractView({ contract, open, onClose, userType, onSign, onReject }: ContractViewProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [signing, setSigning] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
-  const contractContentRef = useRef<HTMLDivElement>(null);
 
   if (!contract) return null;
 
-  const getMeasureType = (): 'time' | 'unit' => {
-    if (contract?.metadata?.saleType === 'unit' || contract?.terms?.measureType === 'unit') {
-      return 'unit';
-    }
-
-    return 'time';
-  };
-
-  const getMeasureLabel = () => {
-    if (getMeasureType() === 'unit') {
-      return `${contract.terms.duration} ${String(contract?.metadata?.unitLabel || contract?.terms?.measureLabel || 'unidad(es)')}`;
-    }
-
-    return `${contract.terms.duration} ${contract.terms.duration === 1 ? 'hora' : 'horas'}`;
-  };
-
-  const getMeasureTitle = () => {
-    if (getMeasureType() === 'unit') {
-      return contract.terms.startTime ? 'Hora y Cantidad' : 'Cantidad';
-    }
-
-    return contract.terms.startTime ? 'Hora y Duración' : 'Duración';
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
   const handleDownloadPDF = () => {
-    // Create a printable version
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast.error('No se pudo abrir la ventana de impresión. Por favor, permite ventanas emergentes.');
-      return;
+    try {
+      setDownloadingPdf(true);
+      downloadContractPdf(contract, userType);
+    } catch (error) {
+      console.error('Contract PDF download error:', error);
+      toast.error('No se pudo generar el PDF del contrato');
+    } finally {
+      setDownloadingPdf(false);
     }
-
-    const contractHTML = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Contrato ${contract.id} - Memorialo</title>
-        <style>
-          @page {
-            size: letter;
-            margin: 0.5in;
-          }
-          body {
-            font-family: Arial, sans-serif;
-            padding: 15px;
-            margin: 0;
-            font-size: 9px;
-            line-height: 1.3;
-            color: #000;
-          }
-          h1 { 
-            font-size: 16px; 
-            margin: 0 0 3px 0; 
-            color: #0A1F44; 
-            font-weight: bold;
-          }
-          h2 { 
-            font-size: 11px; 
-            margin: 8px 0 4px 0; 
-            color: #0A1F44; 
-            font-weight: bold;
-            border-bottom: 1px solid #D4AF37;
-            padding-bottom: 2px;
-          }
-          h3 { 
-            font-size: 10px; 
-            margin: 6px 0 3px 0; 
-            color: #0A1F44; 
-            font-weight: bold;
-          }
-          p {
-            margin: 3px 0;
-          }
-          .header { 
-            border-bottom: 2px solid #D4AF37; 
-            padding-bottom: 6px; 
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-          }
-          .header-left { flex: 1; }
-          .header-right { 
-            text-align: right; 
-            font-size: 8px;
-            color: #6b7280;
-          }
-          .two-column {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 8px;
-          }
-          .section { 
-            margin-bottom: 8px; 
-            padding: 6px 8px; 
-            border: 1px solid #e5e7eb; 
-            border-radius: 4px;
-            background: #fafafa;
-          }
-          .info-grid { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 8px;
-            margin-top: 4px;
-          }
-          .info-item { 
-            margin-bottom: 4px; 
-          }
-          .label { 
-            font-weight: bold; 
-            color: #374151; 
-            font-size: 7px; 
-            text-transform: uppercase; 
-            letter-spacing: 0.3px;
-          }
-          .value { 
-            margin-top: 2px; 
-            font-size: 9px;
-          }
-          .signature-box { 
-            border: 1.5px solid #10b981; 
-            background: #f0fdf4; 
-            padding: 4px 6px; 
-            border-radius: 3px; 
-            margin-top: 3px;
-            display: inline-block;
-          }
-          .signature-text { 
-            color: #10b981; 
-            font-weight: bold; 
-            font-size: 8px;
-          }
-          .signature-date {
-            font-size: 7px;
-            color: #059669;
-          }
-          .pending {
-            color: #f59e0b;
-            font-size: 8px;
-            margin-top: 3px;
-          }
-          ul { 
-            padding-left: 15px; 
-            margin: 3px 0;
-          }
-          li { 
-            margin-bottom: 2px; 
-            font-size: 8px;
-            line-height: 1.3;
-          }
-          .terms-compact {
-            font-size: 8px;
-            line-height: 1.3;
-            margin: 3px 0;
-          }
-          .alert-box {
-            background: #eff6ff;
-            border: 1px solid #3b82f6;
-            padding: 4px 6px;
-            border-radius: 3px;
-            font-size: 7px;
-            margin: 6px 0;
-          }
-          .footer { 
-            margin-top: 8px; 
-            padding-top: 6px; 
-            border-top: 1px solid #e5e7eb; 
-            text-align: center; 
-            font-size: 7px; 
-            color: #6b7280; 
-          }
-          .price-highlight {
-            color: #10b981;
-            font-weight: bold;
-            font-size: 14px;
-          }
-          @media print {
-            body { padding: 0; }
-            .no-print { display: none !important; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="header-left">
-            <h1>📄 CONTRATO DE SERVICIOS - MEMORIALO</h1>
-            <p><strong>ID:</strong> ${contract.id} | <strong>Creado:</strong> ${new Date(contract.createdAt).toLocaleDateString('es-ES')} | <strong>Estado:</strong> ${contract.status === 'active' ? '✓ Activo' : 'Pendiente'}</p>
-          </div>
-        </div>
-
-        <div class="two-column">
-          <!-- Partes del Contrato -->
-          <div class="section">
-            <h2>PARTES DEL CONTRATO</h2>
-            <div class="info-item">
-              <div class="label">Proveedor de Servicios</div>
-              <div class="value">${contract.artistName}</div>
-              ${contract.artistSignature ? `
-                <div class="signature-box">
-                  <div class="signature-text">✓ Firmado</div>
-                  <div class="signature-date">${new Date(contract.artistSignature.signedAt).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}</div>
-                </div>
-              ` : '<div class="pending">⏳ Pendiente de firma</div>'}
-            </div>
-            <div class="info-item" style="margin-top: 6px;">
-              <div class="label">Cliente</div>
-              <div class="value">${contract.clientName}</div>
-              ${contract.clientSignature ? `
-                <div class="signature-box">
-                  <div class="signature-text">✓ Firmado</div>
-                  <div class="signature-date">${new Date(contract.clientSignature.signedAt).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}</div>
-                </div>
-              ` : '<div class="pending">⏳ Pendiente de firma</div>'}
-            </div>
-          </div>
-
-          <!-- Detalles del Servicio -->
-          <div class="section">
-            <h2>DETALLES DEL SERVICIO</h2>
-            <div class="info-grid">
-              <div class="info-item">
-                <div class="label">Fecha</div>
-                <div class="value">${new Date(contract.terms.date).toLocaleDateString('es-ES')}</div>
-              </div>
-              <div class="info-item">
-                <div class="label">Hora</div>
-                <div class="value">${contract.terms.startTime || 'Por coordinar'}</div>
-              </div>
-              <div class="info-item">
-                <div class="label">${getMeasureTitle()}</div>
-                <div class="value">${contract.terms.startTime ? `${contract.terms.startTime} • ` : ''}${getMeasureLabel()}</div>
-              </div>
-              <div class="info-item">
-                <div class="label">Precio Total</div>
-                <div class="value price-highlight">$${contract.terms.price}</div>
-              </div>
-            </div>
-            <div class="info-item" style="margin-top: 4px;">
-              <div class="label">Ubicación</div>
-              <div class="value">${contract.terms.location}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Descripción del Servicio -->
-        <div class="section">
-          <h2>DESCRIPCIÓN DEL SERVICIO</h2>
-          <div class="terms-compact">${contract.terms.serviceDescription.replace(/\n/g, '<br>')}</div>
-        </div>
-
-        <!-- Términos y Condiciones en columnas -->
-        <div class="two-column">
-          <div class="section">
-            <h3>1. Términos de Pago</h3>
-            <div class="terms-compact">${contract.terms.paymentTerms.replace(/\n/g, '<br>')}</div>
-          </div>
-
-          <div class="section">
-            <h3>2. Política de Cancelación</h3>
-            <div class="terms-compact">${contract.terms.cancellationPolicy.replace(/\n/g, '<br>')}</div>
-          </div>
-        </div>
-
-        ${contract.terms.additionalTerms.length > 0 ? `
-          <div class="section">
-            <h3>3. Términos Adicionales</h3>
-            <ul>
-              ${contract.terms.additionalTerms.map(term => `<li>${term}</li>`).join('')}
-            </ul>
-          </div>
-        ` : ''}
-
-        <div class="alert-box">
-          <strong>⚠️ AVISO LEGAL:</strong> Este contrato es legalmente vinculante. Al firmarlo, ambas partes aceptan cumplir todos los términos descritos. Documento firmado electrónicamente.
-        </div>
-
-        <div class="footer">
-          <p><strong>Memorialo</strong> - Plataforma de Servicios para Eventos | www.memorialo.com</p>
-        </div>
-
-        <div class="no-print" style="margin-top: 20px; text-align: center;">
-          <button onclick="window.print()" style="padding: 10px 20px; background: #0A1F44; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;">
-            🖨️ Imprimir / Guardar como PDF
-          </button>
-          <button onclick="window.close()" style="padding: 10px 20px; background: #6b7280; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; margin-left: 10px;">
-            Cerrar
-          </button>
-        </div>
-      </body>
-      </html>
-    `;
-
-    printWindow.document.write(contractHTML);
-    printWindow.document.close();
   };
 
-  const canSign = userType === 'client' 
-    ? !contract.clientSignature 
+  const canSign = userType === 'client'
+    ? !contract.clientSignature
     : !contract.artistSignature;
 
   const otherPartyHasSigned = userType === 'client'
     ? !!contract.artistSignature
     : !!contract.clientSignature;
 
-  const bothPartiesSigned = contract.clientSignature && contract.artistSignature;
+  const bothPartiesSigned = Boolean(contract.clientSignature && contract.artistSignature);
+  const { specialRequest, additionalTermsWithoutSpecialRequest } = extractSpecialRequest(contract);
 
   const handleSign = () => {
     if (!agreedToTerms) {
@@ -348,23 +152,22 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     }
 
     setSigning(true);
-    
-    // Simulate signing delay
+
     setTimeout(() => {
-      const signature: { signedBy: string; signedAt: string } = {
+      const signature: ContractSignature = {
         signedBy: userType === 'client' ? contract.clientName : contract.artistName,
         signedAt: new Date().toISOString()
       };
 
-      const updatedContract = {
+      const updatedContract: ContractRecord = {
         ...contract,
-        ...(userType === 'client' 
+        ...(userType === 'client'
           ? { clientSignature: signature }
           : { artistSignature: signature }
         ),
         status: (userType === 'client' && contract.artistSignature) || (userType === 'artist' && contract.clientSignature)
-          ? 'active' as const
-          : (userType === 'client' ? 'pending_artist' as const : 'pending_client' as const)
+          ? 'active'
+          : (userType === 'client' ? 'pending_artist' : 'pending_client')
       };
 
       if (onSign) {
@@ -374,12 +177,11 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
       toast.success('¡Contrato firmado exitosamente!');
       setSigning(false);
       setAgreedToTerms(false);
-      
+
       if (updatedContract.status === 'active') {
         toast.success('🎉 ¡El contrato está completamente firmado por ambas partes!');
       }
-      
-      // Cerrar el modal después de firmar
+
       setTimeout(() => {
         onClose();
       }, 500);
@@ -392,11 +194,11 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
 
   const handleRejectConfirmed = () => {
     setRejecting(true);
-    
+
     setTimeout(() => {
-      const rejectedContract = {
+      const rejectedContract: ContractRecord = {
         ...contract,
-        status: 'cancelled' as const
+        status: 'cancelled'
       };
 
       if (onReject) {
@@ -448,18 +250,20 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                 variant="outline"
                 size="sm"
                 onClick={handleDownloadPDF}
+                disabled={downloadingPdf}
                 className="hidden sm:flex"
-                title="Descargar/Imprimir PDF"
+                title="Descargar PDF"
               >
                 <Download className="w-4 h-4 mr-1" />
-                PDF
+                {downloadingPdf ? 'Generando...' : 'PDF'}
               </Button>
               <Button
                 variant="outline"
                 size="icon"
                 onClick={handleDownloadPDF}
+                disabled={downloadingPdf}
                 className="sm:hidden"
-                title="Descargar/Imprimir PDF"
+                title="Descargar PDF"
               >
                 <Download className="w-4 h-4" />
               </Button>
@@ -468,7 +272,6 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Contract Header */}
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Partes del Contrato</CardTitle>
@@ -484,13 +287,12 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                   {contract.artistSignature && (
                     <div className="flex items-center gap-1 mt-1 text-green-600 text-xs">
                       <CheckCircle className="w-3 h-3" />
-                      Firmado el {new Date(contract.artistSignature.signedAt).toLocaleDateString('es-ES')}
+                      Firmado el {formatDate(contract.artistSignature.signedAt)}
                     </div>
                   )}
-                  {/* Cliente puede ver contacto del proveedor solo después de que ambos firmen */}
                   {bothPartiesSigned && userType === 'client' && contract.artistWhatsapp && (
                     <div className="mt-2 space-y-1">
-                      <a 
+                      <a
                         href={`https://wa.me/${contract.artistWhatsapp.replace(/\D/g, '')}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -511,14 +313,13 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                   {contract.clientSignature && (
                     <div className="flex items-center gap-1 mt-1 text-green-600 text-xs">
                       <CheckCircle className="w-3 h-3" />
-                      Firmado el {new Date(contract.clientSignature.signedAt).toLocaleDateString('es-ES')}
+                      Firmado el {formatDate(contract.clientSignature.signedAt)}
                     </div>
                   )}
-                  {/* Proveedor puede ver contacto del cliente SIEMPRE (necesita coordinar antes de firmar) */}
                   {userType === 'artist' && (
                     <div className="mt-2 space-y-1">
                       {contract.clientWhatsapp && (
-                        <a 
+                        <a
                           href={`https://wa.me/${contract.clientWhatsapp.replace(/\D/g, '')}`}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -529,7 +330,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                         </a>
                       )}
                       {contract.clientEmail && (
-                        <a 
+                        <a
                           href={`mailto:${contract.clientEmail}`}
                           className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline"
                         >
@@ -544,7 +345,6 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
             </CardContent>
           </Card>
 
-          {/* Service Details */}
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Detalles del Servicio</CardTitle>
@@ -555,22 +355,29 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                 <p>{contract.terms.serviceDescription}</p>
               </div>
 
+              {specialRequest && (
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Solicitud adicional del cliente</p>
+                  <p className="text-sm">{specialRequest}</p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
                 <div>
                   <div className="flex items-center gap-1 mb-1">
                     <Calendar className="w-4 h-4 text-gray-500" />
                     <p className="text-xs text-gray-600">Fecha</p>
                   </div>
-                  <p className="text-sm">{new Date(contract.terms.date).toLocaleDateString('es-ES')}</p>
+                  <p className="text-sm">{formatDate(contract.terms.date)}</p>
                 </div>
                 <div>
                   <div className="flex items-center gap-1 mb-1">
                     <Clock className="w-4 h-4 text-gray-500" />
-                    <p className="text-xs text-gray-600">{getMeasureTitle()}</p>
+                    <p className="text-xs text-gray-600">{getMeasureTitle(contract)}</p>
                   </div>
                   <p className="text-sm">
                     {contract.terms.startTime && `${contract.terms.startTime} • `}
-                    {getMeasureLabel()}
+                    {getMeasureLabel(contract)}
                   </p>
                 </div>
                 <div>
@@ -591,7 +398,6 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
             </CardContent>
           </Card>
 
-          {/* Terms and Conditions */}
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Términos y Condiciones</CardTitle>
@@ -609,13 +415,13 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                 <p className="text-sm text-gray-700">{contract.terms.cancellationPolicy}</p>
               </div>
 
-              {contract.terms.additionalTerms.length > 0 && (
+              {additionalTermsWithoutSpecialRequest.length > 0 && (
                 <>
                   <Separator />
                   <div>
                     <h4 className="text-sm mb-2">3. Términos Adicionales</h4>
                     <ul className="space-y-2">
-                      {contract.terms.additionalTerms.map((term, idx) => (
+                      {additionalTermsWithoutSpecialRequest.map((term, idx) => (
                         <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
                           <span className="text-gray-400">•</span>
                           <span>{term}</span>
@@ -633,24 +439,22 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                   <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="text-sm">
-                      <strong>Importante:</strong> Al firmar este contrato, ambas partes aceptan cumplir con todos los términos 
-                      y condiciones descritos. Este contrato es legalmente vinculante y establece las responsabilidades 
+                      <strong>Importante:</strong> Al firmar este contrato, ambas partes aceptan cumplir con todos los términos
+                      y condiciones descritos. Este contrato es legalmente vinculante y establece las responsabilidades
                       de cada parte.
                     </p>
                   </div>
-                </div>ok continua
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Signature Section - Solo mostrar si el contrato no está completado, confirmado o cancelado */}
           {!bothPartiesSigned && canSign && contract.status !== 'completed' && contract.status !== 'active' && contract.status !== 'cancelled' && (
             <Card className="border-primary">
               <CardHeader>
                 <CardTitle className="text-sm">Firma del Contrato</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Mensaje especial para proveedores sobre coordinación */}
                 {userType === 'artist' && contract.clientSignature && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                     <div className="flex items-start gap-2 text-blue-700">
@@ -672,7 +476,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                     </div>
                   </div>
                 )}
-                
+
                 {otherPartyHasSigned && userType === 'client' && (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
                     <div className="flex items-center gap-2 text-green-700">
@@ -685,13 +489,13 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                 )}
 
                 <div className="flex items-start gap-2">
-                  <Checkbox 
-                    id="terms" 
+                  <Checkbox
+                    id="terms"
                     checked={agreedToTerms}
                     onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
                   />
                   <Label htmlFor="terms" className="text-sm cursor-pointer">
-                    He leído y acepto todos los términos y condiciones de este contrato. Entiendo que al firmar 
+                    He leído y acepto todos los términos y condiciones de este contrato. Entiendo que al firmar
                     este documento, estoy estableciendo un acuerdo legalmente vinculante.
                   </Label>
                 </div>
@@ -704,10 +508,9 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                   >
                     {signing ? 'Firmando...' : 'Firmar Contrato'}
                   </Button>
-                  {/* Solo el proveedor puede rechazar el contrato */}
                   {userType === 'artist' && (
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={handleRejectClick}
                       disabled={signing || rejecting}
                       className="flex-1 sm:flex-initial border-red-600 text-red-600 hover:bg-red-50"
@@ -715,8 +518,8 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                       {rejecting ? 'Rechazando...' : 'Rechazar'}
                     </Button>
                   )}
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={onClose}
                     disabled={signing || rejecting}
                   >
