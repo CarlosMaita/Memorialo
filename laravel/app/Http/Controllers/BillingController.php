@@ -3,21 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\BillingInvoice;
-use App\Models\Contract;
+use App\Models\BillingSetting;
 use App\Models\Provider;
-use App\Models\Service;
+use App\Services\BillingCycleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class BillingController extends Controller
 {
-    private const COMMISSION_RATE = 0.08;
+    public function __construct(private BillingCycleService $billingCycles)
+    {
+    }
 
     public function config(): JsonResponse
     {
-        return response()->json([
-            'commissionRate' => self::COMMISSION_RATE,
-        ]);
+        $settings = $this->billingCycles->getSettings();
+
+        return response()->json($this->formatSettings($settings));
     }
 
     public function providerBilling(Request $request, string $providerId): JsonResponse
@@ -38,85 +40,26 @@ class BillingController extends Controller
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
-        $currentMonth = now()->format('Y-m');
-        $monthStart = now()->startOfMonth();
-        $monthEnd = now()->copy()->startOfMonth()->addMonth();
-        $serviceIds = Service::query()
-            ->where('user_id', $provider->user_id)
-            ->pluck('id')
-            ->map(fn ($id) => (string) $id)
-            ->all();
-
-        $completedContracts = Contract::query()
-            ->whereIn('artist_id', $serviceIds)
-            ->where('status', 'completed')
-            ->where(function ($query) use ($monthStart, $monthEnd) {
-                $query
-                    ->whereBetween('completed_at', [$monthStart, $monthEnd])
-                    ->orWhere(function ($sub) use ($monthStart, $monthEnd) {
-                        $sub->whereNull('completed_at')
-                            ->whereBetween('created_at', [$monthStart, $monthEnd]);
-                    });
-            })
-            ->get();
-
-        $totalSales = $completedContracts->sum(function (Contract $contract): float {
-            return (float) data_get($contract->terms, 'price', 0);
-        });
-
-        $storedInvoice = BillingInvoice::query()
+        $settings = $this->billingCycles->getSettings();
+        $latestInvoice = BillingInvoice::query()
             ->where('provider_id', $provider->id)
-            ->where('month', $currentMonth)
+            ->orderByDesc('month')
             ->first();
-
-        $currentInvoice = [
-            'id' => "billing:invoice:{$provider->id}:{$currentMonth}",
-            'providerId' => (string) $provider->id,
-            'month' => $currentMonth,
-            'commissionRate' => self::COMMISSION_RATE,
-            'completedContracts' => $completedContracts->map(fn (Contract $contract) => [
-                'contractId' => (string) $contract->id,
-                'clientName' => $contract->client_name,
-                'serviceName' => $contract->artist_name,
-                'price' => (float) data_get($contract->terms, 'price', 0),
-                'completedAt' => optional($contract->completed_at ?? $contract->created_at)?->toISOString(),
-            ])->values()->all(),
-            'totalSales' => (float) $totalSales,
-            'commissionAmount' => (float) ($totalSales * self::COMMISSION_RATE),
-            'status' => $storedInvoice?->status ?? ($totalSales > 0 ? 'pending' : 'empty'),
-            'dueDate' => now()->startOfMonth()->addMonth()->setDay(15)->toISOString(),
-            'gracePeriodEnd' => now()->startOfMonth()->addMonth()->setDay(20)->toISOString(),
-            'paidAt' => optional($storedInvoice?->paid_at)?->toISOString(),
-            'paymentReference' => $storedInvoice?->payment_reference,
-            'generatedAt' => optional($storedInvoice?->generated_at ?? now())?->toISOString(),
-        ];
 
         $history = BillingInvoice::query()
             ->where('provider_id', $provider->id)
-            ->where('month', '!=', $currentMonth)
+            ->when($latestInvoice, fn ($query) => $query->where('id', '!=', $latestInvoice->id))
             ->orderByDesc('month')
             ->get()
-            ->map(fn (BillingInvoice $invoice) => [
-                'id' => "billing:invoice:{$invoice->provider_id}:{$invoice->month}",
-                'providerId' => (string) $invoice->provider_id,
-                'month' => $invoice->month,
-                'commissionRate' => (float) $invoice->commission_rate,
-                'completedContracts' => [],
-                'totalSales' => 0,
-                'commissionAmount' => (float) $invoice->amount,
-                'status' => $invoice->status,
-                'dueDate' => now()->startOfMonth()->setDate((int) substr($invoice->month, 0, 4), (int) substr($invoice->month, 5, 2), 15)->toISOString(),
-                'paidAt' => optional($invoice->paid_at)?->toISOString(),
-                'paymentReference' => $invoice->payment_reference,
-                'generatedAt' => optional($invoice->generated_at ?? $invoice->created_at)?->toISOString(),
-                'amount' => (float) $invoice->amount,
-            ])
+            ->map(fn (BillingInvoice $invoice) => $this->billingCycles->formatInvoice($invoice))
             ->values();
 
         return response()->json([
-            'currentInvoice' => $currentInvoice,
+            'settings' => $this->formatSettings($settings),
+            'currentInvoice' => $latestInvoice ? $this->billingCycles->formatInvoice($latestInvoice) : null,
             'history' => $history,
-            'commissionRate' => self::COMMISSION_RATE,
+            'preview' => $this->billingCycles->buildOpenPeriodPreview($provider),
+            'commissionRate' => (float) $settings->commission_rate,
         ]);
     }
 
@@ -142,39 +85,27 @@ class BillingController extends Controller
             'month' => ['required', 'regex:/^\d{4}-\d{2}$/'],
             'paymentReference' => ['sometimes', 'nullable', 'string', 'max:255'],
             'payment_reference' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'amount' => ['sometimes', 'nullable', 'numeric', 'min:0'],
         ]);
 
-        $paymentReference = $validated['paymentReference'] ?? $validated['payment_reference'] ?? ('PAY-'.now()->timestamp);
+        $invoice = BillingInvoice::query()
+            ->where('provider_id', $provider->id)
+            ->where('month', $validated['month'])
+            ->first();
 
-        $invoice = BillingInvoice::query()->updateOrCreate(
-            [
-                'provider_id' => $provider->id,
-                'month' => $validated['month'],
-            ],
-            [
-                'commission_rate' => self::COMMISSION_RATE,
-                'amount' => $validated['amount'] ?? 0,
-                'status' => 'paid',
-                'paid_at' => now(),
-                'payment_reference' => $paymentReference,
-                'generated_at' => now(),
-            ]
-        );
+        if (! $invoice) {
+            return response()->json(['error' => 'Invoice not found for the requested month'], 404);
+        }
+
+        if (in_array($invoice->status, ['approved', 'submitted', 'empty'], true)) {
+            return response()->json(['error' => 'Invoice cannot accept a new payment at this stage'], 422);
+        }
+
+        $paymentReference = $validated['paymentReference'] ?? $validated['payment_reference'] ?? null;
+        $invoice = $this->billingCycles->submitInvoicePayment($invoice, $paymentReference);
 
         return response()->json([
             'success' => true,
-            'invoice' => [
-                'id' => "billing:invoice:{$invoice->provider_id}:{$invoice->month}",
-                'providerId' => (string) $invoice->provider_id,
-                'month' => $invoice->month,
-                'commissionRate' => (float) $invoice->commission_rate,
-                'amount' => (float) $invoice->amount,
-                'status' => $invoice->status,
-                'paidAt' => optional($invoice->paid_at)?->toISOString(),
-                'paymentReference' => $invoice->payment_reference,
-                'generatedAt' => optional($invoice->generated_at ?? $invoice->created_at)?->toISOString(),
-            ],
+            'invoice' => $this->billingCycles->formatInvoice($invoice),
         ]);
     }
 
@@ -190,32 +121,139 @@ class BillingController extends Controller
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
-        $currentMonth = now()->format('Y-m');
+        $settings = $this->billingCycles->getSettings();
+        $selectedMonth = $request->query('month');
+        $invoicesQuery = BillingInvoice::query()
+            ->with('provider')
+            ->orderByDesc('month')
+            ->orderByDesc('generated_at');
 
-        $invoices = BillingInvoice::query()
-            ->where('month', $currentMonth)
+        if (is_string($selectedMonth) && preg_match('/^\d{4}-\d{2}$/', $selectedMonth)) {
+            $invoicesQuery->where('month', $selectedMonth);
+        }
+
+        $invoices = $invoicesQuery
             ->get()
-            ->map(fn (BillingInvoice $invoice) => [
-                'id' => "billing:invoice:{$invoice->provider_id}:{$invoice->month}",
-                'providerId' => (string) $invoice->provider_id,
-                'month' => $invoice->month,
-                'commissionRate' => (float) $invoice->commission_rate,
-                'amount' => (float) $invoice->amount,
-                'status' => $invoice->status,
-                'paidAt' => optional($invoice->paid_at)?->toISOString(),
-                'paymentReference' => $invoice->payment_reference,
-                'generatedAt' => optional($invoice->generated_at ?? $invoice->created_at)?->toISOString(),
-            ])
+            ->map(fn (BillingInvoice $invoice) => $this->billingCycles->formatInvoice($invoice))
             ->values();
 
-        $totalPending = $invoices->where('status', 'pending')->sum('amount');
-        $totalCollected = $invoices->where('status', 'paid')->sum('amount');
+        $months = BillingInvoice::query()
+            ->select('month')
+            ->distinct()
+            ->orderByDesc('month')
+            ->pluck('month')
+            ->values();
 
         return response()->json([
-            'currentMonth' => $currentMonth,
+            'settings' => $this->formatSettings($settings),
+            'currentMonth' => now()->format('Y-m'),
+            'selectedMonth' => $selectedMonth,
+            'months' => $months,
             'invoices' => $invoices,
-            'totalPending' => (float) $totalPending,
-            'totalCollected' => (float) $totalCollected,
+            'paymentQueue' => $invoices->where('status', 'submitted')->values(),
+            'totalOutstanding' => (float) $invoices->whereIn('status', ['pending', 'rejected', 'overdue'])->sum('amount'),
+            'totalPendingApproval' => (float) $invoices->where('status', 'submitted')->sum('amount'),
+            'totalCollected' => (float) $invoices->where('status', 'approved')->sum('amount'),
         ]);
+    }
+
+    public function updateConfig(Request $request): JsonResponse
+    {
+        $authUser = $request->user();
+
+        if (! $authUser) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if ($authUser->role !== 'admin') {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $validated = $request->validate([
+            'closureDay' => ['required', 'integer', 'min:1', 'max:28'],
+        ]);
+
+        $settings = $this->billingCycles->getSettings();
+        $settings->closure_day = (int) $validated['closureDay'];
+        $settings->save();
+
+        return response()->json([
+            'settings' => $this->formatSettings($settings),
+        ]);
+    }
+
+    public function approvePayment(Request $request, string $invoiceId): JsonResponse
+    {
+        $authUser = $request->user();
+
+        if (! $authUser) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if ($authUser->role !== 'admin') {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $invoice = BillingInvoice::find($invoiceId);
+
+        if (! $invoice) {
+            return response()->json(['error' => 'Invoice not found'], 404);
+        }
+
+        if ($invoice->status !== 'submitted') {
+            return response()->json(['error' => 'Only submitted payments can be approved'], 422);
+        }
+
+        $invoice = $this->billingCycles->approveInvoice($invoice, $authUser);
+
+        return response()->json([
+            'success' => true,
+            'invoice' => $this->billingCycles->formatInvoice($invoice),
+        ]);
+    }
+
+    public function rejectPayment(Request $request, string $invoiceId): JsonResponse
+    {
+        $authUser = $request->user();
+
+        if (! $authUser) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if ($authUser->role !== 'admin') {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:2000'],
+        ]);
+
+        $invoice = BillingInvoice::find($invoiceId);
+
+        if (! $invoice) {
+            return response()->json(['error' => 'Invoice not found'], 404);
+        }
+
+        if ($invoice->status !== 'submitted') {
+            return response()->json(['error' => 'Only submitted payments can be rejected'], 422);
+        }
+
+        $invoice = $this->billingCycles->rejectInvoice($invoice, $authUser, $validated['reason']);
+
+        return response()->json([
+            'success' => true,
+            'invoice' => $this->billingCycles->formatInvoice($invoice),
+        ]);
+    }
+
+    private function formatSettings(BillingSetting $settings): array
+    {
+        return [
+            'commissionRate' => (float) $settings->commission_rate,
+            'closureDay' => (int) $settings->closure_day,
+            'paymentGraceDays' => (int) $settings->payment_grace_days,
+            'nextClosureDate' => $this->billingCycles->resolveNextClosureDate()->toISOString(),
+            'lastClosedMonth' => $settings->last_closed_month,
+        ];
     }
 }

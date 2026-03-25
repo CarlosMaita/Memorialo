@@ -551,6 +551,7 @@ export default function App() {
         await loadCurrentProvider();
         setViewMode('business');
         setDashboardView('provider');
+        navigateTo('/mi-negocio');
       }
     } catch (error) {
       throw error;
@@ -1309,6 +1310,33 @@ export default function App() {
     });
   }, [marketplaceRouteContext, viewMode]);
 
+  useEffect(() => {
+    const normalizedPath = (currentRoute.split('?')[0] || '/').replace(/\/+$/, '') || '/';
+
+    if (normalizedPath.startsWith('/mi-negocio')) {
+      setViewMode('business');
+      setDashboardView('provider');
+
+      if (normalizedPath === '/mi-negocio/mis-servicios') {
+        setProviderDashboardSection('services');
+      } else if (normalizedPath === '/mi-negocio/reservas') {
+        setProviderDashboardSection('bookings');
+      } else if (normalizedPath === '/mi-negocio/facturacion') {
+        setProviderDashboardSection('billing');
+      } else {
+        setProviderDashboardSection('dashboard');
+      }
+
+      return;
+    }
+
+    if (normalizedPath === '/me/reservas') {
+      setViewMode('business');
+      setDashboardView('client');
+      setClientDashboardSection('bookings');
+    }
+  }, [currentRoute]);
+
   const resolveServiceByRoute = (path: string) => {
     // Legacy route compatibility
     if (path.startsWith('/servicio/')) {
@@ -1410,8 +1438,15 @@ export default function App() {
       return { path: ctaUrl };
     }
 
+    const resolveProviderSectionPath = (section: ProviderDashboardSection): string => {
+      if (section === 'services') return '/mi-negocio/mis-servicios';
+      if (section === 'bookings' || section === 'contracts') return '/mi-negocio/reservas';
+      if (section === 'billing') return '/mi-negocio/facturacion';
+      return '/mi-negocio';
+    };
+
     const openProviderDashboard = (section: ProviderDashboardSection, bookingId: string | null = null): NotificationDestination => ({
-      path: '/',
+      path: resolveProviderSectionPath(section),
       viewMode: 'business',
       dashboardView: 'provider',
       providerSection: section,
@@ -1419,7 +1454,7 @@ export default function App() {
     });
 
     const openClientBookings = (contractId: string | null = null): NotificationDestination => ({
-      path: '/',
+      path: '/me/reservas',
       viewMode: 'business',
       dashboardView: 'client',
       clientSection: 'bookings',
@@ -1438,6 +1473,17 @@ export default function App() {
 
     if (notificationType === 'service_request_created') {
       return openProviderDashboard('bookings', entityId);
+    }
+
+    if (
+      notificationType === 'billing_invoice_generated' ||
+      notificationType === 'billing_payment_submitted' ||
+      notificationType === 'billing_payment_rejected' ||
+      normalizedText.includes('nueva factura mensual') ||
+      normalizedText.includes('pago enviado para revision') ||
+      normalizedText.includes('pago rechazado')
+    ) {
+      return openProviderDashboard('billing');
     }
 
     if (
@@ -2155,6 +2201,7 @@ export default function App() {
   }, [artists, searchCriteria, sortBy, allUsers, providers]);
 
   const isFavoritesRoute = currentRoute === '/favoritos';
+  const isPrivateSystemRoute = currentRoute.startsWith('/mi-negocio') || currentRoute.startsWith('/me/');
 
   const marketplaceCanonical = marketplaceRouteContext
     ? marketplaceRouteContext.canonicalPath
@@ -2478,6 +2525,7 @@ export default function App() {
                     onClick={() => {
                       setViewMode('business');
                       setDashboardView('provider');
+                      navigateTo('/mi-negocio');
                     }}
                     className={viewMode === 'business' && dashboardView === 'provider' ? '' : 'text-white hover:text-white hover:bg-white/10'}
                   >
@@ -2606,6 +2654,7 @@ export default function App() {
                       <DropdownMenuItem onClick={() => {
                         setViewMode('business');
                         setDashboardView('client');
+                        navigateTo('/me/reservas');
                       }}>
                         <LayoutDashboard className="w-4 h-4 mr-2" />
                         Mis Reservas
@@ -2622,6 +2671,7 @@ export default function App() {
                           <DropdownMenuItem onClick={() => {
                             setViewMode('business');
                             setDashboardView('provider');
+                            navigateTo('/mi-negocio');
                           }}>
                             <Briefcase className="w-4 h-4 mr-2" />
                             Mi Negocio
@@ -2682,6 +2732,7 @@ export default function App() {
                     onClick={() => {
                       setViewMode('business');
                       setDashboardView('provider');
+                      navigateTo('/mi-negocio');
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full ${viewMode === 'business' && dashboardView === 'provider' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
@@ -2694,6 +2745,7 @@ export default function App() {
                     onClick={() => {
                       setViewMode('business');
                       setDashboardView('client');
+                      navigateTo('/me/reservas');
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full ${viewMode === 'business' && dashboardView === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
@@ -2708,6 +2760,8 @@ export default function App() {
                   variant={viewMode === 'business' ? 'secondary' : 'ghost'}
                   onClick={() => {
                     setViewMode('business');
+                    setDashboardView('client');
+                    navigateTo('/me/reservas');
                     setMobileMenuOpen(false);
                   }}
                   className={`w-full ${viewMode === 'business' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
@@ -2793,6 +2847,7 @@ export default function App() {
           currentUser && currentUser.role === 'admin' ? (
             <AdminDashboard
               currentUser={currentUser}
+              accessToken={supabase.accessToken}
               providers={providers}
               users={allUsers}
               artists={artists}
@@ -2816,86 +2871,90 @@ export default function App() {
             </div>
           )
         ) : viewMode === 'business' ? (
-          currentUser && currentUser.isProvider && dashboardView === 'provider' ? (
-            <BusinessDashboard
-              user={currentUser}
-              provider={currentProvider}
-              services={providerServices}
-              allArtists={artists}
-              contracts={contracts}
-              bookings={bookings}
-              initialSection={providerDashboardSection}
-              focusBookingId={providerFocusedBookingId}
-              onServiceCreate={handleServiceCreate}
-              onServiceUpdate={handleServiceUpdate}
-              onServiceDelete={handleServiceDelete}
-              onContractUpdate={async (updated) => {
-                try {
-                  const updatedContract = await supabase.updateContract(updated.id, updated);
-                  setContracts(prev => prev.map(c => c.id === updatedContract.id ? updatedContract : c));
-
-                  // If contract was marked as completed, reload services to update bookingsCompleted
-                  if (updated.status === 'completed') {
-                    console.log('Contract marked as completed, reloading services...');
-                    const servicesData = await supabase.getServices();
-                    if (servicesData && servicesData.length > 0) {
-                      setArtists(servicesData);
-                    }
-                  }
-                } catch (error) {
-                  console.error('Error updating contract:', error);
-                  toast.error('Error al actualizar contrato');
-                }
-              }}
-              onBookingCreate={handleBookingCreate}
-              onBookingUpdate={handleBookingUpdate}
-              onProviderCreate={handleProviderCreate}
-              accessToken={supabase.accessToken}
-            />
-          ) : (
-            currentUser && (
-              <ClientDashboard
-                contracts={contracts}
+          <>
+            <SEOHead noindex={isPrivateSystemRoute} />
+            {currentUser && currentUser.isProvider && dashboardView === 'provider' ? (
+              <BusinessDashboard
                 user={currentUser}
-                initialSection={clientDashboardSection}
-                focusContractId={clientFocusedContractId}
-                onFocusContractHandled={() => setClientFocusedContractId(null)}
-                onReviewCreate={(contractId) => {
-                  const contract = contracts.find(c => c.id === contractId);
-                  if (contract) {
-                    const booking: Booking = {
-                      id: contract.bookingId,
-                      artistId: contract.artistId,
-                      artistName: contract.artistName,
-                      userId: currentUser.id,
-                      clientName: contract.clientName,
-                      clientEmail: currentUser.email,
-                      clientPhone: currentUser.phone || '',
-                      date: contract.terms.date,
-                      duration: contract.terms.duration,
-                      eventType: 'Servicio completado',
-                      location: contract.terms.location,
-                      specialRequests: '',
-                      totalPrice: contract.terms.price,
-                      status: 'completed',
-                      contractId: contract.id
-                    };
-                    setReviewBooking(booking);
-                    setShowReviewDialog(true);
+                provider={currentProvider}
+                services={providerServices}
+                allArtists={artists}
+                contracts={contracts}
+                bookings={bookings}
+                initialSection={providerDashboardSection}
+                focusBookingId={providerFocusedBookingId}
+                onServiceCreate={handleServiceCreate}
+                onServiceUpdate={handleServiceUpdate}
+                onServiceDelete={handleServiceDelete}
+                onContractUpdate={async (updated) => {
+                  try {
+                    const updatedContract = await supabase.updateContract(updated.id, updated);
+                    setContracts(prev => prev.map(c => c.id === updatedContract.id ? updatedContract : c));
+
+                    // If contract was marked as completed, reload services to update bookingsCompleted
+                    if (updated.status === 'completed') {
+                      console.log('Contract marked as completed, reloading services...');
+                      const servicesData = await supabase.getServices();
+                      if (servicesData && servicesData.length > 0) {
+                        setArtists(servicesData);
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error updating contract:', error);
+                    toast.error('Error al actualizar contrato');
                   }
                 }}
-                reviews={reviews}
-                events={events}
-                onCreateEvent={handleCreateEvent}
-                onUpdateEvent={handleUpdateEvent}
-                onDeleteEvent={handleDeleteEvent}
-                onAssignContractToEvent={handleAssignContractToEvent}
-                onContractUpdate={handleContractUpdate}
-                bookings={bookings}
+                onBookingCreate={handleBookingCreate}
                 onBookingUpdate={handleBookingUpdate}
+                onProviderCreate={handleProviderCreate}
+                reviews={reviews}
+                accessToken={supabase.accessToken}
               />
-            )
-          )
+            ) : (
+              currentUser && (
+                <ClientDashboard
+                  contracts={contracts}
+                  user={currentUser}
+                  initialSection={clientDashboardSection}
+                  focusContractId={clientFocusedContractId}
+                  onFocusContractHandled={() => setClientFocusedContractId(null)}
+                  onReviewCreate={(contractId) => {
+                    const contract = contracts.find(c => c.id === contractId);
+                    if (contract) {
+                      const booking: Booking = {
+                        id: contract.bookingId,
+                        artistId: contract.artistId,
+                        artistName: contract.artistName,
+                        userId: currentUser.id,
+                        clientName: contract.clientName,
+                        clientEmail: currentUser.email,
+                        clientPhone: currentUser.phone || '',
+                        date: contract.terms.date,
+                        duration: contract.terms.duration,
+                        eventType: 'Servicio completado',
+                        location: contract.terms.location,
+                        specialRequests: '',
+                        totalPrice: contract.terms.price,
+                        status: 'completed',
+                        contractId: contract.id
+                      };
+                      setReviewBooking(booking);
+                      setShowReviewDialog(true);
+                    }
+                  }}
+                  reviews={reviews}
+                  events={events}
+                  onCreateEvent={handleCreateEvent}
+                  onUpdateEvent={handleUpdateEvent}
+                  onDeleteEvent={handleDeleteEvent}
+                  onAssignContractToEvent={handleAssignContractToEvent}
+                  onContractUpdate={handleContractUpdate}
+                  bookings={bookings}
+                  onBookingUpdate={handleBookingUpdate}
+                />
+              )
+            )}
+          </>
         ) : viewMode === 'client' ? (
           <>
             {/* SEO for marketplace home */}

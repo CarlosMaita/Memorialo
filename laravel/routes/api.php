@@ -62,6 +62,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/billing/provider/{providerId}', [BillingController::class, 'providerBilling']);
     Route::post('/billing/provider/{providerId}/pay', [BillingController::class, 'pay']);
     Route::get('/billing/admin/overview', [BillingController::class, 'adminOverview']);
+    Route::patch('/billing/admin/config', [BillingController::class, 'updateConfig']);
+    Route::post('/billing/admin/invoices/{invoiceId}/approve', [BillingController::class, 'approvePayment']);
+    Route::post('/billing/admin/invoices/{invoiceId}/reject', [BillingController::class, 'rejectPayment']);
 
     Route::get('/admin/users', [AdminController::class, 'users']);
     Route::post('/admin/providers/{id}/verify', [AdminController::class, 'verifyProvider']);

@@ -31,6 +31,8 @@ use Illuminate\Notifications\Notifiable;
     'banned',
     'banned_at',
     'banned_reason',
+    'billing_suspended_at',
+    'billing_suspension_reason',
     'archived',
     'archived_at',
 ])]
@@ -54,6 +56,7 @@ class User extends Authenticatable
             'banned' => 'boolean',
             'archived' => 'boolean',
             'banned_at' => 'datetime',
+            'billing_suspended_at' => 'datetime',
             'archived_at' => 'datetime',
             'provider_requested_at' => 'datetime',
             'provider_approved_at' => 'datetime',

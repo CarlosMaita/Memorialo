@@ -29,6 +29,13 @@ class UserController extends Controller
             ], 403);
         }
 
+        if ($user->billing_suspended_at) {
+            return response()->json([
+                'error' => 'User is billing suspended',
+                'reason' => $user->billing_suspension_reason,
+            ], 403);
+        }
+
         if ($user->archived) {
             return response()->json([
                 'error' => 'User account is archived',
@@ -166,6 +173,8 @@ class UserController extends Controller
             'banned' => (bool) $user->banned,
             'bannedAt' => optional($user->banned_at)?->toISOString(),
             'bannedReason' => $user->banned_reason,
+            'billingSuspendedAt' => optional($user->billing_suspended_at)?->toISOString(),
+            'billingSuspensionReason' => $user->billing_suspension_reason,
             'archived' => (bool) $user->archived,
             'archivedAt' => optional($user->archived_at)?->toISOString(),
         ];

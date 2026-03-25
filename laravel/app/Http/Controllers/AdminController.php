@@ -42,6 +42,8 @@ class AdminController extends Controller
             'banned' => (bool) $user->banned,
             'bannedAt' => optional($user->banned_at)?->toISOString(),
             'bannedReason' => $user->banned_reason,
+            'billingSuspendedAt' => optional($user->billing_suspended_at)?->toISOString(),
+            'billingSuspensionReason' => $user->billing_suspension_reason,
             'archived' => (bool) $user->archived,
             'archivedAt' => optional($user->archived_at)?->toISOString(),
         ]);
@@ -337,6 +339,8 @@ class AdminController extends Controller
             'banned' => (bool) $user->banned,
             'bannedAt' => optional($user->banned_at)?->toISOString(),
             'bannedReason' => $user->banned_reason,
+            'billingSuspendedAt' => optional($user->billing_suspended_at)?->toISOString(),
+            'billingSuspensionReason' => $user->billing_suspension_reason,
             'archived' => (bool) $user->archived,
             'archivedAt' => optional($user->archived_at)?->toISOString(),
         ];

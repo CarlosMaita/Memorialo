@@ -77,6 +77,24 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($user->banned) {
+            return response()->json([
+                'error' => 'Tu cuenta esta suspendida. Contacta al administrador.',
+            ], 403);
+        }
+
+        if ($user->billing_suspended_at) {
+            return response()->json([
+                'error' => 'Tu cuenta está suspendida por mora. Registra y espera aprobación de tu pago para reactivarla.',
+            ], 403);
+        }
+
+        if ($user->archived) {
+            return response()->json([
+                'error' => 'Tu cuenta esta archivada. Contacta al administrador.',
+            ], 403);
+        }
+
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
@@ -146,6 +164,12 @@ class AuthController extends Controller
             ]));
         }
 
+        if ($user->billing_suspended_at) {
+            return redirect()->away($this->buildFrontendRedirectUrl([
+                'auth_error' => 'Tu cuenta está suspendida por mora. Registra y espera aprobación de tu pago para reactivarla.',
+            ]));
+        }
+
         if ($user->archived) {
             return redirect()->away($this->buildFrontendRedirectUrl([
                 'auth_error' => 'Tu cuenta esta archivada. Contacta al administrador.',
@@ -172,8 +196,16 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
+        $user = $request->user();
+
+        if ($user?->billing_suspended_at) {
+            return response()->json([
+                'error' => 'Tu cuenta está suspendida por mora. Registra y espera aprobación de tu pago para reactivarla.',
+            ], 403);
+        }
+
         return response()->json([
-            'user' => $request->user() ? $this->formatUser($request->user()) : null,
+            'user' => $user ? $this->formatUser($user) : null,
         ]);
     }
 
@@ -225,6 +257,8 @@ class AuthController extends Controller
             'banned' => (bool) $user->banned,
             'bannedAt' => optional($user->banned_at)?->toISOString(),
             'bannedReason' => $user->banned_reason,
+            'billingSuspendedAt' => optional($user->billing_suspended_at)?->toISOString(),
+            'billingSuspensionReason' => $user->billing_suspension_reason,
             'archived' => (bool) $user->archived,
             'archivedAt' => optional($user->archived_at)?->toISOString(),
         ];

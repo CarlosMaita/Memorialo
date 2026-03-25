@@ -16,6 +16,8 @@ export interface User {
   banned?: boolean; // If true, user is banned from the platform
   bannedAt?: string; // When the user was banned
   bannedReason?: string; // Reason for the ban
+  billingSuspendedAt?: string;
+  billingSuspensionReason?: string;
   archived?: boolean; // If true, user is archived (inactive but data preserved)
   archivedAt?: string; // When the user was archived
 }

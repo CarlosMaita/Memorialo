@@ -32,9 +32,11 @@ import { Label } from './ui/label';
 import { toast } from 'sonner@2.0.3';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { AdminBillingSection } from './AdminBillingSection';
 
 interface AdminDashboardProps {
   currentUser: User;
+  accessToken: string | null;
   providers: Provider[];
   users: User[];
   artists: Artist[];
@@ -53,10 +55,11 @@ interface AdminDashboardProps {
   onRevokeProviderAccess: (userId: string) => Promise<void>;
 }
 
-type AdminSection = 'overview' | 'providers' | 'users' | 'services';
+type AdminSection = 'overview' | 'billing' | 'providers' | 'users' | 'services';
 
 const adminNavItems = [
   { id: 'overview' as const, label: 'Resumen', icon: <LayoutDashboard className="w-5 h-5" /> },
+  { id: 'billing' as const, label: 'Facturación', icon: <DollarSign className="w-5 h-5" /> },
   { id: 'providers' as const, label: 'Proveedores', icon: <Briefcase className="w-5 h-5" /> },
   { id: 'users' as const, label: 'Usuarios', icon: <Users className="w-5 h-5" /> },
   { id: 'services' as const, label: 'Servicios', icon: <BookOpen className="w-5 h-5" /> },
@@ -64,6 +67,7 @@ const adminNavItems = [
 
 export function AdminDashboard({
   currentUser,
+  accessToken,
   providers,
   users,
   artists,
@@ -634,6 +638,10 @@ export function AdminDashboard({
             </CardContent>
           </Card>
             </div>
+          )}
+
+          {activeSection === 'billing' && (
+            <AdminBillingSection accessToken={accessToken} />
           )}
 
           {activeSection === 'users' && (

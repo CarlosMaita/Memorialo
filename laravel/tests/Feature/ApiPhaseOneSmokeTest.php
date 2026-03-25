@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\BillingInvoice;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -393,22 +394,49 @@ class ApiPhaseOneSmokeTest extends TestCase
 
         $this->getJson('/api/billing/provider/'.$providerId)
             ->assertOk()
-            ->assertJsonPath('currentInvoice.providerId', (string) $providerId)
-            ->assertJsonPath('currentInvoice.commissionRate', 0.08)
-            ->assertJsonPath('currentInvoice.completedContracts.0.contractId', 'contract-001');
+            ->assertJsonPath('currentInvoice', null)
+            ->assertJsonPath('preview.providerId', (string) $providerId)
+            ->assertJsonPath('preview.commissionRate', 0.08)
+            ->assertJsonPath('preview.completedContracts.0.contractId', 'contract-001');
 
         $month = now()->format('Y-m');
+
+        BillingInvoice::create([
+            'provider_id' => $providerId,
+            'month' => $month,
+            'commission_rate' => 0.08,
+            'contract_count' => 1,
+            'total_sales' => 5000,
+            'amount' => 400,
+            'status' => 'pending',
+            'due_date' => now()->addDays(5),
+            'grace_period_end' => now()->addDays(5),
+            'generated_at' => now(),
+            'billing_snapshot' => [
+                'completedContracts' => [
+                    [
+                        'contractId' => 'contract-001',
+                        'clientName' => 'Carlo Client',
+                        'serviceName' => 'Mariachi Real',
+                        'price' => 5000,
+                        'completedAt' => now()->toISOString(),
+                    ],
+                ],
+                'contractCount' => 1,
+                'totalSales' => 5000,
+                'commissionAmount' => 400,
+            ],
+        ]);
 
         $this->postJson('/api/billing/provider/'.$providerId.'/pay', [
             'month' => $month,
             'paymentReference' => 'PAY-TEST-001',
-            'amount' => 400,
         ])
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('invoice.providerId', (string) $providerId)
             ->assertJsonPath('invoice.month', $month)
-            ->assertJsonPath('invoice.status', 'paid');
+            ->assertJsonPath('invoice.status', 'submitted');
 
         $adminUser = User::factory()->create([
             'role' => 'admin',
@@ -426,7 +454,7 @@ class ApiPhaseOneSmokeTest extends TestCase
             ->assertOk()
             ->assertJsonPath('currentMonth', $month)
             ->assertJsonPath('invoices.0.providerId', (string) $providerId)
-            ->assertJsonPath('invoices.0.status', 'paid');
+            ->assertJsonPath('invoices.0.status', 'submitted');
 
         $this->getJson('/api/admin/users')
             ->assertOk()

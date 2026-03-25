@@ -432,6 +432,31 @@ export function BusinessDashboard({
     toast.success(`Reserva ${statusMap[status]}`);
   };
 
+  const getBookingReview = (booking: Booking) => {
+    const bookingId = String(booking.id || '');
+    const contractId = String(booking.contractId || '');
+
+    return reviews.find((review: any) => {
+      const reviewBookingId = String(review?.bookingId || '');
+      const reviewContractId = String(review?.contractId || '');
+      return (bookingId && reviewBookingId === bookingId) || (contractId && reviewContractId === contractId);
+    }) || null;
+  };
+
+  const renderStars = (rating: number) => {
+    const normalized = Math.max(1, Math.min(5, Math.round(rating)));
+    return (
+      <div className="flex items-center gap-0.5" aria-label={`Calificacion ${normalized} de 5`}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`w-3.5 h-3.5 ${star <= normalized ? 'text-amber-500 fill-amber-500' : 'text-gray-300'}`}
+          />
+        ))}
+      </div>
+    );
+  };
+
   const handleEditBooking = (booking: Booking) => {
     setEditingBooking(booking);
     setEditBookingForm({
@@ -1236,6 +1261,9 @@ export function BusinessDashboard({
                     const isPendingProviderSignature = hasContractPendingProvider(booking);
                     const displayStatus = isPendingProviderSignature ? 'pending' : booking.status;
                     const isExpanded = expandedBookingId === booking.id;
+                    const bookingReview = getBookingReview(booking);
+                    const reviewRating = Number(bookingReview?.rating || 0);
+                    const hasReview = Number.isFinite(reviewRating) && reviewRating > 0;
 
                     return (
                       <Card key={booking.id} className={booking.status === 'pending' ? 'border-2 border-yellow-400 bg-yellow-50/30' : ''}>
@@ -1253,6 +1281,14 @@ export function BusinessDashboard({
                                 <Badge className={`${getStatusBadge(displayStatus)} text-xs`}>
                                   <span className="flex items-center gap-1">{getStatusIcon(displayStatus)}{getStatusText(displayStatus)}</span>
                                 </Badge>
+                                {hasReview && (
+                                  <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
+                                    <span className="flex items-center gap-1">
+                                      {renderStars(reviewRating)}
+                                      <span className="text-[11px]">{Math.round(reviewRating)}/5</span>
+                                    </span>
+                                  </Badge>
+                                )}
                               </div>
                               <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                                 <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(booking.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>

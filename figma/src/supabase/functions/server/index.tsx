@@ -684,7 +684,7 @@ app.delete(`${P}/admin/users/:id`, async (c) => {
 
 app.get(`${P}/robots.txt`, (c) => {
   const url = c.req.header('origin') || 'https://memorialo.com';
-  return new Response(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /mi-negocio\nDisallow: /mi-panel\n\nSitemap: ${url}${P}/sitemap.xml\n`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  return new Response(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /mi-negocio\nDisallow: /mi-panel\nDisallow: /me\n\nSitemap: ${url}${P}/sitemap.xml\n`, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 });
 
 app.get(`${P}/sitemap.xml`, async (c) => {

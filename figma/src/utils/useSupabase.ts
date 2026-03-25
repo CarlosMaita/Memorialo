@@ -230,7 +230,11 @@ export function useSupabase() {
             setCurrentUser(null);
             setAccessToken(null);
           }
-        } catch {
+        } catch (error: any) {
+          const errorMessage = String(error?.message || '');
+          if (typeof errorMessage === 'string' && errorMessage) {
+            window.sessionStorage.setItem(LARAVEL_AUTH_ERROR_KEY, errorMessage);
+          }
           window.localStorage.removeItem(LARAVEL_ACCESS_TOKEN_KEY);
           setCurrentUser(null);
           setAccessToken(null);

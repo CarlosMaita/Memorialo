@@ -51,3 +51,4 @@ Artisan::command('app:ensure-admin', function () {
 })->purpose('Create or update the initial administrator account');
 
 Schedule::command('chat:purge-expired')->dailyAt('02:30');
+Schedule::command('billing:run-cycle')->dailyAt('03:00');
