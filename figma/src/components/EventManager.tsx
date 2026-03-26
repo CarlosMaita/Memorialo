@@ -19,17 +19,45 @@ interface EventManagerProps {
 }
 
 const EVENT_TYPES = [
-  'Boda',
-  'Cumpleaños',
-  'Aniversario',
-  'Graduación',
-  'Baby Shower',
-  'Fiesta Corporativa',
-  'Conferencia',
-  'Concierto',
-  'Festival',
-  'Otro'
+  { value: 'wedding', label: 'Boda' },
+  { value: 'birthday', label: 'Cumpleaños' },
+  { value: 'other', label: 'Aniversario' },
+  { value: 'other', label: 'Graduación' },
+  { value: 'other', label: 'Baby Shower' },
+  { value: 'corporate', label: 'Fiesta Corporativa' },
+  { value: 'corporate', label: 'Conferencia' },
+  { value: 'concert', label: 'Concierto' },
+  { value: 'other', label: 'Festival' },
+  { value: 'other', label: 'Otro' },
 ];
+
+const normalizeText = (value?: string): string => {
+  if (!value) return '';
+
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+};
+
+const normalizeEventTypeValue = (value?: string): string => {
+  const normalized = normalizeText(value);
+  if (!normalized) return '';
+
+  if (['wedding', 'corporate', 'birthday', 'quinceanera', 'concert', 'private', 'other'].includes(normalized)) {
+    return normalized;
+  }
+
+  if (normalized.includes('boda') || normalized.includes('wedding')) return 'wedding';
+  if (normalized.includes('corporativ') || normalized.includes('corporate') || normalized.includes('conferencia')) return 'corporate';
+  if (normalized.includes('cumpleanos') || normalized.includes('birthday')) return 'birthday';
+  if (normalized.includes('quinceanera') || normalized.includes('quince')) return 'quinceanera';
+  if (normalized.includes('concierto') || normalized.includes('concert')) return 'concert';
+  if (normalized.includes('privad') || normalized.includes('private')) return 'private';
+
+  return 'other';
+};
 
 export function EventManager({ events, onCreateEvent, onUpdateEvent, onDeleteEvent, eventToEdit, onEditComplete }: EventManagerProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -68,7 +96,7 @@ export function EventManager({ events, onCreateEvent, onUpdateEvent, onDeleteEve
         name: eventToEdit.name,
         description: eventToEdit.description || '',
         eventDate: eventToEdit.eventDate || '',
-        eventType: eventToEdit.eventType || '',
+        eventType: normalizeEventTypeValue(eventToEdit.eventType),
         location: eventToEdit.location || '',
         budget: eventToEdit.budget?.toString() || '',
         status: eventToEdit.status
@@ -85,7 +113,7 @@ export function EventManager({ events, onCreateEvent, onUpdateEvent, onDeleteEve
       name: formData.name,
       description: formData.description || undefined,
       eventDate: formData.eventDate || undefined,
-      eventType: formData.eventType || undefined,
+      eventType: normalizeEventTypeValue(formData.eventType) || undefined,
       location: formData.location || undefined,
       budget: formData.budget ? parseFloat(formData.budget) : undefined,
       status: formData.status,
@@ -111,7 +139,7 @@ export function EventManager({ events, onCreateEvent, onUpdateEvent, onDeleteEve
       name: event.name,
       description: event.description || '',
       eventDate: event.eventDate || '',
-      eventType: event.eventType || '',
+      eventType: normalizeEventTypeValue(event.eventType),
       location: event.location || '',
       budget: event.budget?.toString() || '',
       status: event.status
@@ -179,9 +207,9 @@ export function EventManager({ events, onCreateEvent, onUpdateEvent, onDeleteEve
                   <SelectValue placeholder="Selecciona un tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {EVENT_TYPES.map(type => (
-                    <SelectItem key={type} value={type}>
-                      {type}
+                  {EVENT_TYPES.map((type, index) => (
+                    <SelectItem key={`${type.value}-${index}`} value={type.value}>
+                      {type.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

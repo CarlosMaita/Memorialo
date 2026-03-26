@@ -25,6 +25,26 @@ interface BookingDialogProps {
   events?: Event[]; // Lista de eventos del usuario
 }
 
+const EVENT_TYPE_OPTIONS = [
+  { value: 'wedding', label: 'Boda' },
+  { value: 'corporate', label: 'Evento Corporativo' },
+  { value: 'birthday', label: 'Fiesta de Cumpleaños' },
+  { value: 'quinceanera', label: 'Quinceañera' },
+  { value: 'concert', label: 'Concierto' },
+  { value: 'private', label: 'Fiesta Privada' },
+  { value: 'other', label: 'Otro' },
+] as const;
+
+const normalizeText = (value?: string): string => {
+  if (!value) return '';
+
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+};
+
 export function BookingDialog({ artist, selectedPlan, open, onClose, onContractCreated, onBookingCreated, onBookingUpdate, user, onLoginRequired, events = [] }: BookingDialogProps) {
   const allowCustomHourly = artist?.allowCustomHourly === true;
 
@@ -130,25 +150,36 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
   // Mapear el tipo de evento del Event a los valores del select
   const mapEventType = (eventType?: string): string => {
     if (!eventType) return '';
-    const type = eventType.toLowerCase();
-    if (type.includes('boda')) return 'wedding';
-    if (type.includes('corporativ')) return 'corporate';
-    if (type.includes('cumpleaños') || type.includes('birthday')) return 'birthday';
-    if (type.includes('quinceañera') || type.includes('quince')) return 'quinceanera';
+    const type = normalizeText(eventType);
+
+    if (EVENT_TYPE_OPTIONS.some((option) => option.value === type)) return type;
+    if (type.includes('boda') || type.includes('wedding')) return 'wedding';
+    if (type.includes('corporativ') || type.includes('corporate') || type.includes('empresa')) return 'corporate';
+    if (type.includes('cumpleanos') || type.includes('birthday')) return 'birthday';
+    if (type.includes('quinceanera') || type.includes('quince')) return 'quinceanera';
     if (type.includes('concierto') || type.includes('concert')) return 'concert';
-    if (type.includes('privada') || type.includes('private')) return 'private';
+    if (type.includes('privad') || type.includes('private')) return 'private';
+    if (type.includes('otro') || type.includes('other')) return 'other';
+
     return 'other';
   };
+
+  const selectedEvent = selectedEventId && selectedEventId !== 'new'
+    ? events.find((event) => event.id === selectedEventId)
+    : undefined;
+  const mappedSelectedEventType = mapEventType(selectedEvent?.eventType);
 
   // Auto-llenar campos cuando se selecciona un evento
   useEffect(() => {
     if (selectedEventId && selectedEventId !== 'new') {
       const selectedEvent = events.find(e => e.id === selectedEventId);
+      const mappedEventType = mapEventType(selectedEvent?.eventType);
+
       if (selectedEvent) {
         setFormData(prev => ({
           ...prev,
           date: selectedEvent.eventDate || prev.date,
-          eventType: mapEventType(selectedEvent.eventType) || prev.eventType,
+          eventType: mappedEventType || prev.eventType,
           location: selectedEvent.location || prev.location
         }));
       }
@@ -164,6 +195,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     : 'hora(s)';
   const totalPrice = selectedServicePlan ? selectedServicePlan.price : artist.pricePerHour * parseInt(formData.duration || '0');
   const isEventSelected = selectedEventId && selectedEventId !== 'new';
+  const isEventTypeLocked = Boolean(isEventSelected && mappedSelectedEventType);
   const userEvents = events.filter(e => e.userId === user?.id && e.status !== 'cancelled');
 
   const generateContract = (): Contract => {
@@ -576,21 +608,24 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
               <Select 
                 value={formData.eventType} 
                 onValueChange={(value) => setFormData({ ...formData, eventType: value })}
-                disabled={isEventSelected}
+                disabled={isEventTypeLocked}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona el tipo de evento" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="wedding">Boda</SelectItem>
-                  <SelectItem value="corporate">Evento Corporativo</SelectItem>
-                  <SelectItem value="birthday">Fiesta de Cumpleaños</SelectItem>
-                  <SelectItem value="quinceanera">Quinceañera</SelectItem>
-                  <SelectItem value="concert">Concierto</SelectItem>
-                  <SelectItem value="private">Fiesta Privada</SelectItem>
-                  <SelectItem value="other">Otro</SelectItem>
+                  {EVENT_TYPE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {isEventSelected && !mappedSelectedEventType && (
+                <p className="text-xs text-amber-600 mt-1">
+                  El evento seleccionado no tiene un tipo válido; puedes elegirlo manualmente.
+                </p>
+              )}
             </div>
 
             <div>
