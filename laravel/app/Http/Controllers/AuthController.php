@@ -249,6 +249,7 @@ class AuthController extends Controller
             'avatar' => $user->avatar,
             'isProvider' => (bool) $user->is_provider,
             'providerId' => $user->provider_id ? (string) $user->provider_id : null,
+            'providerAccountCreated' => (bool) $user->provider_id,
             'providerRequestStatus' => $user->provider_request_status ?? 'none',
             'providerRequestedAt' => optional($user->provider_requested_at)?->toISOString(),
             'providerApprovedAt' => optional($user->provider_approved_at)?->toISOString(),

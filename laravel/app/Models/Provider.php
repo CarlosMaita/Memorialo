@@ -16,6 +16,8 @@ class Provider extends Model
         'business_name',
         'category',
         'description',
+        'legal_entity_type',
+        'identification_number',
         'verified',
         'verified_at',
         'verified_by',

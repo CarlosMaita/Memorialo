@@ -23,6 +23,10 @@ export interface ContractPdfData {
   metadata?: {
     saleType?: 'time' | 'unit';
     unitLabel?: string;
+    clientLegalName?: string;
+    clientRepresentativeName?: string;
+    providerBusinessName?: string;
+    providerRepresentativeName?: string;
   };
   terms: {
     measureType?: 'time' | 'unit';
@@ -113,13 +117,22 @@ const getPlanName = (contract: ContractPdfData) => {
 };
 
 const getIncludedItems = (contract: ContractPdfData) => {
+  const normalizeIncludedLine = (rawLine: string) => {
+    const line = String(rawLine || '').trim();
+    if (!line) return '';
+
+    // Remove only list markers (bullet or numeric list marker like 1. / 1)).
+    // Keep quantities such as "100 Flayer..." intact.
+    return line.replace(/^(?:[-•]\s*|\d+[.)]\s+)/, '').trim();
+  };
+
   const lines = getServiceDescriptionLines(contract);
   const includeIndex = lines.findIndex((line) => /^incluye:?$/i.test(line));
 
   if (includeIndex >= 0) {
     return lines
       .slice(includeIndex + 1)
-      .map((line) => line.replace(/^[-•\d.)\s]+/, '').trim())
+      .map(normalizeIncludedLine)
       .filter(Boolean);
   }
 
@@ -130,7 +143,7 @@ const getIncludedItems = (contract: ContractPdfData) => {
     return summary ? [summary] : [];
   }
 
-  return lines.map((line) => line.replace(/^[-•\d.)\s]+/, '').trim()).filter(Boolean);
+  return lines.map(normalizeIncludedLine).filter(Boolean);
 };
 
 const SPECIAL_REQUEST_PREFIX_REGEX = /^solicitudes?\s+especial(?:es)?\s+del\s+cliente\s*:\s*/i;
@@ -167,8 +180,10 @@ export const downloadContractPdf = (
   userType: 'client' | 'artist',
   options?: {
     providerName?: string;
+    providerRepresentativeName?: string;
     providerEmail?: string;
     providerPhone?: string;
+    clientName?: string;
     serviceName?: string;
     eventName?: string;
   }
@@ -181,7 +196,17 @@ export const downloadContractPdf = (
   let y = 64;
   const serviceName = options?.serviceName || contract.serviceName || contract.artistName;
   const eventName = options?.eventName || 'Evento no especificado';
-  const providerName = options?.providerName || contract.providerName || contract.artistName;
+  const clientLegalName = options?.clientName || contract.metadata?.clientLegalName || contract.clientName;
+  const providerName =
+    options?.providerName ||
+    contract.metadata?.providerBusinessName ||
+    contract.providerName ||
+    contract.artistName;
+  const providerRepresentativeName =
+    options?.providerRepresentativeName ||
+    contract.metadata?.providerRepresentativeName ||
+    contract.artistSignature?.signedBy ||
+    providerName;
   const providerEmail = options?.providerEmail || contract.artistEmail;
   const providerPhone = options?.providerPhone || contract.artistWhatsapp;
   const planName = getPlanName(contract);
@@ -310,7 +335,7 @@ export const downloadContractPdf = (
   drawHeader(true);
 
   addParagraph(
-    `El Cliente, ${contract.clientName.toUpperCase()}, contrata el servicio de ${serviceName} al Proveedor, ${providerName.toUpperCase()}. El servicio se llevará a cabo el día ${formatDate(contract.terms.date)} en la ciudad de ${contract.terms.location}. El objeto del presente contrato consiste en la prestación del servicio de ${serviceName}${planName ? ` bajo el plan ${planName.toUpperCase()}` : ''}.`,
+    `El Cliente, ${clientLegalName.toUpperCase()}, contrata el servicio de ${serviceName} al Proveedor, ${providerName.toUpperCase()}, representado por ${providerRepresentativeName.toUpperCase()}. El servicio se llevará a cabo el día ${formatDate(contract.terms.date)} en la ciudad de ${contract.terms.location}. El objeto del presente contrato consiste en la prestación del servicio de ${serviceName}${planName ? ` bajo el plan ${planName.toUpperCase()}` : ''}.`,
     { fontSize: 11, gapAfter: includedItems.length > 0 ? 8 : 12 }
   );
 
@@ -342,12 +367,13 @@ export const downloadContractPdf = (
 
   addSectionTitle('Partes del Contrato');
   const clientLines = [
-    contract.clientName,
+    clientLegalName,
     ...getVisibleClientContactLines(contract),
     contract.clientSignature ? `Firmado y aceptado el ${formatDateTime(contract.clientSignature.signedAt)}` : 'Pendiente de aceptación electrónica'
   ];
   const providerLines = [
     providerName,
+    `Representado por: ${providerRepresentativeName}`,
     ...(providerEmail ? [providerEmail] : []),
     ...(providerPhone ? [providerPhone] : []),
     contract.artistSignature ? `Firmado y aceptado el ${formatDateTime(contract.artistSignature.signedAt)}` : 'Pendiente de aceptación electrónica'

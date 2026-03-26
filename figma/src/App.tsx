@@ -39,7 +39,7 @@ import { toast } from 'sonner@2.0.3';
 
 type ViewMode = 'client' | 'business' | 'admin';
 type DashboardView = 'provider' | 'client';
-type ProviderDashboardSection = 'dashboard' | 'services' | 'contracts' | 'bookings' | 'billing';
+type ProviderDashboardSection = 'dashboard' | 'settings' | 'services' | 'contracts' | 'bookings' | 'billing';
 type ClientDashboardSection = 'bookings' | 'events';
 
 type NotificationEntity = {
@@ -161,6 +161,9 @@ export default function App() {
   const [clientDashboardSection, setClientDashboardSection] = useState<ClientDashboardSection | undefined>(undefined);
   const [clientFocusedContractId, setClientFocusedContractId] = useState<string | null>(null);
   const [favoriteServiceIds, setFavoriteServiceIds] = useState<string[]>([]);
+  const [isCheckingProviderProfile, setIsCheckingProviderProfile] = useState(false);
+  const [providerAccountCreated, setProviderAccountCreated] = useState(false);
+  const hasProviderPanelAccess = Boolean(currentUser?.providerId);
 
   // Load initial data from Supabase
   useEffect(() => {
@@ -192,11 +195,14 @@ export default function App() {
     });
 
     if (currentUser?.isProvider) {
+      setCurrentProvider(null);
+      setProviderAccountCreated(Boolean(currentUser.providerAccountCreated || currentUser.providerId));
       console.log('User is provider, loading provider data...');
       loadCurrentProvider(currentUser.id);
     } else {
       console.log('User is not provider, clearing provider data');
       setCurrentProvider(null);
+      setProviderAccountCreated(false);
     }
   }, [currentUser]);
 
@@ -460,11 +466,17 @@ export default function App() {
       const provider = await supabase.getProviderByUserId(userIdToUse);
       console.log('Provider loaded:', provider);
       setCurrentProvider(provider);
+      setProviderAccountCreated(Boolean(provider));
       return provider;
     } catch (error) {
       console.error('Error loading provider:', error);
+      setProviderAccountCreated(false);
       return null;
     }
+  };
+
+  const getProviderBusinessPath = () => {
+    return hasProviderPanelAccess ? '/mi-negocio' : '/mi-negocio/create';
   };
 
   const handleViewProfile = (artist: Artist) => {
@@ -548,10 +560,10 @@ export default function App() {
 
       // If user is a provider, load provider data and switch to business view
       if (supabase.currentUser?.isProvider) {
-        await loadCurrentProvider();
+        const provider = await loadCurrentProvider();
         setViewMode('business');
         setDashboardView('provider');
-        navigateTo('/mi-negocio');
+        navigateTo(provider ? '/mi-negocio' : '/mi-negocio/create');
       }
     } catch (error) {
       throw error;
@@ -573,6 +585,7 @@ export default function App() {
       setViewMode('client');
       setDashboardView('provider');
       setCurrentProvider(null);
+      setProviderAccountCreated(false);
     } catch (error) {
       console.error('Error logging out:', error);
       toast.error('Error al cerrar sesión');
@@ -581,31 +594,55 @@ export default function App() {
 
   const handleProviderCreate = async (provider: Provider) => {
     try {
-      // Update current user to mark as provider
-      if (currentUser) {
-        await supabase.updateUser(currentUser.id, {
-          isProvider: true,
-          name: provider.businessName // Update name to business name
-        });
-
-        // Load provider data (will be auto-created by backend if doesn't exist)
-        const createdProvider = await loadCurrentProvider(currentUser.id);
-
-        // Update the provider with the form data
-        if (createdProvider) {
-          const updatedProvider = await supabase.updateProvider(createdProvider.id, {
-            businessName: provider.businessName,
-            category: provider.category,
-            description: provider.description
-          });
-          setCurrentProvider(updatedProvider);
-        }
-
-        toast.success('¡Perfil de proveedor creado exitosamente!');
+      if (!currentUser) {
+        toast.error('Debes iniciar sesion para crear tu perfil de proveedor');
+        return;
       }
+
+      const createdProvider = await supabase.createProvider({
+        businessName: provider.businessName,
+        category: provider.category,
+        description: provider.description,
+        legalEntityType: (provider as any).legalEntityType || 'person',
+        identificationNumber: (provider as any).identificationNumber || '',
+      });
+
+      setCurrentProvider(createdProvider);
+      setProviderAccountCreated(true);
+      setProviders((prev) => {
+        const withoutCurrent = prev.filter((p) => p.userId !== createdProvider.userId);
+        return [createdProvider, ...withoutCurrent];
+      });
+
+      await supabase.updateUser(currentUser.id, {
+        providerId: createdProvider.id,
+      });
+
+      await loadCurrentProvider(currentUser.id);
+      toast.success('¡Perfil de proveedor creado exitosamente!');
     } catch (error) {
       console.error('Error creating provider:', error);
       toast.error('Error al crear perfil de proveedor');
+      throw error;
+    }
+  };
+
+  const handleProviderUpdate = async (provider: Provider) => {
+    try {
+      const updatedProvider = await supabase.updateProvider(provider.id, {
+        businessName: provider.businessName,
+        category: provider.category,
+        description: provider.description,
+        legalEntityType: (provider as any).legalEntityType || 'person',
+        identificationNumber: (provider as any).identificationNumber || '',
+      });
+
+      setCurrentProvider(updatedProvider);
+      setProviders((prev) => prev.map((item) => (item.id === updatedProvider.id ? updatedProvider : item)));
+    } catch (error) {
+      console.error('Error updating provider:', error);
+      toast.error('Error al actualizar información del negocio');
+      throw error;
     }
   };
 
@@ -1317,7 +1354,14 @@ export default function App() {
       setViewMode('business');
       setDashboardView('provider');
 
-      if (normalizedPath === '/mi-negocio/mis-servicios') {
+      if (normalizedPath === '/mi-negocio/create') {
+        setProviderDashboardSection('dashboard');
+      } else if (normalizedPath === '/mi-negocio/configuracion') {
+        setProviderDashboardSection('settings');
+      } else if (normalizedPath === '/mi-negocio/informacion') {
+        // Legacy alias support
+        setProviderDashboardSection('settings');
+      } else if (normalizedPath === '/mi-negocio/mis-servicios') {
         setProviderDashboardSection('services');
       } else if (normalizedPath === '/mi-negocio/reservas') {
         setProviderDashboardSection('bookings');
@@ -1336,6 +1380,87 @@ export default function App() {
       setClientDashboardSection('bookings');
     }
   }, [currentRoute]);
+
+  useEffect(() => {
+    const normalizedPath = (currentRoute.split('?')[0] || '/').replace(/\/+$/, '') || '/';
+
+    if (!normalizedPath.startsWith('/mi-negocio')) {
+      return;
+    }
+
+    if (!currentUser?.isProvider) {
+      return;
+    }
+
+    if (!hasProviderPanelAccess && normalizedPath !== '/mi-negocio/create') {
+      navigateTo('/mi-negocio/create');
+    }
+  }, [currentRoute, currentUser?.isProvider, hasProviderPanelAccess]);
+
+  useEffect(() => {
+    const normalizedPath = (currentRoute.split('?')[0] || '/').replace(/\/+$/, '') || '/';
+
+    if (!normalizedPath.startsWith('/mi-negocio')) {
+      setIsCheckingProviderProfile(false);
+      return;
+    }
+
+    if (!currentUser?.isProvider) {
+      setIsCheckingProviderProfile(false);
+      return;
+    }
+
+    if (normalizedPath === '/mi-negocio/create') {
+      setIsCheckingProviderProfile(false);
+      return;
+    }
+
+    // When the provider profile is already loaded, avoid revalidating it on each
+    // internal section change to prevent UI flicker between /mi-negocio routes.
+    if (currentProvider?.userId === currentUser.id) {
+      setIsCheckingProviderProfile(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const verifyProviderProfile = async () => {
+      try {
+        setIsCheckingProviderProfile(true);
+        const provider = await supabase.getProviderByUserId(currentUser.id);
+
+        if (cancelled) {
+          return;
+        }
+
+        setCurrentProvider(provider || null);
+        setProviderAccountCreated(Boolean(provider));
+
+        if (!provider && normalizedPath !== '/mi-negocio/create') {
+          navigateTo('/mi-negocio/create');
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setCurrentProvider(null);
+          setProviderAccountCreated(false);
+
+          if (normalizedPath !== '/mi-negocio/create') {
+            navigateTo('/mi-negocio/create');
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          setIsCheckingProviderProfile(false);
+        }
+      }
+    };
+
+    void verifyProviderProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentRoute, currentUser?.id, currentUser?.isProvider, currentProvider?.id, currentProvider?.userId]);
 
   const resolveServiceByRoute = (path: string) => {
     // Legacy route compatibility
@@ -1416,6 +1541,20 @@ export default function App() {
       .replace(/[\u0300-\u036f]/g, '');
   };
 
+  const resolveProviderSectionPath = (section: ProviderDashboardSection): string => {
+    if (!providerAccountCreated) return '/mi-negocio/create';
+    if (section === 'settings') return '/mi-negocio/configuracion';
+    if (section === 'services') return '/mi-negocio/mis-servicios';
+    if (section === 'bookings' || section === 'contracts') return '/mi-negocio/reservas';
+    if (section === 'billing') return '/mi-negocio/facturacion';
+    return '/mi-negocio';
+  };
+
+  const handleProviderSectionChange = (section: ProviderDashboardSection) => {
+    setProviderDashboardSection(section);
+    navigateTo(resolveProviderSectionPath(section));
+  };
+
   type NotificationDestination = {
     path: string;
     viewMode?: ViewMode;
@@ -1437,13 +1576,6 @@ export default function App() {
     if (hasExplicitCta) {
       return { path: ctaUrl };
     }
-
-    const resolveProviderSectionPath = (section: ProviderDashboardSection): string => {
-      if (section === 'services') return '/mi-negocio/mis-servicios';
-      if (section === 'bookings' || section === 'contracts') return '/mi-negocio/reservas';
-      if (section === 'billing') return '/mi-negocio/facturacion';
-      return '/mi-negocio';
-    };
 
     const openProviderDashboard = (section: ProviderDashboardSection, bookingId: string | null = null): NotificationDestination => ({
       path: resolveProviderSectionPath(section),
@@ -2525,7 +2657,7 @@ export default function App() {
                     onClick={() => {
                       setViewMode('business');
                       setDashboardView('provider');
-                      navigateTo('/mi-negocio');
+                      navigateTo(getProviderBusinessPath());
                     }}
                     className={viewMode === 'business' && dashboardView === 'provider' ? '' : 'text-white hover:text-white hover:bg-white/10'}
                   >
@@ -2671,7 +2803,7 @@ export default function App() {
                           <DropdownMenuItem onClick={() => {
                             setViewMode('business');
                             setDashboardView('provider');
-                            navigateTo('/mi-negocio');
+                            navigateTo(getProviderBusinessPath());
                           }}>
                             <Briefcase className="w-4 h-4 mr-2" />
                             Mi Negocio
@@ -2732,7 +2864,7 @@ export default function App() {
                     onClick={() => {
                       setViewMode('business');
                       setDashboardView('provider');
-                      navigateTo('/mi-negocio');
+                      navigateTo(getProviderBusinessPath());
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full ${viewMode === 'business' && dashboardView === 'provider' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
@@ -2874,9 +3006,14 @@ export default function App() {
           <>
             <SEOHead noindex={isPrivateSystemRoute} />
             {currentUser && currentUser.isProvider && dashboardView === 'provider' ? (
+              isCheckingProviderProfile && !currentProvider ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">Validando perfil de proveedor...</p>
+                </div>
+              ) : (
               <BusinessDashboard
                 user={currentUser}
-                provider={currentProvider}
+                provider={hasProviderPanelAccess ? currentProvider : null}
                 services={providerServices}
                 allArtists={artists}
                 contracts={contracts}
@@ -2907,9 +3044,12 @@ export default function App() {
                 onBookingCreate={handleBookingCreate}
                 onBookingUpdate={handleBookingUpdate}
                 onProviderCreate={handleProviderCreate}
+                onProviderUpdate={handleProviderUpdate}
+                onSectionChange={handleProviderSectionChange}
                 reviews={reviews}
                 accessToken={supabase.accessToken}
               />
+              )
             ) : (
               currentUser && (
                 <ClientDashboard

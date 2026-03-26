@@ -339,9 +339,11 @@ export function ClientDashboard({
     }
 
     downloadContractPdf(contract, 'client', {
-      providerName: contract.artistName,
+      providerName: (contract as any)?.metadata?.providerBusinessName || contract.artistName,
+      providerRepresentativeName: (contract as any)?.metadata?.providerRepresentativeName || contract.artistSignature?.signedBy || contract.artistName,
       providerEmail: contract.artistEmail,
       providerPhone: contract.artistWhatsapp,
+      clientName: user.name,
       serviceName: contract.artistName,
       eventName: booking.eventType,
     });

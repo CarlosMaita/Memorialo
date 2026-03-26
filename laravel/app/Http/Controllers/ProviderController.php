@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Provider;
+use App\Models\User;
 use App\Services\NotificationDispatchService;
 use App\Support\NotificationTypes;
 use Illuminate\Http\JsonResponse;
@@ -45,6 +46,10 @@ class ProviderController extends Controller
             'business_name' => ['nullable', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string'],
+            'legalEntityType' => ['nullable', 'in:person,company'],
+            'legal_entity_type' => ['nullable', 'in:person,company'],
+            'identificationNumber' => ['nullable', 'string', 'max:50'],
+            'identification_number' => ['nullable', 'string', 'max:50'],
         ]);
 
         $businessName = $validated['businessName'] ?? $validated['business_name'] ?? $authUser->name;
@@ -54,6 +59,8 @@ class ProviderController extends Controller
             'business_name' => $businessName,
             'category' => $validated['category'] ?? 'general',
             'description' => $validated['description'] ?? '',
+            'legal_entity_type' => $validated['legalEntityType'] ?? $validated['legal_entity_type'] ?? 'person',
+            'identification_number' => $validated['identificationNumber'] ?? $validated['identification_number'] ?? null,
             'verified' => false,
             'services' => [],
         ]);
@@ -82,6 +89,17 @@ class ProviderController extends Controller
         $provider = Provider::query()->where('user_id', $userId)->first();
 
         if ($provider) {
+            $user = User::find($userId);
+
+            if ($user && (int) ($user->provider_id ?? 0) !== (int) $provider->id) {
+                $user->forceFill([
+                    'provider_id' => $provider->id,
+                    'is_provider' => true,
+                    'provider_request_status' => 'approved',
+                    'role' => $user->role === 'admin' ? 'admin' : 'provider',
+                ])->save();
+            }
+
             return response()->json($this->formatProvider($provider));
         }
 
@@ -111,6 +129,10 @@ class ProviderController extends Controller
             'business_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'category' => ['sometimes', 'nullable', 'string', 'max:100'],
             'description' => ['sometimes', 'nullable', 'string'],
+            'legalEntityType' => ['sometimes', 'nullable', 'in:person,company'],
+            'legal_entity_type' => ['sometimes', 'nullable', 'in:person,company'],
+            'identificationNumber' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'identification_number' => ['sometimes', 'nullable', 'string', 'max:50'],
             'services' => ['sometimes', 'array'],
             'verified' => ['sometimes', 'boolean'],
             'rating' => ['sometimes', 'numeric', 'between:0,5'],
@@ -128,6 +150,16 @@ class ProviderController extends Controller
             unset($validated['totalBookings']);
         }
 
+        if (array_key_exists('legalEntityType', $validated)) {
+            $validated['legal_entity_type'] = $validated['legalEntityType'];
+            unset($validated['legalEntityType']);
+        }
+
+        if (array_key_exists('identificationNumber', $validated)) {
+            $validated['identification_number'] = $validated['identificationNumber'];
+            unset($validated['identificationNumber']);
+        }
+
         $provider->update($validated);
 
         return response()->json($this->formatProvider($provider->fresh()));
@@ -141,6 +173,8 @@ class ProviderController extends Controller
             'businessName' => $provider->business_name,
             'category' => $provider->category,
             'description' => $provider->description,
+            'legalEntityType' => $provider->legal_entity_type,
+            'identificationNumber' => $provider->identification_number,
             'verified' => (bool) $provider->verified,
             'verifiedAt' => optional($provider->verified_at)?->toISOString(),
             'verifiedBy' => $provider->verified_by,

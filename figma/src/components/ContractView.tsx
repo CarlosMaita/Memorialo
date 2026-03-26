@@ -31,6 +31,10 @@ interface ContractRecord {
   metadata?: {
     saleType?: 'time' | 'unit';
     unitLabel?: string;
+    clientLegalName?: string;
+    clientRepresentativeName?: string;
+    providerBusinessName?: string;
+    providerRepresentativeName?: string;
   };
   terms: {
     measureType?: 'time' | 'unit';
@@ -144,6 +148,12 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
 
   const bothPartiesSigned = Boolean(contract.clientSignature && contract.artistSignature);
   const { specialRequest, additionalTermsWithoutSpecialRequest } = extractSpecialRequest(contract);
+  const clientLegalName = contract.metadata?.clientLegalName || contract.clientName;
+  const providerBusinessName = contract.metadata?.providerBusinessName || contract.artistName;
+  const providerRepresentativeName =
+    contract.metadata?.providerRepresentativeName ||
+    contract.artistSignature?.signedBy ||
+    contract.artistName;
 
   const handleSign = () => {
     if (!agreedToTerms) {
@@ -155,7 +165,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
 
     setTimeout(() => {
       const signature: ContractSignature = {
-        signedBy: userType === 'client' ? contract.clientName : contract.artistName,
+        signedBy: userType === 'client' ? clientLegalName : providerRepresentativeName,
         signedAt: new Date().toISOString()
       };
 
@@ -283,7 +293,8 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                     <User className="w-4 h-4 text-gray-500" />
                     <p className="text-sm text-gray-600">Proveedor de Servicios</p>
                   </div>
-                  <p>{contract.artistName}</p>
+                  <p>{providerBusinessName}</p>
+                  <p className="text-xs text-gray-500">Representado por {providerRepresentativeName}</p>
                   {contract.artistSignature && (
                     <div className="flex items-center gap-1 mt-1 text-green-600 text-xs">
                       <CheckCircle className="w-3 h-3" />
@@ -309,7 +320,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                     <User className="w-4 h-4 text-gray-500" />
                     <p className="text-sm text-gray-600">Cliente</p>
                   </div>
-                  <p>{contract.clientName}</p>
+                  <p>{clientLegalName}</p>
                   {contract.clientSignature && (
                     <div className="flex items-center gap-1 mt-1 text-green-600 text-xs">
                       <CheckCircle className="w-3 h-3" />
@@ -318,17 +329,6 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                   )}
                   {userType === 'artist' && (
                     <div className="mt-2 space-y-1">
-                      {contract.clientWhatsapp && (
-                        <a
-                          href={`https://wa.me/${contract.clientWhatsapp.replace(/\D/g, '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-xs text-green-600 hover:text-green-700 hover:underline"
-                        >
-                          <MessageCircle className="w-3 h-3" />
-                          {contract.clientWhatsapp}
-                        </a>
-                      )}
                       {contract.clientEmail && (
                         <a
                           href={`mailto:${contract.clientEmail}`}

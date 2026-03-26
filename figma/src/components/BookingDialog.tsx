@@ -203,7 +203,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
       artistEmail: artist.email,
       artistWhatsapp: artist.whatsappNumber,
       clientId: user?.id,
-      clientName: formData.clientName,
+      clientName: user?.name || formData.clientName,
       clientEmail: formData.clientEmail,
       clientWhatsapp: user?.whatsappNumber || formData.clientPhone,
       eventId: isEventSelected ? selectedEventId : undefined,
@@ -226,6 +226,9 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
         unitLabel: selectedPlanMeasureLabel,
         planId: formData.planId || undefined,
         planName: selectedServicePlan?.name,
+        clientLegalName: user?.name || formData.clientName,
+        providerBusinessName: String((artist as any).providerBusinessName || artist.name),
+        providerRepresentativeName: String((artist as any).providerRepresentativeName || (artist as any).providerUserName || artist.name),
       },
       status: 'pending_client'
     };

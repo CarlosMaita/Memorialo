@@ -8,6 +8,7 @@ export interface User {
   avatar?: string;
   isProvider: boolean; // If true, user is a service provider
   providerId?: string; // If user is a provider, link to their provider profile
+  providerAccountCreated?: boolean; // True when provider profile exists in providers table
   providerRequestStatus?: 'none' | 'pending' | 'approved' | 'rejected';
   providerRequestedAt?: string;
   providerApprovedAt?: string;

@@ -33,6 +33,7 @@ import { toast } from 'sonner@2.0.3';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { AdminBillingSection } from './AdminBillingSection';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface AdminDashboardProps {
   currentUser: User;
@@ -87,6 +88,9 @@ export function AdminDashboard({
 }: AdminDashboardProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'verified' | 'unverified' | 'banned'>('all');
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userAccessFilter, setUserAccessFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'none'>('all');
+  const [userTypeFilter, setUserTypeFilter] = useState<'all' | 'admin' | 'provider' | 'client'>('all');
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [showBanDialog, setShowBanDialog] = useState(false);
   const [banReason, setBanReason] = useState('');
@@ -94,6 +98,46 @@ export function AdminDashboard({
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    confirmText: string;
+    variant: 'danger' | 'warning' | 'info';
+    onConfirm: (() => Promise<void> | void) | null;
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    confirmText: 'Confirmar',
+    variant: 'warning',
+    onConfirm: null,
+  });
+
+  const openConfirmModal = (options: {
+    title: string;
+    description: string;
+    confirmText: string;
+    variant: 'danger' | 'warning' | 'info';
+    onConfirm: () => Promise<void> | void;
+  }) => {
+    setConfirmModal({
+      open: true,
+      title: options.title,
+      description: options.description,
+      confirmText: options.confirmText,
+      variant: options.variant,
+      onConfirm: options.onConfirm,
+    });
+  };
+
+  const handleConfirmModalAction = async () => {
+    try {
+      await confirmModal.onConfirm?.();
+    } finally {
+      setConfirmModal((prev) => ({ ...prev, open: false, onConfirm: null }));
+    }
+  };
 
   // Check if current user is admin
   if (currentUser.role !== 'admin') {
@@ -169,6 +213,67 @@ export function AdminDashboard({
     return filtered;
   }, [providers, searchQuery, filterStatus]);
 
+  const pendingProviderRequestCount = useMemo(() => {
+    return users.filter((user) => !user.isProvider && user.providerRequestStatus === 'pending').length;
+  }, [users]);
+
+  const filteredUsers = useMemo(() => {
+    const query = userSearchQuery.trim().toLowerCase();
+    let filtered = [...users];
+
+    if (query) {
+      filtered = filtered.filter((user) => {
+        const typeLabel = user.role === 'admin' ? 'admin' : user.isProvider ? 'proveedor' : 'cliente';
+        const accessLabel = user.isProvider
+          ? 'aprobado'
+          : user.providerRequestStatus === 'pending'
+            ? 'pendiente'
+            : user.providerRequestStatus === 'rejected'
+              ? 'rechazado'
+              : 'sin solicitud';
+
+        return (
+          user.name.toLowerCase().includes(query) ||
+          user.email.toLowerCase().includes(query) ||
+          (user.phone || '').toLowerCase().includes(query) ||
+          (user.whatsappNumber || '').toLowerCase().includes(query) ||
+          typeLabel.includes(query) ||
+          accessLabel.includes(query)
+        );
+      });
+    }
+
+    if (userTypeFilter !== 'all') {
+      filtered = filtered.filter((user) => {
+        if (userTypeFilter === 'admin') return user.role === 'admin';
+        if (userTypeFilter === 'provider') return user.isProvider;
+        if (userTypeFilter === 'client') return !user.isProvider && user.role !== 'admin';
+        return true;
+      });
+    }
+
+    if (userAccessFilter !== 'all') {
+      filtered = filtered.filter((user) => {
+        if (userAccessFilter === 'approved') return user.isProvider;
+        if (userAccessFilter === 'pending') return !user.isProvider && user.providerRequestStatus === 'pending';
+        if (userAccessFilter === 'rejected') return !user.isProvider && user.providerRequestStatus === 'rejected';
+        if (userAccessFilter === 'none') return !user.isProvider && (!user.providerRequestStatus || user.providerRequestStatus === 'none');
+        return true;
+      });
+    }
+
+    // Priorizamos en la tabla a quienes tienen solicitud pendiente para revisión más rápida.
+    return filtered.sort((a, b) => {
+      const aPending = !a.isProvider && a.providerRequestStatus === 'pending' ? 1 : 0;
+      const bPending = !b.isProvider && b.providerRequestStatus === 'pending' ? 1 : 0;
+      if (aPending !== bPending) return bPending - aPending;
+
+      const aTime = new Date(a.createdAt).getTime() || 0;
+      const bTime = new Date(b.createdAt).getTime() || 0;
+      return bTime - aTime;
+    });
+  }, [users, userSearchQuery, userAccessFilter, userTypeFilter]);
+
   const handleVerifyProvider = async (providerId: string) => {
     try {
       await onVerifyProvider(providerId);
@@ -243,6 +348,8 @@ export function AdminDashboard({
   const getProviderUser = (provider: Provider) => {
     return users.find(u => u.id === provider.userId);
   };
+
+  const selectedBanUser = selectedUserId ? users.find((u) => u.id === selectedUserId) : null;
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -598,7 +705,17 @@ export function AdminDashboard({
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => handleUnbanProvider(provider.id)}
+                                    onClick={() =>
+                                      openConfirmModal({
+                                        title: 'Desbanear proveedor',
+                                        description: `¿Deseas desbanear a ${provider.businessName}? Recuperará el acceso a la plataforma.`,
+                                        confirmText: 'Desbanear',
+                                        variant: 'warning',
+                                        onConfirm: async () => {
+                                          await handleUnbanProvider(provider.id);
+                                        },
+                                      })
+                                    }
                                   >
                                     <CheckCircle className="h-4 w-4 mr-1" />
                                     Desbanear
@@ -609,7 +726,17 @@ export function AdminDashboard({
                                       <Button
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => handleVerifyProvider(provider.id)}
+                                        onClick={() =>
+                                          openConfirmModal({
+                                            title: 'Verificar proveedor',
+                                            description: `¿Confirmas que deseas verificar a ${provider.businessName}?`,
+                                            confirmText: 'Verificar',
+                                            variant: 'info',
+                                            onConfirm: async () => {
+                                              await handleVerifyProvider(provider.id);
+                                            },
+                                          })
+                                        }
                                         style={{ borderColor: '#D4AF37', color: '#D4AF37' }}
                                       >
                                         <ShieldCheck className="h-4 w-4 mr-1" />
@@ -659,6 +786,67 @@ export function AdminDashboard({
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="space-y-3 mb-4">
+                <div className="flex flex-col lg:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Buscar por nombre, email, teléfono, tipo o estado..."
+                      value={userSearchQuery}
+                      onChange={(e) => setUserSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  <Select value={userAccessFilter} onValueChange={(value: 'all' | 'pending' | 'approved' | 'rejected' | 'none') => setUserAccessFilter(value)}>
+                    <SelectTrigger className="w-full lg:w-[250px]">
+                      <SelectValue placeholder="Acceso proveedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Acceso proveedor: todos</SelectItem>
+                      <SelectItem value="pending">Solicitud pendiente</SelectItem>
+                      <SelectItem value="approved">Aprobado</SelectItem>
+                      <SelectItem value="rejected">Rechazado</SelectItem>
+                      <SelectItem value="none">Sin solicitud</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={userTypeFilter} onValueChange={(value: 'all' | 'admin' | 'provider' | 'client') => setUserTypeFilter(value)}>
+                    <SelectTrigger className="w-full lg:w-[210px]">
+                      <SelectValue placeholder="Tipo de usuario" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tipo: todos</SelectItem>
+                      <SelectItem value="client">Clientes</SelectItem>
+                      <SelectItem value="provider">Proveedores</SelectItem>
+                      <SelectItem value="admin">Administradores</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant={userAccessFilter === 'pending' ? 'default' : 'outline'}
+                    onClick={() => setUserAccessFilter('pending')}
+                    className={userAccessFilter === 'pending' ? 'bg-[#1B2A47] text-white' : ''}
+                  >
+                    Solicitudes pendientes ({pendingProviderRequestCount})
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setUserSearchQuery('');
+                      setUserAccessFilter('all');
+                      setUserTypeFilter('all');
+                    }}
+                  >
+                    Limpiar filtros
+                  </Button>
+                </div>
+              </div>
+
               <div className="border rounded-lg">
                 <Table>
                   <TableHeader>
@@ -674,14 +862,14 @@ export function AdminDashboard({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.length === 0 ? (
+                    {filteredUsers.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                          No hay usuarios registrados
+                          No se encontraron usuarios con los filtros aplicados
                         </TableCell>
                       </TableRow>
                     ) : (
-                      users.map((user) => (
+                      filteredUsers.map((user) => (
                         <TableRow key={user.id}>
                           <TableCell>{user.name}</TableCell>
                           <TableCell>{user.email}</TableCell>
@@ -739,14 +927,22 @@ export function AdminDashboard({
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={async () => {
-                                      try {
-                                        await onUnbanUser(user.id);
-                                        toast.success('Usuario desbaneado');
-                                      } catch (error) {
-                                        toast.error('Error al desbanear');
-                                      }
-                                    }}
+                                    onClick={() =>
+                                      openConfirmModal({
+                                        title: 'Desbanear usuario',
+                                        description: `¿Deseas desbanear a ${user.name}? Recuperará el acceso a la plataforma.`,
+                                        confirmText: 'Desbanear',
+                                        variant: 'warning',
+                                        onConfirm: async () => {
+                                          try {
+                                            await onUnbanUser(user.id);
+                                            toast.success('Usuario desbaneado');
+                                          } catch (error) {
+                                            toast.error('Error al desbanear');
+                                          }
+                                        },
+                                      })
+                                    }
                                   >
                                     <CheckCircle className="h-4 w-4 mr-1" />
                                     Desbanear
@@ -770,14 +966,22 @@ export function AdminDashboard({
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={async () => {
-                                      try {
-                                        await onUnarchiveUser(user.id);
-                                        toast.success('Usuario restaurado');
-                                      } catch (error) {
-                                        toast.error('Error al restaurar');
-                                      }
-                                    }}
+                                    onClick={() =>
+                                      openConfirmModal({
+                                        title: 'Restaurar usuario',
+                                        description: `¿Deseas restaurar a ${user.name}?`,
+                                        confirmText: 'Restaurar',
+                                        variant: 'info',
+                                        onConfirm: async () => {
+                                          try {
+                                            await onUnarchiveUser(user.id);
+                                            toast.success('Usuario restaurado');
+                                          } catch (error) {
+                                            toast.error('Error al restaurar');
+                                          }
+                                        },
+                                      })
+                                    }
                                   >
                                     Restaurar
                                   </Button>
@@ -785,16 +989,22 @@ export function AdminDashboard({
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={async () => {
-                                      if (confirm(`¿Archivar a ${user.name}? Sus servicios se ocultarán pero los datos se mantendrán.`)) {
-                                        try {
-                                          await onArchiveUser(user.id);
-                                          toast.success('Usuario archivado');
-                                        } catch (error) {
-                                          toast.error('Error al archivar');
-                                        }
-                                      }
-                                    }}
+                                    onClick={() =>
+                                      openConfirmModal({
+                                        title: 'Archivar usuario',
+                                        description: `¿Archivar a ${user.name}? Sus servicios se ocultarán pero los datos se mantendrán.`,
+                                        confirmText: 'Archivar',
+                                        variant: 'warning',
+                                        onConfirm: async () => {
+                                          try {
+                                            await onArchiveUser(user.id);
+                                            toast.success('Usuario archivado');
+                                          } catch (error) {
+                                            toast.error('Error al archivar');
+                                          }
+                                        },
+                                      })
+                                    }
                                   >
                                     Archivar
                                   </Button>
@@ -804,15 +1014,21 @@ export function AdminDashboard({
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={async () => {
-                                      if (confirm(`¿Cancelar acceso como proveedor para ${user.name}?`)) {
-                                        try {
-                                          await onRevokeProviderAccess(user.id);
-                                        } catch {
-                                          // handled in parent
-                                        }
-                                      }
-                                    }}
+                                    onClick={() =>
+                                      openConfirmModal({
+                                        title: 'Cancelar acceso de proveedor',
+                                        description: `¿Cancelar acceso como proveedor para ${user.name}?`,
+                                        confirmText: 'Cancelar acceso',
+                                        variant: 'warning',
+                                        onConfirm: async () => {
+                                          try {
+                                            await onRevokeProviderAccess(user.id);
+                                          } catch {
+                                            // handled in parent
+                                          }
+                                        },
+                                      })
+                                    }
                                   >
                                     Cancelar Acceso Proveedor
                                   </Button>
@@ -820,13 +1036,21 @@ export function AdminDashboard({
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={async () => {
-                                      try {
-                                        await onApproveProviderAccess(user.id);
-                                      } catch {
-                                        // handled in parent
-                                      }
-                                    }}
+                                    onClick={() =>
+                                      openConfirmModal({
+                                        title: 'Aprobar acceso de proveedor',
+                                        description: `¿Aprobar acceso de proveedor para ${user.name}?`,
+                                        confirmText: 'Aprobar acceso',
+                                        variant: 'info',
+                                        onConfirm: async () => {
+                                          try {
+                                            await onApproveProviderAccess(user.id);
+                                          } catch {
+                                            // handled in parent
+                                          }
+                                        },
+                                      })
+                                    }
                                     style={{ borderColor: '#D4AF37', color: '#D4AF37' }}
                                   >
                                     Aprobar Acceso Proveedor
@@ -836,16 +1060,22 @@ export function AdminDashboard({
                                 <Button
                                   size="sm"
                                   variant="destructive"
-                                  onClick={async () => {
-                                    if (confirm(`¿ELIMINAR PERMANENTEMENTE a ${user.name}? Esta acción NO se puede deshacer y borrará todos sus datos.`)) {
-                                      try {
-                                        await onDeleteUser(user.id);
-                                        toast.success('Usuario eliminado');
-                                      } catch (error) {
-                                        toast.error('Error al eliminar');
-                                      }
-                                    }
-                                  }}
+                                  onClick={() =>
+                                    openConfirmModal({
+                                      title: 'Eliminar usuario permanentemente',
+                                      description: `¿Eliminar permanentemente a ${user.name}? Esta acción NO se puede deshacer y borrará todos sus datos.`,
+                                      confirmText: 'Eliminar',
+                                      variant: 'danger',
+                                      onConfirm: async () => {
+                                        try {
+                                          await onDeleteUser(user.id);
+                                          toast.success('Usuario eliminado');
+                                        } catch (error) {
+                                          toast.error('Error al eliminar');
+                                        }
+                                      },
+                                    })
+                                  }
                                 >
                                   <XCircle className="h-4 w-4 mr-1" />
                                   Eliminar
@@ -959,9 +1189,11 @@ export function AdminDashboard({
       <Dialog open={showBanDialog} onOpenChange={setShowBanDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Banear Proveedor</DialogTitle>
+            <DialogTitle>{banType === 'provider' ? 'Banear Proveedor' : 'Banear Usuario'}</DialogTitle>
             <DialogDescription>
-              Estás a punto de banear a {selectedProvider?.businessName}. Esta acción ocultará todos sus servicios y no podrá acceder a la plataforma.
+              {banType === 'provider'
+                ? `Estás a punto de banear a ${selectedProvider?.businessName}. Esta acción ocultará todos sus servicios y no podrá acceder a la plataforma.`
+                : `Estás a punto de banear a ${selectedBanUser?.name || 'este usuario'}. No podrá acceder a la plataforma hasta que sea desbaneado.`}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -998,6 +1230,16 @@ export function AdminDashboard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmModal.open}
+        onOpenChange={(open) => setConfirmModal((prev) => ({ ...prev, open }))}
+        onConfirm={handleConfirmModalAction}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        confirmText={confirmModal.confirmText}
+        variant={confirmModal.variant}
+      />
     </div>
   );
 }

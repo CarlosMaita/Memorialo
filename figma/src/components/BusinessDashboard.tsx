@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Switch } from './ui/switch';
 import { Artist, Contract, User, Provider, Booking } from '../types';
 import { ServiceEditor } from './ServiceEditor';
 import { ContractView } from './ContractView';
@@ -59,7 +60,9 @@ interface BusinessDashboardProps {
   onContractUpdate: (contract: Contract) => void;
   onBookingCreate: (booking: Booking) => void;
   onBookingUpdate: (booking: Booking) => void;
-  onProviderCreate?: (provider: Provider) => void;
+  onProviderCreate?: (provider: Provider) => Promise<void> | void;
+  onProviderUpdate?: (provider: Provider) => Promise<void> | void;
+  onSectionChange?: (section: SidebarSection) => void;
   reviews?: any[];
   events?: any[];
   onCreateEvent?: (event: any) => void;
@@ -78,13 +81,16 @@ const categories = [
   'Detalles Y Logística'
 ];
 
-type SidebarSection = 'dashboard' | 'services' | 'contracts' | 'bookings' | 'billing';
+type SidebarSection = 'dashboard' | 'settings' | 'services' | 'contracts' | 'bookings' | 'billing';
+
+const DASHBOARD_COMMISSION_RATE = 0.08;
 
 const navItems: { id: SidebarSection; label: string; icon: React.ReactNode }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
   { id: 'services', label: 'Mis Servicios', icon: <Briefcase className="w-5 h-5" /> },
   { id: 'bookings', label: 'Reservas', icon: <Calendar className="w-5 h-5" /> },
   { id: 'billing', label: 'Facturación', icon: <Receipt className="w-5 h-5" /> },
+  { id: 'settings', label: 'Configuración', icon: <Edit className="w-5 h-5" /> },
 ];
 
 export function BusinessDashboard({ 
@@ -103,6 +109,8 @@ export function BusinessDashboard({
   onBookingCreate,
   onBookingUpdate,
   onProviderCreate,
+  onProviderUpdate,
+  onSectionChange,
   reviews = [],
   events = [],
   onCreateEvent,
@@ -127,6 +135,8 @@ export function BusinessDashboard({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isCreatingProvider, setIsCreatingProvider] = useState(false);
+  const [isUpdatingProvider, setIsUpdatingProvider] = useState(false);
   
   // Search states
   const [searchService, setSearchService] = useState('');
@@ -137,7 +147,16 @@ export function BusinessDashboard({
   const [providerForm, setProviderForm] = useState({
     businessName: '',
     category: '',
-    description: ''
+    description: '',
+    legalEntityType: 'person' as 'person' | 'company',
+    identificationNumber: ''
+  });
+  const [businessInfoForm, setBusinessInfoForm] = useState({
+    businessName: '',
+    category: '',
+    description: '',
+    legalEntityType: 'person' as 'person' | 'company',
+    identificationNumber: ''
   });
 
   // Booking form
@@ -177,7 +196,24 @@ export function BusinessDashboard({
     return includeTime ? 'Hora / Duración' : 'Duración';
   };
 
-  const handleProviderSetup = () => {
+  const formatEventTypeLabel = (value?: string | null) => {
+    if (!value) return 'Sin especificar';
+
+    const normalized = value.trim().toLowerCase();
+    const translations: Record<string, string> = {
+      private: 'Privado',
+      public: 'Público',
+      corporate: 'Corporativo',
+      wedding: 'Boda',
+      birthday: 'Cumpleaños',
+      concert: 'Concierto',
+      party: 'Fiesta',
+    };
+
+    return translations[normalized] || value;
+  };
+
+  const handleProviderSetup = async () => {
     if (!providerForm.businessName || !providerForm.category) {
       toast.error('Por favor completa todos los campos');
       return;
@@ -189,6 +225,8 @@ export function BusinessDashboard({
       businessName: providerForm.businessName,
       category: providerForm.category,
       description: providerForm.description,
+      legalEntityType: providerForm.legalEntityType,
+      identificationNumber: providerForm.identificationNumber,
       verified: false,
       createdAt: new Date().toISOString(),
       services: [],
@@ -196,11 +234,20 @@ export function BusinessDashboard({
       rating: 5
     };
 
-    if (onProviderCreate) {
-      onProviderCreate(newProvider);
+    if (!onProviderCreate) {
+      toast.error('No se pudo crear el perfil de proveedor');
+      return;
     }
-    setShowProviderSetup(false);
-    toast.success('¡Perfil de proveedor creado exitosamente!');
+
+    try {
+      setIsCreatingProvider(true);
+      await onProviderCreate(newProvider);
+      setShowProviderSetup(false);
+    } catch (error) {
+      console.error('Provider setup error:', error);
+    } finally {
+      setIsCreatingProvider(false);
+    }
   };
 
   // Build a Set of all service IDs owned by this provider for fast lookup
@@ -305,6 +352,20 @@ export function BusinessDashboard({
   }, [initialSection]);
 
   useEffect(() => {
+    setShowProviderSetup(!provider);
+  }, [provider]);
+
+  useEffect(() => {
+    setBusinessInfoForm({
+      businessName: provider?.businessName || '',
+      category: provider?.category || '',
+      description: provider?.description || '',
+      legalEntityType: (provider as any)?.legalEntityType === 'company' ? 'company' : 'person',
+      identificationNumber: String((provider as any)?.identificationNumber || '')
+    });
+  }, [provider]);
+
+  useEffect(() => {
     if (!focusBookingId) {
       return;
     }
@@ -343,9 +404,11 @@ export function BusinessDashboard({
   const handleDownloadContractPDF = (contract: Contract, eventName?: string) => {
     try {
       downloadContractPdf(contract, 'artist', {
-        providerName: user.name,
+        providerName: provider?.businessName || user.name,
+        providerRepresentativeName: user.name,
         providerEmail: contract.artistEmail || user.email,
         providerPhone: contract.artistWhatsapp || user.whatsappNumber || user.phone,
+        clientName: (contract as any)?.metadata?.clientLegalName || contract.clientName,
         serviceName: contract.artistName,
         eventName
       });
@@ -373,6 +436,46 @@ export function BusinessDashboard({
       duration: contract.terms.duration.toString()
     });
     setShowBookingDialog(true);
+  };
+
+  const handleSaveBusinessInfo = async () => {
+    if (!provider) {
+      toast.error('No se encontró el perfil del proveedor');
+      return;
+    }
+
+    if (!businessInfoForm.businessName.trim() || !businessInfoForm.category.trim()) {
+      toast.error('El nombre del negocio y la categoría son obligatorios');
+      return;
+    }
+
+    if (!businessInfoForm.identificationNumber.trim()) {
+      toast.error(businessInfoForm.legalEntityType === 'company' ? 'El RIF es obligatorio' : 'La cédula es obligatoria');
+      return;
+    }
+
+    if (!onProviderUpdate) {
+      toast.error('No se pudo actualizar la información del negocio');
+      return;
+    }
+
+    try {
+      setIsUpdatingProvider(true);
+      await onProviderUpdate({
+        ...provider,
+        businessName: businessInfoForm.businessName.trim(),
+        category: businessInfoForm.category,
+        description: businessInfoForm.description.trim(),
+        legalEntityType: businessInfoForm.legalEntityType,
+        identificationNumber: businessInfoForm.identificationNumber.trim()
+      });
+      toast.success('Información del negocio actualizada');
+    } catch (error) {
+      console.error('Business info update error:', error);
+      toast.error('No se pudo guardar la información del negocio');
+    } finally {
+      setIsUpdatingProvider(false);
+    }
   };
 
   const handleSaveBooking = () => {
@@ -551,6 +654,7 @@ export function BusinessDashboard({
   const handleNavClick = (section: SidebarSection) => {
     setActiveSection(section);
     setSidebarOpen(false);
+    onSectionChange?.(section);
   };
 
   // Provider Setup Screen
@@ -601,8 +705,8 @@ export function BusinessDashboard({
               />
             </div>
 
-            <Button onClick={handleProviderSetup} className="w-full">
-              Crear Perfil de Proveedor
+            <Button onClick={handleProviderSetup} className="w-full" disabled={isCreatingProvider}>
+              {isCreatingProvider ? 'Creando perfil...' : 'Crear Perfil de Proveedor'}
             </Button>
           </CardContent>
         </Card>
@@ -859,7 +963,7 @@ export function BusinessDashboard({
                         ))}
                         {providerContracts.length > 3 && (
                           <button
-                            onClick={() => setActiveSection('bookings')}
+                            onClick={() => handleNavClick('bookings')}
                             className="text-xs text-[#1B2A47] hover:text-[#D4AF37] font-medium mt-1 transition-colors"
                           >
                             Ver todas las reservas →
@@ -888,7 +992,7 @@ export function BusinessDashboard({
                       <>
                         {pendingContracts.length > 0 && (
                           <button
-                            onClick={() => setActiveSection('bookings')}
+                            onClick={() => handleNavClick('bookings')}
                             className="w-full flex items-center gap-2 p-2 bg-orange-50 border border-orange-200 rounded-lg text-left hover:bg-orange-100 transition-colors"
                           >
                             <AlertCircle className="w-4 h-4 text-orange-500 shrink-0" />
@@ -899,7 +1003,7 @@ export function BusinessDashboard({
                         )}
                         {pendingBookings > 0 && (
                           <button
-                            onClick={() => setActiveSection('bookings')}
+                            onClick={() => handleNavClick('bookings')}
                             className="w-full flex items-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg text-left hover:bg-yellow-100 transition-colors"
                           >
                             <Clock className="w-4 h-4 text-yellow-500 shrink-0" />
@@ -925,13 +1029,14 @@ export function BusinessDashboard({
                     {(() => {
                       const now = new Date();
                       const monthName = now.toLocaleDateString('es-ES', { month: 'long' });
+                      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
                       const completedThisMonth = providerContracts.filter(c => {
                         if (c.status !== 'completed') return false;
-                        const cDate = new Date(c.terms.startDate);
-                        return cDate.getMonth() === now.getMonth() && cDate.getFullYear() === now.getFullYear();
+                        const completedAt = ((c as any).completedAt || c.createdAt || '').toString();
+                        return completedAt.startsWith(currentMonth);
                       });
                       const monthRevenue = completedThisMonth.reduce((s, c) => s + c.terms.price, 0);
-                      const commission = Math.round(monthRevenue * 0.10);
+                      const commission = Math.round(monthRevenue * DASHBOARD_COMMISSION_RATE);
                       return (
                         <>
                           <div className="flex justify-between items-center text-sm">
@@ -947,7 +1052,7 @@ export function BusinessDashboard({
                             </span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-xs text-gray-500">Comisión (10%)</span>
+                            <span className="text-xs text-gray-500">Comisión ({Math.round(DASHBOARD_COMMISSION_RATE * 100)}%)</span>
                             <span className="text-sm font-medium text-orange-600">
                               -${commission.toLocaleString()}
                             </span>
@@ -959,7 +1064,7 @@ export function BusinessDashboard({
                             </span>
                           </div>
                           <button
-                            onClick={() => setActiveSection('billing')}
+                            onClick={() => handleNavClick('billing')}
                             className="text-xs text-[#1B2A47] hover:text-[#D4AF37] font-medium transition-colors"
                           >
                             Ver detalle de facturación →
@@ -970,6 +1075,102 @@ export function BusinessDashboard({
                   </CardContent>
                 </Card>
               </div>
+            </div>
+          )}
+
+          {activeSection === 'settings' && (
+            <div className="space-y-6 max-w-3xl">
+              <div>
+                <h1 className="text-2xl font-bold text-[#1B2A47] mb-1">Configuración</h1>
+                <p className="text-gray-500 text-sm">Edita los datos principales que verán tus clientes.</p>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Datos del Negocio</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Nombre del negocio *</Label>
+                    <Input
+                      value={businessInfoForm.businessName}
+                      onChange={(e) => setBusinessInfoForm((prev) => ({ ...prev, businessName: e.target.value }))}
+                      placeholder="Ej: Pastelería Valencia"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Categoría principal *</Label>
+                    <Select
+                      value={businessInfoForm.category}
+                      onValueChange={(value) => setBusinessInfoForm((prev) => ({ ...prev, category: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona una categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Descripción</Label>
+                    <textarea
+                      className="w-full p-2 border rounded-lg resize-none min-h-[120px]"
+                      value={businessInfoForm.description}
+                      onChange={(e) => setBusinessInfoForm((prev) => ({ ...prev, description: e.target.value }))}
+                      placeholder="Describe tu negocio, estilo de servicio y experiencia..."
+                    />
+                  </div>
+
+                  <div className="rounded-xl border border-gray-200 p-4 space-y-4 bg-gray-50/70">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <Label className="text-sm font-medium">Tipo de titular</Label>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Define si el titular del negocio es una persona natural o una empresa.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-sm ${businessInfoForm.legalEntityType === 'person' ? 'text-[#1B2A47] font-medium' : 'text-gray-500'}`}>
+                          Persona
+                        </span>
+                        <Switch
+                          checked={businessInfoForm.legalEntityType === 'company'}
+                          onCheckedChange={(checked) => setBusinessInfoForm((prev) => ({
+                            ...prev,
+                            legalEntityType: checked ? 'company' : 'person',
+                            identificationNumber: ''
+                          }))}
+                        />
+                        <span className={`text-sm ${businessInfoForm.legalEntityType === 'company' ? 'text-[#1B2A47] font-medium' : 'text-gray-500'}`}>
+                          Empresa
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>{businessInfoForm.legalEntityType === 'company' ? 'RIF *' : 'Cédula *'}</Label>
+                      <Input
+                        value={businessInfoForm.identificationNumber}
+                        onChange={(e) => setBusinessInfoForm((prev) => ({ ...prev, identificationNumber: e.target.value }))}
+                        placeholder={businessInfoForm.legalEntityType === 'company' ? 'Ej: J-12345678-9' : 'Ej: V-12345678'}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button onClick={handleSaveBusinessInfo} disabled={isUpdatingProvider}>
+                      {isUpdatingProvider ? 'Guardando...' : 'Guardar cambios'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
@@ -1187,10 +1388,10 @@ export function BusinessDashboard({
 
                           {isExpanded && (
                             <div className="mt-3 pt-3 border-t space-y-3">
-                              <p className="text-sm text-gray-600">{contract.terms.serviceDescription.split('\n')[0]}</p>
+                              <p className="text-sm text-gray-600">{formatEventTypeLabel(contract.terms.serviceDescription.split('\n')[0])}</p>
                               <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div><p className="text-gray-400">Fecha</p><p className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(contract.terms.date).toLocaleDateString('es-ES')}</p></div>
-                                <div><p className="text-gray-400">{getMeasureTitle(contract, true)}</p><p className="flex items-center gap-1"><Clock className="w-3 h-3" />{contract.terms.startTime || 'N/A'} · {getMeasureLabel(contract, contract.terms.duration)}</p></div>
+                                <div><p className="text-gray-400">{getMeasureTitle(contract, true)}</p><p className="flex items-center gap-1"><Clock className="w-3 h-3" />{contract.terms.startTime || 'No disponible'} · {getMeasureLabel(contract, contract.terms.duration)}</p></div>
                                 <div><p className="text-gray-400">Precio</p><p className="text-green-600">${contract.terms.price}</p></div>
                                 <div><p className="text-gray-400">Ubicación</p><p className="truncate">{contract.terms.location}</p></div>
                               </div>
@@ -1292,7 +1493,7 @@ export function BusinessDashboard({
                               </div>
                               <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                                 <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(booking.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
-                                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{booking.startTime || 'N/A'}</span>
+                                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{booking.startTime || 'No disponible'}</span>
                                 <span className="text-green-600 font-medium">${booking.totalPrice}</span>
                               </div>
                             </div>
@@ -1348,10 +1549,10 @@ export function BusinessDashboard({
 
                           {isExpanded && (
                             <div className="mt-3 pt-3 border-t space-y-3">
-                              <p className="text-sm text-gray-600">{booking.eventType}</p>
+                              <p className="text-sm text-gray-600">{formatEventTypeLabel(booking.eventType)}</p>
                               <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div><p className="text-gray-400">Fecha</p><p className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(booking.date).toLocaleDateString('es-ES')}</p></div>
-                                <div><p className="text-gray-400">Hora</p><p className="flex items-center gap-1"><Clock className="w-3 h-3" />{booking.startTime || 'N/A'}</p></div>
+                                <div><p className="text-gray-400">Hora</p><p className="flex items-center gap-1"><Clock className="w-3 h-3" />{booking.startTime || 'No disponible'}</p></div>
                                 <div><p className="text-gray-400">{getMeasureTitle(booking, false)}</p><p>{getMeasureLabel(booking, booking.duration)}</p></div>
                                 <div><p className="text-gray-400">Ubicación</p><p className="truncate">{booking.location}</p></div>
                                 <div><p className="text-gray-400">Precio</p><p className="text-green-600">${booking.totalPrice}</p></div>
@@ -1456,7 +1657,7 @@ export function BusinessDashboard({
             {creatingBookingContract && (
               <div className="bg-blue-50 p-3 rounded-lg text-sm">
                 <p><strong>Cliente:</strong> {creatingBookingContract.clientName}</p>
-                <p><strong>Servicio:</strong> {creatingBookingContract.terms.serviceDescription.split('\n')[0]}</p>
+                <p><strong>Servicio:</strong> {formatEventTypeLabel(creatingBookingContract.terms.serviceDescription.split('\n')[0])}</p>
                 <p><strong>Precio:</strong> ${creatingBookingContract.terms.price}</p>
               </div>
             )}
@@ -1491,7 +1692,7 @@ export function BusinessDashboard({
             {editingBooking && (
               <div className="bg-blue-50 p-3 rounded-lg text-sm">
                 <p><strong>Cliente:</strong> {editingBooking.clientName}</p>
-                <p><strong>Servicio:</strong> {editingBooking.eventType}</p>
+                <p><strong>Servicio:</strong> {formatEventTypeLabel(editingBooking.eventType)}</p>
                 <Badge className={getStatusBadge(editingBooking.status)}>{getStatusText(editingBooking.status)}</Badge>
               </div>
             )}

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Provider;
 use App\Models\Service;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,28 @@ class ServiceController extends Controller
 
         if (! $authUser) {
             return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if (! $authUser->is_provider || $authUser->provider_request_status !== 'approved') {
+            return response()->json([
+                'error' => 'Provider access not approved',
+                'message' => 'Debes tener acceso de proveedor aprobado para publicar servicios.',
+            ], 403);
+        }
+
+        $provider = Provider::query()->where('user_id', $authUser->id)->first();
+
+        if (! $provider) {
+            return response()->json([
+                'error' => 'Provider profile required',
+                'message' => 'Debes completar tu cuenta de proveedor antes de publicar servicios.',
+            ], 403);
+        }
+
+        if ((int) ($authUser->provider_id ?? 0) !== (int) $provider->id) {
+            $authUser->forceFill([
+                'provider_id' => $provider->id,
+            ])->save();
         }
 
         $validated = $request->validate([
@@ -95,7 +118,7 @@ class ServiceController extends Controller
 
         $service = Service::create([
             'user_id' => $authUser->id,
-            'provider_id' => $validated['provider_id'] ?? $authUser->provider_id,
+            'provider_id' => $provider->id,
             'title' => $title,
             'description' => $validated['description'] ?? $validated['bio'] ?? null,
             'category' => $validated['category'] ?? null,

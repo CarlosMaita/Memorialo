@@ -215,6 +215,7 @@ app.get(`${P}/providers/user/:userId`, async (c) => {
     const np = {
       id: user.providerId || `provider-${Date.now()}`, userId: user.id,
       businessName: user.name || 'Mi Negocio', category: 'general', description: '',
+      legalEntityType: 'person', identificationNumber: '',
       verified: false, createdAt: new Date().toISOString(), services: [], totalBookings: 0, rating: 5
     };
     await kv.set(`provider:${np.id}`, np);
