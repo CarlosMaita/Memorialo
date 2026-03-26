@@ -15,6 +15,7 @@ const SITE_NAME = 'Memorialo';
 const DEFAULT_DESCRIPTION =
   'Memorialo es el marketplace para conectar proveedores de eventos con clientes en Venezuela. Encuentra los mejores servicios para bodas, fiestas, eventos corporativos y celebraciones.';
 const DEFAULT_OG_IMAGE = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&h=630&fit=crop';
+const forceNoindexByEnv = String((import.meta as any).env?.VITE_NOINDEXE ?? (import.meta as any).env?.VITE_NOINDEX ?? 'false').toLowerCase() === 'true';
 
 /**
  * SEOHead: Manages dynamic <head> meta tags for SEO.
@@ -31,6 +32,7 @@ export function SEOHead({
   structuredData,
   keywords,
 }: SEOHeadProps) {
+  const effectiveNoindex = noindex || forceNoindexByEnv;
   const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} - Marketplace de Servicios para Eventos`;
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const canonicalUrl = canonical ? `${origin}${canonical}` : `${origin}${window.location.pathname}`;
@@ -55,7 +57,7 @@ export function SEOHead({
     if (keywords) {
       setMeta('name', 'keywords', keywords);
     }
-    setMeta('name', 'robots', noindex ? 'noindex, nofollow' : 'index, follow');
+    setMeta('name', 'robots', effectiveNoindex ? 'noindex, nofollow' : 'index, follow');
 
     // --- Canonical ---
     let canonicalEl = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
@@ -138,7 +140,7 @@ export function SEOHead({
     return () => {
       document.querySelectorAll('script[data-seo-jsonld]').forEach((el) => el.remove());
     };
-  }, [fullTitle, description, canonicalUrl, ogImage, ogType, noindex, keywords, structuredData]);
+  }, [fullTitle, description, canonicalUrl, ogImage, ogType, effectiveNoindex, keywords, structuredData]);
 
   return null; // This component only manages <head>
 }
