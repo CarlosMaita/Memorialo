@@ -16,11 +16,21 @@ Tambien puedes ajustar volumen con variables de entorno al vuelo:
 $env:LOAD_TEST_SEED='1'; $env:LOAD_TEST_PROVIDERS='200'; $env:LOAD_TEST_CLIENTS='500'; $env:LOAD_TEST_SERVICES_PER_PROVIDER='25'; $env:LOAD_TEST_BOOKINGS='6000'; php artisan db:seed
 ```
 
-Credenciales por defecto creadas por el seeder:
+Usuarios para pruebas de carga (creados por el seeder):
 
 - Admin: `load.admin@memorialo.test` / `LoadTest123!`
 - Provider: `load.provider.001@memorialo.test` / `LoadTest123!`
 - Client: `load.client.001@memorialo.test` / `LoadTest123!`
+
+Patrones de usuarios generados automaticamente (misma clave: `LoadTest123!`):
+
+- Providers: `load.provider.001@memorialo.test` hasta `load.provider.NNN@memorialo.test`
+- Clients: `load.client.001@memorialo.test` hasta `load.client.NNN@memorialo.test`
+
+`NNN` depende del volumen configurado en:
+
+- `LOAD_TEST_PROVIDERS`
+- `LOAD_TEST_CLIENTS`
 
 ## 2) Levantar la API
 

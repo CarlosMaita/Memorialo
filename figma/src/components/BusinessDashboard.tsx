@@ -142,6 +142,8 @@ export function BusinessDashboard({
   const [searchService, setSearchService] = useState('');
   const [searchContract, setSearchContract] = useState('');
   const [searchBooking, setSearchBooking] = useState('');
+  const BOOKINGS_BATCH_SIZE = 16;
+  const [visibleBookingsCount, setVisibleBookingsCount] = useState(BOOKINGS_BATCH_SIZE);
 
   // Setup Provider Profile
   const [providerForm, setProviderForm] = useState({
@@ -345,6 +347,8 @@ export function BusinessDashboard({
     booking.clientName.toLowerCase().includes(searchBooking.toLowerCase())
   );
 
+  const visibleFilteredBookings = filteredBookings.slice(0, visibleBookingsCount);
+
   useEffect(() => {
     if (initialSection) {
       setActiveSection(initialSection === 'contracts' ? 'bookings' : initialSection);
@@ -373,6 +377,21 @@ export function BusinessDashboard({
     setActiveSection('bookings');
     setExpandedBookingId(focusBookingId);
   }, [focusBookingId]);
+
+  useEffect(() => {
+    setVisibleBookingsCount(BOOKINGS_BATCH_SIZE);
+  }, [activeSection, searchBooking, providerBookings.length]);
+
+  useEffect(() => {
+    if (!focusBookingId) {
+      return;
+    }
+
+    const bookingIndex = filteredBookings.findIndex((booking) => booking.id === focusBookingId);
+    if (bookingIndex >= 0) {
+      setVisibleBookingsCount((prev) => Math.max(prev, bookingIndex + 1));
+    }
+  }, [focusBookingId, filteredBookings]);
 
   const handleEditService = (service: Artist) => {
     setEditingService(service);
@@ -1458,7 +1477,7 @@ export function BusinessDashboard({
                 </Card>
               ) : (
                 <div className="space-y-2">
-                  {filteredBookings.map((booking) => {
+                  {visibleFilteredBookings.map((booking) => {
                     const isPendingProviderSignature = hasContractPendingProvider(booking);
                     const displayStatus = isPendingProviderSignature ? 'pending' : booking.status;
                     const isExpanded = expandedBookingId === booking.id;
@@ -1575,6 +1594,17 @@ export function BusinessDashboard({
                       </Card>
                     );
                   })}
+
+                  {visibleFilteredBookings.length < filteredBookings.length && (
+                    <div className="pt-2 flex justify-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => setVisibleBookingsCount((prev) => Math.min(prev + BOOKINGS_BATCH_SIZE, filteredBookings.length))}
+                      >
+                        Mas reservas ({visibleFilteredBookings.length}/{filteredBookings.length})
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

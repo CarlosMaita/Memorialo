@@ -101,6 +101,9 @@ type MarketplaceRouteContext = {
 };
 
 export default function App() {
+  const HOME_INITIAL_ITEMS = 24;
+  const HOME_LOAD_STEP = 24;
+
   // Supabase hook
   const supabase = useSupabase();
 
@@ -163,6 +166,8 @@ export default function App() {
   const [favoriteServiceIds, setFavoriteServiceIds] = useState<string[]>([]);
   const [isCheckingProviderProfile, setIsCheckingProviderProfile] = useState(false);
   const [providerAccountCreated, setProviderAccountCreated] = useState(false);
+  const [homeVisibleCount, setHomeVisibleCount] = useState(HOME_INITIAL_ITEMS);
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const hasProviderPanelAccess = Boolean(currentUser?.providerId);
 
   // Load initial data from Supabase
@@ -2388,6 +2393,54 @@ export default function App() {
     return filteredArtists.filter((artist) => favoriteServiceIds.includes(artist.id));
   }, [filteredArtists, isFavoritesRoute, favoriteServiceIds]);
 
+  const displayedArtists = useMemo(() => {
+    return visibleArtists.slice(0, homeVisibleCount);
+  }, [visibleArtists, homeVisibleCount]);
+
+  useEffect(() => {
+    setHomeVisibleCount(HOME_INITIAL_ITEMS);
+  }, [
+    searchCriteria.query,
+    searchCriteria.city,
+    searchCriteria.category,
+    searchCriteria.subcategory,
+    searchCriteria.priceRange,
+    sortBy,
+    currentRoute,
+  ]);
+
+  useEffect(() => {
+    if (viewMode !== 'client' || selectedArtist || !loadMoreSentinelRef.current) {
+      return;
+    }
+
+    if (homeVisibleCount >= visibleArtists.length) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const firstEntry = entries[0];
+        if (!firstEntry?.isIntersecting) {
+          return;
+        }
+
+        setHomeVisibleCount((prev) => Math.min(prev + HOME_LOAD_STEP, visibleArtists.length));
+      },
+      {
+        root: null,
+        rootMargin: '0px 0px 320px 0px',
+        threshold: 0,
+      }
+    );
+
+    observer.observe(loadMoreSentinelRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [viewMode, selectedArtist, visibleArtists.length, homeVisibleCount]);
+
   // Show loading screen while checking authentication
   if (supabase.loading) {
     return (
@@ -3145,7 +3198,7 @@ export default function App() {
             {/* Results & Sort */}
             <div className="mb-3 md:mb-4 flex flex-col-reverse md:flex-row items-start md:items-center justify-between gap-2 md:gap-3">
               <p className="text-gray-600 text-xs md:text-base leading-tight">
-                {visibleArtists.length} proveedor{visibleArtists.length !== 1 ? 'es' : ''} encontrado{visibleArtists.length !== 1 ? 's' : ''}
+                Mostrando {displayedArtists.length} de {visibleArtists.length} servicio{visibleArtists.length !== 1 ? 's' : ''} encontrado{visibleArtists.length !== 1 ? 's' : ''}
               </p>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">Ordenar por:</span>
@@ -3170,15 +3223,22 @@ export default function App() {
 
             {/* Artist Grid */}
             {visibleArtists.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-2 md:gap-y-3">
-                {visibleArtists.map((artist) => (
-                  <ArtistCard
-                    key={artist.id}
-                    artist={artist}
-                    onViewProfile={handleViewProfile}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-2 md:gap-y-3">
+                  {displayedArtists.map((artist) => (
+                    <ArtistCard
+                      key={artist.id}
+                      artist={artist}
+                      onViewProfile={handleViewProfile}
+                    />
+                  ))}
+                </div>
+                {displayedArtists.length < visibleArtists.length && (
+                  <div ref={loadMoreSentinelRef} className="h-14 flex items-center justify-center text-sm text-gray-500">
+                    Cargando mas servicios...
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center py-12">
                 <p className="text-gray-500">

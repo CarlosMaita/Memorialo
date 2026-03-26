@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Provider, User, Artist, Contract, Booking, Review } from '../types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -86,11 +86,16 @@ export function AdminDashboard({
   onApproveProviderAccess,
   onRevokeProviderAccess
 }: AdminDashboardProps) {
+  const ADMIN_TABLE_BATCH_SIZE = 16;
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'verified' | 'unverified' | 'banned'>('all');
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [userAccessFilter, setUserAccessFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'none'>('all');
   const [userTypeFilter, setUserTypeFilter] = useState<'all' | 'admin' | 'provider' | 'client'>('all');
+  const [serviceSearchQuery, setServiceSearchQuery] = useState('');
+  const [visibleProvidersCount, setVisibleProvidersCount] = useState(ADMIN_TABLE_BATCH_SIZE);
+  const [visibleUsersCount, setVisibleUsersCount] = useState(ADMIN_TABLE_BATCH_SIZE);
+  const [visibleServicesCount, setVisibleServicesCount] = useState(ADMIN_TABLE_BATCH_SIZE);
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
   const [showBanDialog, setShowBanDialog] = useState(false);
   const [banReason, setBanReason] = useState('');
@@ -273,6 +278,53 @@ export function AdminDashboard({
       return bTime - aTime;
     });
   }, [users, userSearchQuery, userAccessFilter, userTypeFilter]);
+
+  const filteredServices = useMemo(() => {
+    const query = serviceSearchQuery.trim().toLowerCase();
+
+    if (!query) {
+      return artists;
+    }
+
+    return artists.filter((service) => {
+      const provider = providers.find((p) => p.userId === service.userId);
+
+      return (
+        service.name.toLowerCase().includes(query) ||
+        (service.category || '').toLowerCase().includes(query) ||
+        (service.subcategory || '').toLowerCase().includes(query) ||
+        (service.location || '').toLowerCase().includes(query) ||
+        (provider?.businessName || '').toLowerCase().includes(query)
+      );
+    });
+  }, [artists, providers, serviceSearchQuery]);
+
+  const visibleFilteredProviders = useMemo(
+    () => filteredProviders.slice(0, visibleProvidersCount),
+    [filteredProviders, visibleProvidersCount]
+  );
+
+  const visibleFilteredUsers = useMemo(
+    () => filteredUsers.slice(0, visibleUsersCount),
+    [filteredUsers, visibleUsersCount]
+  );
+
+  const visibleFilteredServices = useMemo(
+    () => filteredServices.slice(0, visibleServicesCount),
+    [filteredServices, visibleServicesCount]
+  );
+
+  useEffect(() => {
+    setVisibleProvidersCount(ADMIN_TABLE_BATCH_SIZE);
+  }, [searchQuery, filterStatus, filteredProviders.length]);
+
+  useEffect(() => {
+    setVisibleUsersCount(ADMIN_TABLE_BATCH_SIZE);
+  }, [userSearchQuery, userAccessFilter, userTypeFilter, filteredUsers.length]);
+
+  useEffect(() => {
+    setVisibleServicesCount(ADMIN_TABLE_BATCH_SIZE);
+  }, [serviceSearchQuery, filteredServices.length]);
 
   const handleVerifyProvider = async (providerId: string) => {
     try {
@@ -652,7 +704,7 @@ export function AdminDashboard({
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredProviders.map((provider) => {
+                      visibleFilteredProviders.map((provider) => {
                         const providerUser = getProviderUser(provider);
                         const services = getProviderServices(provider.id);
                         return (
@@ -762,6 +814,16 @@ export function AdminDashboard({
                   </TableBody>
                 </Table>
               </div>
+              {visibleFilteredProviders.length < filteredProviders.length && (
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => setVisibleProvidersCount((prev) => Math.min(prev + ADMIN_TABLE_BATCH_SIZE, filteredProviders.length))}
+                  >
+                    Cargar más proveedores ({visibleFilteredProviders.length}/{filteredProviders.length})
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
             </div>
@@ -869,7 +931,7 @@ export function AdminDashboard({
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredUsers.map((user) => (
+                      visibleFilteredUsers.map((user) => (
                         <TableRow key={user.id}>
                           <TableCell>{user.name}</TableCell>
                           <TableCell>{user.email}</TableCell>
@@ -1089,6 +1151,16 @@ export function AdminDashboard({
                   </TableBody>
                 </Table>
               </div>
+              {visibleFilteredUsers.length < filteredUsers.length && (
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => setVisibleUsersCount((prev) => Math.min(prev + ADMIN_TABLE_BATCH_SIZE, filteredUsers.length))}
+                  >
+                    Cargar más usuarios ({visibleFilteredUsers.length}/{filteredUsers.length})
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
             </div>
@@ -1109,6 +1181,15 @@ export function AdminDashboard({
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar por servicio, categoría, ubicación o proveedor..."
+                  value={serviceSearchQuery}
+                  onChange={(e) => setServiceSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
               <div className="border rounded-lg">
                 <Table>
                   <TableHeader>
@@ -1122,14 +1203,14 @@ export function AdminDashboard({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {artists.length === 0 ? (
+                    {filteredServices.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                          No hay servicios publicados
+                          No se encontraron servicios con el filtro aplicado
                         </TableCell>
                       </TableRow>
                     ) : (
-                      artists.map((service) => {
+                      visibleFilteredServices.map((service) => {
                         const provider = providers.find(p => p.userId === service.userId);
                         return (
                           <TableRow key={service.id}>
@@ -1178,6 +1259,16 @@ export function AdminDashboard({
                   </TableBody>
                 </Table>
               </div>
+              {visibleFilteredServices.length < filteredServices.length && (
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => setVisibleServicesCount((prev) => Math.min(prev + ADMIN_TABLE_BATCH_SIZE, filteredServices.length))}
+                  >
+                    Cargar más servicios ({visibleFilteredServices.length}/{filteredServices.length})
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
             </div>

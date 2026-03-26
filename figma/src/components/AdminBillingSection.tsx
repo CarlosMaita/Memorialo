@@ -108,6 +108,7 @@ function BillingStatusBadge({ status }: { status: BillingStatus }) {
 }
 
 export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
+  const PAYMENTS_BATCH_SIZE = 16;
   const [overview, setOverview] = useState<BillingOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState('all');
@@ -117,6 +118,8 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
   const [rejectingInvoice, setRejectingInvoice] = useState<BillingInvoice | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [visiblePaymentsCount, setVisiblePaymentsCount] = useState(PAYMENTS_BATCH_SIZE);
+  const [visibleInvoicesCount, setVisibleInvoicesCount] = useState(PAYMENTS_BATCH_SIZE);
 
   const fetchOverview = useCallback(async (month?: string) => {
     if (!accessToken) {
@@ -157,6 +160,16 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
 
   const queue = overview?.paymentQueue || [];
   const invoices = overview?.invoices || [];
+  const visibleQueue = queue.slice(0, visiblePaymentsCount);
+  const visibleInvoices = invoices.slice(0, visibleInvoicesCount);
+
+  useEffect(() => {
+    setVisiblePaymentsCount(PAYMENTS_BATCH_SIZE);
+  }, [queue.length, selectedMonth]);
+
+  useEffect(() => {
+    setVisibleInvoicesCount(PAYMENTS_BATCH_SIZE);
+  }, [invoices.length, selectedMonth]);
 
   const latestMonths = useMemo(() => ['all', ...(overview?.months || [])], [overview?.months]);
 
@@ -380,7 +393,7 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
                   <TableRow>
                     <TableCell colSpan={7} className="py-8 text-center text-gray-500">No hay pagos pendientes por revisar.</TableCell>
                   </TableRow>
-                ) : queue.map((invoice) => (
+                ) : visibleQueue.map((invoice) => (
                   <TableRow key={invoice.id}>
                     <TableCell>
                       <div className="font-medium text-[#1B2A47]">{invoice.providerName || invoice.providerUserName || 'Proveedor'}</div>
@@ -407,6 +420,16 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
               </TableBody>
             </Table>
           </div>
+          {visibleQueue.length < queue.length && (
+            <div className="mt-4 flex justify-center">
+              <Button
+                variant="outline"
+                onClick={() => setVisiblePaymentsCount((prev) => Math.min(prev + PAYMENTS_BATCH_SIZE, queue.length))}
+              >
+                Cargar más pagos ({visibleQueue.length}/{queue.length})
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -459,7 +482,7 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
                   <TableRow>
                     <TableCell colSpan={7} className="py-8 text-center text-gray-500">No hay facturas para el filtro seleccionado.</TableCell>
                   </TableRow>
-                ) : invoices.map((invoice) => (
+                ) : visibleInvoices.map((invoice) => (
                   <TableRow key={invoice.id}>
                     <TableCell>
                       <div className="font-medium text-[#1B2A47]">{invoice.providerName || invoice.providerUserName || 'Proveedor'}</div>
@@ -478,6 +501,16 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
               </TableBody>
             </Table>
           </div>
+          {visibleInvoices.length < invoices.length && (
+            <div className="mt-4 flex justify-center">
+              <Button
+                variant="outline"
+                onClick={() => setVisibleInvoicesCount((prev) => Math.min(prev + PAYMENTS_BATCH_SIZE, invoices.length))}
+              >
+                Cargar más facturas ({visibleInvoices.length}/{invoices.length})
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
