@@ -100,9 +100,37 @@ type MarketplaceRouteContext = {
   canonicalPath: string;
 };
 
+type HomeListingSnapshot = {
+  path: string;
+  searchCriteria: SearchCriteria;
+  sortBy: string;
+  homeVisibleCount: number;
+  scrollY: number;
+  anchorArtistId?: string;
+  anchorViewportOffset?: number;
+  updatedAt: number;
+};
+
+type AppNavigationState = {
+  fromMarketplace?: boolean;
+  homeListingSnapshot?: HomeListingSnapshot;
+};
+
+const searchCriteriaEquals = (left: SearchCriteria, right: SearchCriteria) => {
+  return (
+    left.query === right.query &&
+    left.city === right.city &&
+    left.category === right.category &&
+    left.subcategory === right.subcategory &&
+    left.priceRange[0] === right.priceRange[0] &&
+    left.priceRange[1] === right.priceRange[1]
+  );
+};
+
 export default function App() {
   const HOME_INITIAL_ITEMS = 24;
   const HOME_LOAD_STEP = 24;
+  const HOME_LISTING_SNAPSHOT_STORAGE_KEY = 'memorialo:home-listing-snapshot';
 
   // Supabase hook
   const supabase = useSupabase();
@@ -168,7 +196,135 @@ export default function App() {
   const [providerAccountCreated, setProviderAccountCreated] = useState(false);
   const [homeVisibleCount, setHomeVisibleCount] = useState(HOME_INITIAL_ITEMS);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+  const pendingHomeScrollRestoreRef = useRef<number | null>(null);
+  const pendingHomeScrollRestoreAttemptsRef = useRef(0);
+  const pendingHomeListingRestoreRef = useRef<HomeListingSnapshot | null>(null);
   const hasProviderPanelAccess = Boolean(currentUser?.providerId);
+
+  function persistHomeListingSnapshot(snapshot: HomeListingSnapshot) {
+    try {
+      window.sessionStorage.setItem(HOME_LISTING_SNAPSHOT_STORAGE_KEY, JSON.stringify(snapshot));
+    } catch {
+      // Ignore storage failures and keep navigation functional.
+    }
+  }
+
+  function loadHomeListingSnapshot(): HomeListingSnapshot | null {
+    try {
+      const rawValue = window.sessionStorage.getItem(HOME_LISTING_SNAPSHOT_STORAGE_KEY);
+      if (!rawValue) {
+        return null;
+      }
+
+      const parsedValue = JSON.parse(rawValue) as Partial<HomeListingSnapshot>;
+      if (!parsedValue || typeof parsedValue !== 'object') {
+        return null;
+      }
+
+      return {
+        path: typeof parsedValue.path === 'string' ? parsedValue.path : '/',
+        searchCriteria: {
+          query: parsedValue.searchCriteria?.query || '',
+          city: parsedValue.searchCriteria?.city || '',
+          category: parsedValue.searchCriteria?.category || '',
+          subcategory: parsedValue.searchCriteria?.subcategory || '',
+          priceRange: parsedValue.searchCriteria?.priceRange || [0, 5000],
+        },
+        sortBy: typeof parsedValue.sortBy === 'string' ? parsedValue.sortBy : 'rating',
+        homeVisibleCount: Math.max(HOME_INITIAL_ITEMS, Number(parsedValue.homeVisibleCount) || HOME_INITIAL_ITEMS),
+        scrollY: Math.max(0, Number(parsedValue.scrollY) || 0),
+        anchorArtistId: typeof parsedValue.anchorArtistId === 'string' ? parsedValue.anchorArtistId : undefined,
+        anchorViewportOffset: parsedValue.anchorViewportOffset === undefined
+          ? undefined
+          : Math.max(0, Number(parsedValue.anchorViewportOffset) || 0),
+        updatedAt: Number(parsedValue.updatedAt) || 0,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function buildHomeListingSnapshot(anchorArtistId?: string, anchorElement?: HTMLElement | null): HomeListingSnapshot {
+    return {
+      path: currentRoute,
+      searchCriteria: {
+        query: searchCriteria.query || '',
+        city: searchCriteria.city || '',
+        category: searchCriteria.category || '',
+        subcategory: searchCriteria.subcategory || '',
+        priceRange: searchCriteria.priceRange || [0, 5000],
+      },
+      sortBy,
+      homeVisibleCount,
+      scrollY: window.scrollY || 0,
+      anchorArtistId,
+      anchorViewportOffset: anchorElement ? Math.max(0, Math.round(anchorElement.getBoundingClientRect().top)) : undefined,
+      updatedAt: Date.now(),
+    };
+  }
+
+  function restoreHomeListingSnapshot(snapshot: HomeListingSnapshot) {
+    setSelectedArtist(null);
+    setViewMode('client');
+
+    setSearchCriteria((previous) => (
+      searchCriteriaEquals(previous, snapshot.searchCriteria)
+        ? previous
+        : snapshot.searchCriteria
+    ));
+
+    setSortBy((previous) => (previous === snapshot.sortBy ? previous : snapshot.sortBy));
+    setHomeVisibleCount((previous) => Math.max(previous, HOME_INITIAL_ITEMS, snapshot.homeVisibleCount));
+
+    pendingHomeListingRestoreRef.current = snapshot;
+    pendingHomeScrollRestoreRef.current = snapshot.scrollY;
+    pendingHomeScrollRestoreAttemptsRef.current = 0;
+
+    if (currentRoute !== snapshot.path) {
+      navigateTo(snapshot.path, { replace: true, scrollToTop: false });
+    }
+  }
+
+  function getHomeListingSnapshotFromHistoryState(state: unknown): HomeListingSnapshot | null {
+    const candidate = (state as AppNavigationState | null | undefined)?.homeListingSnapshot;
+
+    if (!candidate) {
+      return null;
+    }
+
+    return {
+      path: typeof candidate.path === 'string' ? candidate.path : '/',
+      searchCriteria: {
+        query: candidate.searchCriteria?.query || '',
+        city: candidate.searchCriteria?.city || '',
+        category: candidate.searchCriteria?.category || '',
+        subcategory: candidate.searchCriteria?.subcategory || '',
+        priceRange: candidate.searchCriteria?.priceRange || [0, 5000],
+      },
+      sortBy: typeof candidate.sortBy === 'string' ? candidate.sortBy : 'rating',
+      homeVisibleCount: Math.max(HOME_INITIAL_ITEMS, Number(candidate.homeVisibleCount) || HOME_INITIAL_ITEMS),
+      scrollY: Math.max(0, Number(candidate.scrollY) || 0),
+      anchorArtistId: typeof candidate.anchorArtistId === 'string' ? candidate.anchorArtistId : undefined,
+      anchorViewportOffset: candidate.anchorViewportOffset === undefined
+        ? undefined
+        : Math.max(0, Number(candidate.anchorViewportOffset) || 0),
+      updatedAt: Number(candidate.updatedAt) || 0,
+    };
+  }
+
+  function getLatestHomeListingSnapshot(...snapshots: Array<HomeListingSnapshot | null>): HomeListingSnapshot | null {
+    return snapshots.reduce<HomeListingSnapshot | null>((latest, snapshot) => {
+      if (!snapshot) {
+        return latest;
+      }
+
+      if (!latest || snapshot.updatedAt >= latest.updatedAt) {
+        return snapshot;
+      }
+
+      return latest;
+    }, null);
+  }
 
   // Load initial data from Supabase
   useEffect(() => {
@@ -313,6 +469,14 @@ export default function App() {
   useEffect(() => {
     const handlePopState = () => {
       setCurrentRoute(window.location.pathname);
+
+      const snapshot = getLatestHomeListingSnapshot(
+        getHomeListingSnapshotFromHistoryState(window.history.state),
+        loadHomeListingSnapshot()
+      );
+      if (snapshot && snapshot.path === window.location.pathname) {
+        restoreHomeListingSnapshot(snapshot);
+      }
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -484,9 +648,16 @@ export default function App() {
     return hasProviderPanelAccess ? '/mi-negocio' : '/mi-negocio/create';
   };
 
-  const handleViewProfile = (artist: Artist) => {
+  const handleViewProfile = (artist: Artist, anchorElement?: HTMLElement | null) => {
+    const snapshot = buildHomeListingSnapshot(artist.id, anchorElement);
+    persistHomeListingSnapshot(snapshot);
     setSelectedArtist(artist);
-    navigateTo(getServiceSeoPath(artist));
+    navigateTo(getServiceSeoPath(artist), {
+      state: {
+        fromMarketplace: true,
+        homeListingSnapshot: snapshot,
+      },
+    });
   };
 
   const handleBookNow = (artist: Artist, plan?: ServicePlan) => {
@@ -845,14 +1016,17 @@ export default function App() {
   };
 
   // Navigation function
-  const navigateTo = (path: string) => {
-    window.history.pushState({}, '', path);
+  const navigateTo = (path: string, options?: { replace?: boolean; scrollToTop?: boolean; state?: Record<string, unknown> }) => {
+    const method = options?.replace ? 'replaceState' : 'pushState';
+    window.history[method](options?.state || {}, '', path);
     setCurrentRoute(path);
     setShowAbout(false);
     setShowHowItWorks(false);
     setShowForProviders(false);
     setShowForClients(false);
-    window.scrollTo(0, 0);
+    if (options?.scrollToTop !== false) {
+      window.scrollTo(0, 0);
+    }
   };
 
   const slugify = (value?: string) => {
@@ -1353,6 +1527,82 @@ export default function App() {
   }, [marketplaceRouteContext, viewMode]);
 
   useEffect(() => {
+    const isListingRoute = currentRoute === '/' || currentRoute === '/favoritos' || Boolean(marketplaceRouteContext);
+
+    if (!isListingRoute || viewMode !== 'client' || selectedArtist) {
+      return;
+    }
+
+    const nextSnapshot = buildHomeListingSnapshot();
+    const currentState = (window.history.state || {}) as AppNavigationState;
+
+    window.history.replaceState(
+      {
+        ...currentState,
+        homeListingSnapshot: nextSnapshot,
+      },
+      '',
+      currentRoute
+    );
+
+    persistHomeListingSnapshot(nextSnapshot);
+  }, [
+    currentRoute,
+    marketplaceRouteContext,
+    viewMode,
+    selectedArtist,
+    searchCriteria.query,
+    searchCriteria.city,
+    searchCriteria.category,
+    searchCriteria.subcategory,
+    searchCriteria.priceRange,
+    sortBy,
+    homeVisibleCount,
+  ]);
+
+  useEffect(() => {
+    const isListingRoute = currentRoute === '/' || currentRoute === '/favoritos' || Boolean(marketplaceRouteContext);
+
+    if (!isListingRoute || viewMode !== 'client' || selectedArtist) {
+      return;
+    }
+
+    let ticking = false;
+
+    const persistScrollSnapshot = () => {
+      ticking = false;
+      const nextSnapshot = buildHomeListingSnapshot();
+      const currentState = (window.history.state || {}) as AppNavigationState;
+
+      window.history.replaceState(
+        {
+          ...currentState,
+          homeListingSnapshot: nextSnapshot,
+        },
+        '',
+        currentRoute
+      );
+
+      persistHomeListingSnapshot(nextSnapshot);
+    };
+
+    const handleScroll = () => {
+      if (ticking) {
+        return;
+      }
+
+      ticking = true;
+      window.requestAnimationFrame(persistScrollSnapshot);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [currentRoute, marketplaceRouteContext, viewMode, selectedArtist, searchCriteria, sortBy, homeVisibleCount]);
+
+  useEffect(() => {
     const normalizedPath = (currentRoute.split('?')[0] || '/').replace(/\/+$/, '') || '/';
 
     if (normalizedPath.startsWith('/mi-negocio')) {
@@ -1517,6 +1767,12 @@ export default function App() {
     // Last fallback for migrated links: keep title stable even if the code changed.
     return artists.find((artist) => serviceTitleSlug(artist) === titleSlug) || null;
   };
+
+  useEffect(() => {
+    if (!resolveServiceByRoute(currentRoute) && selectedArtist) {
+      setSelectedArtist(null);
+    }
+  }, [currentRoute, artists, selectedArtist]);
 
   const handleDeleteEvent = async (eventId: string) => {
     try {
@@ -2404,10 +2660,72 @@ export default function App() {
     searchCriteria.city,
     searchCriteria.category,
     searchCriteria.subcategory,
-    searchCriteria.priceRange,
+    searchCriteria.priceRange[0],
+    searchCriteria.priceRange[1],
     sortBy,
-    currentRoute,
+    isFavoritesRoute,
   ]);
+
+  useEffect(() => {
+    if (pendingHomeScrollRestoreRef.current === null) {
+      return;
+    }
+
+    if (viewMode !== 'client' || selectedArtist) {
+      return;
+    }
+
+    const nextScrollY = pendingHomeScrollRestoreRef.current;
+
+    let timeoutId: number | null = null;
+    let cancelled = false;
+
+    const restoreScroll = () => {
+      if (cancelled) {
+        return;
+      }
+
+      const restoreSnapshot = pendingHomeListingRestoreRef.current;
+      let targetScrollY = nextScrollY;
+
+      if (restoreSnapshot?.anchorArtistId) {
+        const anchorElement = document.querySelector<HTMLElement>(`[data-service-card-id="${restoreSnapshot.anchorArtistId}"]`);
+        if (anchorElement) {
+          const desiredViewportOffset = restoreSnapshot.anchorViewportOffset ?? 0;
+          targetScrollY = Math.max(0, window.scrollY + anchorElement.getBoundingClientRect().top - desiredViewportOffset);
+        }
+      }
+
+      window.scrollTo({ top: targetScrollY, behavior: 'auto' });
+      pendingHomeScrollRestoreAttemptsRef.current += 1;
+
+      const isCloseEnough = Math.abs(window.scrollY - targetScrollY) <= 4;
+      const reachedAttemptLimit = pendingHomeScrollRestoreAttemptsRef.current >= 8;
+
+      if (isCloseEnough || reachedAttemptLimit) {
+        pendingHomeScrollRestoreRef.current = null;
+        pendingHomeScrollRestoreAttemptsRef.current = 0;
+        pendingHomeListingRestoreRef.current = null;
+        return;
+      }
+
+      timeoutId = window.setTimeout(() => {
+        window.requestAnimationFrame(restoreScroll);
+      }, 120);
+    };
+
+    const frameId = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(restoreScroll);
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frameId);
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [viewMode, selectedArtist, currentRoute, homeVisibleCount, displayedArtists.length]);
 
   useEffect(() => {
     if (viewMode !== 'client' || selectedArtist || !loadMoreSentinelRef.current) {
@@ -2554,58 +2872,10 @@ export default function App() {
 
   // Service detail page route (SEO + legacy)
   const serviceArtist = resolveServiceByRoute(currentRoute);
-  if (serviceArtist) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Toaster />
-        <ServiceDetailPage
-          artist={serviceArtist}
-          reviews={reviews}
-          isAuthenticated={!!currentUser}
-          isFavorite={favoriteServiceIds.includes(serviceArtist.id)}
-          onToggleFavorite={() => handleToggleFavorite(serviceArtist)}
-          onBack={() => {
-            navigateTo('/');
-            setViewMode('client');
-          }}
-          onBookNow={handleBookNow}
-        />
-
-        <BookingDialog
-          artist={bookingArtist}
-          selectedPlan={selectedPlan}
-          open={showBooking}
-          onClose={() => {
-            setShowBooking(false);
-            setSelectedPlan(null);
-          }}
-          onContractCreated={handleContractCreated}
-          onBookingCreated={handleBookingCreate}
-          onBookingUpdate={handleBookingUpdate}
-          user={currentUser}
-          onLoginRequired={() => setShowAuthDialog(true)}
-          events={events}
-        />
-
-        <AuthDialog
-          open={showAuthDialog}
-          onClose={() => setShowAuthDialog(false)}
-          onLogin={(user, accessToken) => {
-            if (user.isProvider) {
-              setViewMode('provider');
-            }
-          }}
-          onSignUp={handleSignUp}
-          onSignIn={handleSignIn}
-          onSignInWithGoogle={handleSignInWithGoogle}
-        />
-      </div>
-    );
-  }
 
   // Redirect unknown SEO service routes to home
   const serviceLikeRoute = currentRoute.split('/').filter(Boolean);
-  if (artists.length > 0 && serviceLikeRoute.length === 2 && /^MEM-\d{7}-.+/i.test(serviceLikeRoute[1] || '')) {
+  if (!serviceArtist && artists.length > 0 && serviceLikeRoute.length === 2 && /^MEM-\d{7}-.+/i.test(serviceLikeRoute[1] || '')) {
     navigateTo('/');
   }
 
@@ -3175,12 +3445,14 @@ export default function App() {
         ) : viewMode === 'client' ? (
           <>
             {/* SEO for marketplace home */}
-            <SEOHead
-              canonical={marketplaceCanonical}
-              keywords={marketplaceKeywords}
-              noindex={visibleArtists.length === 0}
-              structuredData={buildMarketplaceStructuredData(visibleArtists)}
-            />
+            {!serviceArtist && (
+              <SEOHead
+                canonical={marketplaceCanonical}
+                keywords={marketplaceKeywords}
+                noindex={visibleArtists.length === 0}
+                structuredData={buildMarketplaceStructuredData(visibleArtists)}
+              />
+            )}
             {/* Search & Filters */}
             <div className="mb-5 md:mb-8">
               <div className="mb-4 text-center hidden md:block">
@@ -3489,6 +3761,39 @@ export default function App() {
             }
           }}
         />
+      )}
+
+      {serviceArtist && (
+        <div className="fixed inset-0 z-[90] overflow-y-auto bg-background">
+          <ServiceDetailPage
+            artist={serviceArtist}
+            reviews={reviews}
+            isAuthenticated={!!currentUser}
+            isFavorite={favoriteServiceIds.includes(serviceArtist.id)}
+            onToggleFavorite={() => handleToggleFavorite(serviceArtist)}
+            onBack={() => {
+              const historyState = (window.history.state || {}) as AppNavigationState;
+              if (historyState.fromMarketplace) {
+                window.history.back();
+                return;
+              }
+
+              const snapshot = getLatestHomeListingSnapshot(
+                getHomeListingSnapshotFromHistoryState(historyState),
+                loadHomeListingSnapshot()
+              );
+              if (snapshot) {
+                restoreHomeListingSnapshot(snapshot);
+                return;
+              }
+
+              setSelectedArtist(null);
+              navigateTo('/');
+              setViewMode('client');
+            }}
+            onBookNow={handleBookNow}
+          />
+        </div>
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react';
 import { CheckCircle2, Clock3, MapPin, Star, Tag, Wallet } from 'lucide-react';
 import { Artist } from '../types';
 import { Card, CardContent } from './ui/card';
@@ -5,7 +6,7 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 
 interface ArtistCardProps {
   artist: Artist;
-  onViewProfile: (artist: Artist) => void;
+  onViewProfile: (artist: Artist, anchorElement?: HTMLElement | null) => void;
 }
 
 export function ArtistCard({ artist, onViewProfile }: ArtistCardProps) {
@@ -17,10 +18,17 @@ export function ArtistCard({ artist, onViewProfile }: ArtistCardProps) {
   const city = artist.location || (artist as any).city || 'Sin ciudad';
   const completedServices = (artist as any).bookingsCompleted || (artist as any).servicesCompleted || 0;
   const responseTime = artist.responseTime || 'No disponible';
+  const handleOpenDetail = (event: MouseEvent<HTMLElement>) => {
+    onViewProfile(artist, event.currentTarget as HTMLElement);
+  };
 
   return (
-    <Card className="relative overflow-hidden cursor-pointer group rounded-3xl border border-transparent bg-transparent p-1.5 md:p-2 shadow-none transition-all duration-300 hover:-translate-y-1 hover:border-white/35 hover:bg-slate-950/10" onClick={() => onViewProfile(artist)}>
-      <div className="relative aspect-[2.15/1] md:aspect-video overflow-hidden rounded-2xl" onClick={() => onViewProfile(artist)}>
+    <Card
+      data-service-card-id={artist.id}
+      className="relative overflow-hidden cursor-pointer group rounded-3xl border border-transparent bg-transparent p-1.5 md:p-2 shadow-none transition-all duration-300 hover:-translate-y-1 hover:border-white/35 hover:bg-slate-950/10"
+      onClick={handleOpenDetail}
+    >
+      <div className="relative aspect-[2.15/1] md:aspect-video overflow-hidden rounded-2xl">
         <ImageWithFallback 
           src={artist.image} 
           alt={artist.name}
@@ -62,7 +70,7 @@ export function ArtistCard({ artist, onViewProfile }: ArtistCardProps) {
       </div>
       
       <CardContent className="px-2 pt-0.5 pb-0 transition-colors duration-300 group-hover:text-[#0A1F44]">
-        <div className="min-h-0 md:min-h-[2.25rem] mb-0" onClick={() => onViewProfile(artist)}>
+        <div className="min-h-0 md:min-h-[2.25rem] mb-0">
           <h3 className="line-clamp-2 leading-snug font-medium">{artist.name}</h3>
         </div>
       </CardContent>

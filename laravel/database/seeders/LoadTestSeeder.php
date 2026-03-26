@@ -154,15 +154,67 @@ class LoadTestSeeder extends Seeder
             ['Miércoles', 'Viernes', 'Domingo'],
         ];
         $responseTimes = ['< 1 hora', '< 2 horas', 'Mismo dia', '24 horas'];
-        $fakeServiceImages = [
-            'https://picsum.photos/seed/load-service-1/1200/800',
-            'https://picsum.photos/seed/load-service-2/1200/800',
-            'https://picsum.photos/seed/load-service-3/1200/800',
-            'https://picsum.photos/seed/load-service-4/1200/800',
-            'https://picsum.photos/seed/load-service-5/1200/800',
-            'https://picsum.photos/seed/load-service-6/1200/800',
-            'https://picsum.photos/seed/load-service-7/1200/800',
-            'https://picsum.photos/seed/load-service-8/1200/800',
+        $fakeServiceImagesBySubcategory = [
+            'Salones y Banquetes' => [
+                'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1478147427282-58a87a120781?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1511795409834-ef04bbd61622?auto=format&fit=crop&w=1200&h=800&q=80',
+            ],
+            'Lugares Únicos' => [
+                'https://images.unsplash.com/photo-1505236858219-8359eb29e329?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&h=800&q=80',
+            ],
+            'Música y DJs' => [
+                'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1200&h=800&q=80',
+            ],
+            'Artistas en Vivo' => [
+                'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=1200&h=800&q=80',
+            ],
+            'Catering y Banquetería' => [
+                'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=1200&h=800&q=80',
+            ],
+            'Pastelería y Repostería' => [
+                'https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1486427944299-d1955d23e34d?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1535141192574-5d4897c12636?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=1200&h=800&q=80',
+            ],
+            'Decoración y Mobiliario' => [
+                'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1478146896981-b80fe463b330?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1479936343636-73cdc5aae0c3?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?auto=format&fit=crop&w=1200&h=800&q=80',
+            ],
+            'Fotografía y Video' => [
+                'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1495745966610-2a67f2297e63?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1502920917128-1aa500764cbd?auto=format&fit=crop&w=1200&h=800&q=80',
+            ],
+            'Coordinación y Logística' => [
+                'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=1200&h=800&q=80',
+                'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&h=800&q=80',
+            ],
+        ];
+        $defaultFakeServiceImages = [
+            'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1200&h=800&q=80',
+            'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1200&h=800&q=80',
+            'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1200&h=800&q=80',
+            'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&w=1200&h=800&q=80',
         ];
 
         foreach ($providers as $providerIndex => $provider) {
@@ -171,14 +223,15 @@ class LoadTestSeeder extends Seeder
             for ($s = 1; $s <= $servicesPerProvider; $s++) {
                 $imageSeedBase = ($providerIndex + 1) * 1000 + $s;
                 $serviceType = $serviceTypeCatalog[$imageSeedBase % count($serviceTypeCatalog)];
-                $mainImage = $fakeServiceImages[$imageSeedBase % count($fakeServiceImages)];
-                $portfolio = [
-                    sprintf('https://picsum.photos/seed/load-portfolio-%d-a/1200/800', $imageSeedBase),
-                    sprintf('https://picsum.photos/seed/load-portfolio-%d-b/1200/800', $imageSeedBase),
-                    sprintf('https://picsum.photos/seed/load-portfolio-%d-c/1200/800', $imageSeedBase),
-                ];
                 $category = $serviceType['category'];
                 $subcategory = $serviceType['subcategory'];
+                $imageSet = $fakeServiceImagesBySubcategory[$subcategory] ?? $defaultFakeServiceImages;
+                $mainImage = $imageSet[$imageSeedBase % count($imageSet)];
+                $portfolio = [
+                    $imageSet[($imageSeedBase + 1) % count($imageSet)],
+                    $imageSet[($imageSeedBase + 2) % count($imageSet)],
+                    $imageSet[($imageSeedBase + 3) % count($imageSet)],
+                ];
                 $servicePrice = rand(80, 350);
                 $specialties = $serviceType['specialties'];
                 shuffle($specialties);
