@@ -48,8 +48,12 @@ export function ServiceDetailPage({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
+  const portfolioImages = Array.isArray(artist.portfolio) ? artist.portfolio.filter(Boolean) : [];
+  const availabilityList = Array.isArray(artist.availability) ? artist.availability : [];
+  const specialtiesList = Array.isArray(artist.specialties) ? artist.specialties : [];
+
   const artistReviews = reviews.filter((r) => r.artistId === artist.id);
-  const allImages = [artist.image, ...artist.portfolio];
+  const allImages = [artist.image, ...portfolioImages].filter(Boolean) as string[];
 
   const slugify = (value?: string) => {
     if (!value) return '';
@@ -172,7 +176,7 @@ export function ServiceDetailPage({
           {/* Left column - Details */}
           <div className="lg:col-span-2 space-y-8">
             {/* Header gallery */}
-            {artist.portfolio.length > 0 ? (
+            {portfolioImages.length > 0 ? (
               <div className="relative grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-2 rounded-xl overflow-hidden h-[300px] md:h-[420px]">
                 {/* Main image */}
                 <div
@@ -187,7 +191,7 @@ export function ServiceDetailPage({
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                 </div>
                 {/* Secondary images */}
-                {artist.portfolio.slice(0, 4).map((img, i) => (
+                {portfolioImages.slice(0, 4).map((img, i) => (
                   <div
                     key={i}
                     className="relative cursor-pointer group hidden md:block"
@@ -199,10 +203,10 @@ export function ServiceDetailPage({
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                    {i === 3 && artist.portfolio.length > 4 && (
+                    {i === 3 && portfolioImages.length > 4 && (
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                         <span className="text-white font-semibold text-lg">
-                          +{artist.portfolio.length - 4} fotos
+                          +{portfolioImages.length - 4} fotos
                         </span>
                       </div>
                     )}
@@ -286,7 +290,7 @@ export function ServiceDetailPage({
               <div className="text-center p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
                 <Calendar className="w-6 h-6 mx-auto mb-2" style={{ color: 'var(--gold)' }} />
                 <p className="text-sm text-gray-500">Disponibilidad</p>
-                <p className="text-sm font-medium">{artist.availability.slice(0, 2).join(', ')}</p>
+                <p className="text-sm font-medium">{availabilityList.slice(0, 2).join(', ') || 'Por coordinar'}</p>
               </div>
             </div>
 
@@ -302,7 +306,7 @@ export function ServiceDetailPage({
             <div>
               <h2 className="text-xl font-semibold mb-3">Especialidades</h2>
               <div className="flex flex-wrap gap-2">
-                {artist.specialties.map((specialty, index) => (
+                {specialtiesList.map((specialty, index) => (
                   <Badge key={index} variant="outline" className="bg-white px-3 py-1 text-sm">
                     {specialty}
                   </Badge>
@@ -314,7 +318,7 @@ export function ServiceDetailPage({
             <div>
               <h2 className="text-xl font-semibold mb-3">Disponibilidad</h2>
               <div className="flex flex-wrap gap-2">
-                {artist.availability.map((day, index) => (
+                {availabilityList.map((day, index) => (
                   <Badge key={index} variant="secondary" className="px-3 py-1.5">
                     <Calendar className="w-3 h-3 mr-1" />
                     {day}

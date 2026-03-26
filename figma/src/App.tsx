@@ -1485,15 +1485,32 @@ export default function App() {
 
     const [, memCode, titleSlug] = match;
 
-    return (
-      artists.find((artist) => {
-        return (
-          serviceCategorySlug(artist) === categorySlug &&
-          serviceUserCode(artist).toLowerCase() === memCode.toLowerCase() &&
-          serviceTitleSlug(artist) === titleSlug
-        );
-      }) || null
-    );
+    const exactMatch = artists.find((artist) => {
+      return (
+        serviceCategorySlug(artist) === categorySlug &&
+        serviceUserCode(artist).toLowerCase() === memCode.toLowerCase() &&
+        serviceTitleSlug(artist) === titleSlug
+      );
+    });
+
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    // Backward compatibility: older links may have stale/alternate category slugs.
+    const codeAndTitleMatch = artists.find((artist) => {
+      return (
+        serviceUserCode(artist).toLowerCase() === memCode.toLowerCase() &&
+        serviceTitleSlug(artist) === titleSlug
+      );
+    });
+
+    if (codeAndTitleMatch) {
+      return codeAndTitleMatch;
+    }
+
+    // Last fallback for migrated links: keep title stable even if the code changed.
+    return artists.find((artist) => serviceTitleSlug(artist) === titleSlug) || null;
   };
 
   const handleDeleteEvent = async (eventId: string) => {
@@ -2225,6 +2242,14 @@ export default function App() {
 
   // Filter and sort artists based on search criteria
   const filteredArtists = useMemo(() => {
+    const resolveArtistBasePrice = (artist: Artist): number => {
+      if (artist.servicePlans && artist.servicePlans.length > 0) {
+        return Math.min(...artist.servicePlans.map((plan) => plan.price));
+      }
+
+      return Number(artist.pricePerHour || 0);
+    };
+
     let filtered = [...artists];
 
     // Filter out archived and unpublished services from public view
@@ -2300,8 +2325,7 @@ export default function App() {
 
     // Filter by price range
     filtered = filtered.filter(artist => {
-      if (!artist.servicePlans || artist.servicePlans.length === 0) return false;
-      const minPrice = Math.min(...artist.servicePlans.map(p => p.price));
+      const minPrice = resolveArtistBasePrice(artist);
       return minPrice >= searchCriteria.priceRange[0] && minPrice <= searchCriteria.priceRange[1];
     });
 
@@ -2312,15 +2336,15 @@ export default function App() {
         break;
       case 'price-low':
         filtered.sort((a, b) => {
-          const minPriceA = Math.min(...a.servicePlans.map(p => p.price));
-          const minPriceB = Math.min(...b.servicePlans.map(p => p.price));
+          const minPriceA = resolveArtistBasePrice(a);
+          const minPriceB = resolveArtistBasePrice(b);
           return minPriceA - minPriceB;
         });
         break;
       case 'price-high':
         filtered.sort((a, b) => {
-          const minPriceA = Math.min(...a.servicePlans.map(p => p.price));
-          const minPriceB = Math.min(...b.servicePlans.map(p => p.price));
+          const minPriceA = resolveArtistBasePrice(a);
+          const minPriceB = resolveArtistBasePrice(b);
           return minPriceB - minPriceA;
         });
         break;
@@ -2528,7 +2552,7 @@ export default function App() {
 
   // Redirect unknown SEO service routes to home
   const serviceLikeRoute = currentRoute.split('/').filter(Boolean);
-  if (serviceLikeRoute.length === 2 && /^MEM-\d{7}-.+/i.test(serviceLikeRoute[1] || '')) {
+  if (artists.length > 0 && serviceLikeRoute.length === 2 && /^MEM-\d{7}-.+/i.test(serviceLikeRoute[1] || '')) {
     navigateTo('/');
   }
 
