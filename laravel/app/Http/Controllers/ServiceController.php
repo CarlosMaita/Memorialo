@@ -4,16 +4,51 @@ namespace App\Http\Controllers;
 
 use App\Models\Provider;
 use App\Models\Service;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ServiceController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $services = Service::query()->latest()->get()->map(fn (Service $service) => $this->formatService($service));
+        $view = $request->query('view', 'summary');
+        $perPage = $this->resolvePerPage($request);
+        $query = Service::query()->latest();
+
+        $this->applyListFilters($query, $request);
+
+        if ($perPage) {
+            $paginator = $query->paginate($perPage)->appends($request->query());
+
+            return response()->json([
+                'data' => collect($paginator->items())
+                    ->map(fn (Service $service) => $this->formatService($service, $view))
+                    ->values(),
+                'meta' => [
+                    'currentPage' => $paginator->currentPage(),
+                    'perPage' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                    'lastPage' => $paginator->lastPage(),
+                    'hasMorePages' => $paginator->hasMorePages(),
+                ],
+            ]);
+        }
+
+        $services = $query->get()->map(fn (Service $service) => $this->formatService($service, $view));
 
         return response()->json($services);
+    }
+
+    public function show(string $id): JsonResponse
+    {
+        $service = Service::find($id);
+
+        if (! $service) {
+            return response()->json(['error' => 'Service not found'], 404);
+        }
+
+        return response()->json($this->formatService($service, 'detail'));
     }
 
     public function store(Request $request): JsonResponse
@@ -282,9 +317,10 @@ class ServiceController extends Controller
         return response()->json(['message' => 'Service deleted']);
     }
 
-    private function formatService(Service $service): array
+    private function formatService(Service $service, string $view = 'detail'): array
     {
         $metadata = is_array($service->metadata) ? $service->metadata : [];
+        $isDetailed = $view !== 'summary';
 
         return [
             'id' => (string) $service->id,
@@ -292,8 +328,8 @@ class ServiceController extends Controller
             'providerId' => $service->provider_id ? (string) $service->provider_id : null,
             'title' => $service->title,
             'name' => $service->title,
-            'description' => $service->description,
-            'bio' => $service->description,
+            'description' => $isDetailed ? $service->description : null,
+            'bio' => $isDetailed ? $service->description : '',
             'category' => $service->category,
             'subcategory' => $service->subcategory,
             'city' => $service->city,
@@ -307,19 +343,46 @@ class ServiceController extends Controller
             'isPublished' => (bool) $service->is_active,
             'responseTime' => $metadata['responseTime'] ?? null,
             'specialties' => $metadata['specialties'] ?? [],
-            'availability' => $metadata['availability'] ?? null,
+            'availability' => $isDetailed ? ($metadata['availability'] ?? []) : [],
             'servicePlans' => $metadata['servicePlans'] ?? [],
             'allowCustomHourly' => (bool) ($metadata['allowCustomHourly'] ?? true),
             'image' => $metadata['image'] ?? null,
-            'portfolio' => $metadata['portfolio'] ?? [],
+            'portfolio' => $isDetailed ? ($metadata['portfolio'] ?? []) : [],
             'whatsappNumber' => $metadata['whatsappNumber'] ?? null,
             'email' => $metadata['email'] ?? null,
-            'customTerms' => $metadata['customTerms'] ?? null,
+            'customTerms' => $isDetailed ? ($metadata['customTerms'] ?? null) : null,
             'isArchived' => (bool) ($metadata['isArchived'] ?? false),
             'publicCode' => $metadata['publicCode'] ?? null,
-            'metadata' => $metadata,
+            'metadata' => $isDetailed ? $metadata : null,
+            'detailLoaded' => $isDetailed,
             'createdAt' => optional($service->created_at)?->toISOString(),
         ];
+    }
+
+    private function applyListFilters(Builder $query, Request $request): void
+    {
+        if ($request->filled('user_id')) {
+            $query->where('user_id', (int) $request->query('user_id'));
+        }
+
+        if ($request->filled('provider_id')) {
+            $query->where('provider_id', (int) $request->query('provider_id'));
+        }
+
+        if ($request->has('is_active')) {
+            $query->where('is_active', filter_var($request->query('is_active'), FILTER_VALIDATE_BOOL));
+        }
+    }
+
+    private function resolvePerPage(Request $request): ?int
+    {
+        $perPage = (int) $request->query('per_page', 0);
+
+        if ($perPage <= 0) {
+            return null;
+        }
+
+        return min($perPage, 100);
     }
 
     private function buildPublicCode(string $userId): string

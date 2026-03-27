@@ -7,6 +7,7 @@ use App\Models\Service;
 use App\Models\User;
 use App\Services\NotificationDispatchService;
 use App\Support\NotificationTypes;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,9 +17,35 @@ class BookingController extends Controller
     {
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $bookings = Booking::query()->latest()->get()->map(fn (Booking $booking) => $this->formatBooking($booking));
+        $query = Booking::query()->latest();
+        $scopeResponse = $this->applyScope($query, $request);
+
+        if ($scopeResponse instanceof JsonResponse) {
+            return $scopeResponse;
+        }
+
+        $perPage = $this->resolvePerPage($request);
+
+        if ($perPage) {
+            $paginator = $query->paginate($perPage)->appends($request->query());
+
+            return response()->json([
+                'data' => collect($paginator->items())
+                    ->map(fn (Booking $booking) => $this->formatBooking($booking))
+                    ->values(),
+                'meta' => [
+                    'currentPage' => $paginator->currentPage(),
+                    'perPage' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                    'lastPage' => $paginator->lastPage(),
+                    'hasMorePages' => $paginator->hasMorePages(),
+                ],
+            ]);
+        }
+
+        $bookings = $query->get()->map(fn (Booking $booking) => $this->formatBooking($booking));
 
         return response()->json($bookings);
     }
@@ -194,5 +221,53 @@ class BookingController extends Controller
         }
 
         return null;
+    }
+
+    private function applyScope(Builder $query, Request $request): ?JsonResponse
+    {
+        $scope = strtolower((string) $request->query('scope', ''));
+
+        if ($request->filled('user_id')) {
+            $query->where('user_id', (string) $request->query('user_id'));
+        }
+
+        if ($request->filled('artist_user_id')) {
+            $query->where('artist_user_id', (string) $request->query('artist_user_id'));
+        }
+
+        if ($scope === '') {
+            return null;
+        }
+
+        $authUser = $request->user();
+
+        if (! $authUser) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if ($scope === 'mine') {
+            $scope = $authUser->is_provider ? 'provider' : 'client';
+        }
+
+        if ($scope === 'client') {
+            $query->where('user_id', (string) $authUser->id);
+        }
+
+        if ($scope === 'provider') {
+            $query->where('artist_user_id', (string) $authUser->id);
+        }
+
+        return null;
+    }
+
+    private function resolvePerPage(Request $request): ?int
+    {
+        $perPage = (int) $request->query('per_page', 0);
+
+        if ($perPage <= 0) {
+            return null;
+        }
+
+        return min($perPage, 100);
     }
 }

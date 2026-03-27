@@ -106,6 +106,7 @@ Route::get('/users/{id}', [UserController::class, 'show']);
 Route::get('/providers', [ProviderController::class, 'index']);
 Route::get('/providers/user/{userId}', [ProviderController::class, 'showByUser']);
 Route::get('/services', [ServiceController::class, 'index']);
+Route::get('/services/{id}', [ServiceController::class, 'show']);
 Route::post('/contracts', [ContractController::class, 'store']);
 Route::get('/contracts', [ContractController::class, 'index']);
 Route::post('/bookings', [BookingController::class, 'store']);

@@ -367,6 +367,53 @@ export default function App() {
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadScopedRecords = async () => {
+      if (!currentUser) {
+        if (!cancelled) {
+          setContracts([]);
+          setBookings([]);
+        }
+        return;
+      }
+
+      const scope = currentUser.role === 'admin'
+        ? 'all'
+        : currentUser.isProvider
+          ? 'provider'
+          : 'client';
+
+      try {
+        const [contractsData, bookingsData] = await Promise.all([
+          supabase.getContracts({ scope }),
+          supabase.getBookings({ scope }),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setContracts(contractsData);
+        setBookings(bookingsData);
+      } catch (error) {
+        console.error('Error loading scoped contracts/bookings:', error);
+
+        if (!cancelled) {
+          setContracts(currentUser.role === 'admin' ? mockContracts : []);
+          setBookings([]);
+        }
+      }
+    };
+
+    void loadScopedRecords();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id, currentUser?.role, currentUser?.isProvider]);
+
   // Update selected artist when artists state changes
   useEffect(() => {
     if (selectedArtist) {
@@ -494,7 +541,7 @@ export default function App() {
       }
 
       // Load services (artists) - use mock data as fallback
-      const servicesData = await supabase.getServices();
+      const servicesData = await supabase.getServices({ view: 'summary' });
       let loadedArtists: Artist[] = [];
       let usingMockServices = false;
       let hasEmptyTables = false;
@@ -505,15 +552,6 @@ export default function App() {
         // If no data in DB, use mock data
         loadedArtists = mockArtists;
         usingMockServices = true;
-        hasEmptyTables = true;
-      }
-
-      // Load contracts - use mock data as fallback
-      const contractsData = await supabase.getContracts();
-      if (contractsData && contractsData.length > 0) {
-        setContracts(contractsData);
-      } else {
-        setContracts(mockContracts);
         hasEmptyTables = true;
       }
 
@@ -551,12 +589,6 @@ export default function App() {
       });
 
       setArtists(updatedArtists);
-
-      // Load bookings
-      const bookingsData = await supabase.getBookings();
-      if (bookingsData && bookingsData.length > 0) {
-        setBookings(bookingsData);
-      }
 
       // Load providers
       const providersData = await supabase.getProviders();
@@ -1774,6 +1806,41 @@ export default function App() {
     }
   }, [currentRoute, artists, selectedArtist]);
 
+  useEffect(() => {
+    const routeService = resolveServiceByRoute(currentRoute);
+
+    if (!routeService || (routeService as any).detailLoaded) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadServiceDetail = async () => {
+      try {
+        const detailedService = await supabase.getService(routeService.id);
+
+        if (cancelled || !detailedService) {
+          return;
+        }
+
+        setArtists((prev) => prev.map((artist) => (
+          artist.id === detailedService.id ? { ...artist, ...detailedService } : artist
+        )));
+        setSelectedArtist((prev) => (
+          prev?.id === detailedService.id ? { ...prev, ...detailedService } : prev
+        ));
+      } catch (error) {
+        console.error('Error loading service detail:', error);
+      }
+    };
+
+    void loadServiceDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentRoute, artists]);
+
   const handleDeleteEvent = async (eventId: string) => {
     try {
       await supabase.deleteEvent(eventId);
@@ -2449,7 +2516,7 @@ export default function App() {
         if (usersData) setAllUsers(usersData);
       }
 
-      const servicesData = await supabase.getServices();
+      const servicesData = await supabase.getServices({ view: 'summary' });
       if (servicesData) {
         setArtists(servicesData);
       }
@@ -3378,7 +3445,7 @@ export default function App() {
                     // If contract was marked as completed, reload services to update bookingsCompleted
                     if (updated.status === 'completed') {
                       console.log('Contract marked as completed, reloading services...');
-                      const servicesData = await supabase.getServices();
+                      const servicesData = await supabase.getServices({ view: 'summary' });
                       if (servicesData && servicesData.length > 0) {
                         setArtists(servicesData);
                       }
@@ -3548,7 +3615,7 @@ export default function App() {
                   // If contract was marked as completed, reload services to update bookingsCompleted
                   if (updated.status === 'completed') {
                     console.log('Contract marked as completed, reloading services...');
-                    const servicesData = await supabase.getServices();
+                    const servicesData = await supabase.getServices({ view: 'summary' });
                     if (servicesData && servicesData.length > 0) {
                       setArtists(servicesData);
                     }

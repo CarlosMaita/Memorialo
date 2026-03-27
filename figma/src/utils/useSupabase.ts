@@ -5,6 +5,36 @@ import { ChatConversation, ChatMessage, ChatStreamPayload, User } from '../types
 const LARAVEL_ACCESS_TOKEN_KEY = 'laravel_access_token';
 const LARAVEL_AUTH_ERROR_KEY = 'laravel_auth_error';
 
+type ListQueryOptions = Record<string, string | number | boolean | null | undefined>;
+
+function buildQueryString(options?: ListQueryOptions): string {
+  const params = new URLSearchParams();
+
+  Object.entries(options || {}).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') {
+      return;
+    }
+
+    params.set(key, String(value));
+  });
+
+  const query = params.toString();
+
+  return query ? `?${query}` : '';
+}
+
+function extractCollection<T>(data: any): T[] {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(data?.data)) {
+    return data.data;
+  }
+
+  return [];
+}
+
 function consumeLaravelAuthRedirectParams() {
   if (backendMode !== 'laravel') {
     return { token: null as string | null, error: null as string | null };
@@ -552,16 +582,40 @@ export function useSupabase() {
     }
   };
 
-  const getServices = async () => {
+  const getServices = async (options?: {
+    view?: 'summary' | 'detail';
+    page?: number;
+    perPage?: number;
+    userId?: string;
+    providerId?: string;
+    isActive?: boolean;
+  }) => {
     try {
-      const data = await apiRequest('/services', 'GET');
-      return data;
+      const query = buildQueryString({
+        view: options?.view,
+        page: options?.page,
+        per_page: options?.perPage,
+        user_id: options?.userId,
+        provider_id: options?.providerId,
+        is_active: options?.isActive,
+      });
+      const data = await apiRequest(`/services${query}`, 'GET');
+      return extractCollection(data);
     } catch (error: any) {
       // If backend is unavailable or overloaded, silently return empty array
       if (error?.message === 'BACKEND_UNAVAILABLE' || error?.message?.includes('compute resources')) {
         return [];
       }
       console.error('Get services error:', error);
+      throw error;
+    }
+  };
+
+  const getService = async (serviceId: string) => {
+    try {
+      return await apiRequest(`/services/${serviceId}`, 'GET');
+    } catch (error) {
+      console.error('Get service detail error:', error);
       throw error;
     }
   };
@@ -597,10 +651,23 @@ export function useSupabase() {
     }
   };
 
-  const getContracts = async () => {
+  const getContracts = async (options?: {
+    scope?: 'client' | 'provider' | 'mine' | 'all';
+    page?: number;
+    perPage?: number;
+    clientId?: string;
+    artistUserId?: string;
+  }) => {
     try {
-      const data = await apiRequest('/contracts', 'GET');
-      return data;
+      const query = buildQueryString({
+        scope: options?.scope === 'all' ? undefined : options?.scope,
+        page: options?.page,
+        per_page: options?.perPage,
+        client_id: options?.clientId,
+        artist_user_id: options?.artistUserId,
+      });
+      const data = await apiRequest(`/contracts${query}`, 'GET', undefined, accessToken || undefined);
+      return extractCollection(data);
     } catch (error: any) {
       // If backend is unavailable or overloaded, silently return empty array
       if (error?.message === 'BACKEND_UNAVAILABLE' || error?.message?.includes('compute resources')) {
@@ -669,10 +736,23 @@ export function useSupabase() {
     }
   };
 
-  const getBookings = async () => {
+  const getBookings = async (options?: {
+    scope?: 'client' | 'provider' | 'mine' | 'all';
+    page?: number;
+    perPage?: number;
+    userId?: string;
+    artistUserId?: string;
+  }) => {
     try {
-      const data = await apiRequest('/bookings', 'GET');
-      return data;
+      const query = buildQueryString({
+        scope: options?.scope === 'all' ? undefined : options?.scope,
+        page: options?.page,
+        per_page: options?.perPage,
+        user_id: options?.userId,
+        artist_user_id: options?.artistUserId,
+      });
+      const data = await apiRequest(`/bookings${query}`, 'GET', undefined, accessToken || undefined);
+      return extractCollection(data);
     } catch (error: any) {
       // If backend is unavailable or overloaded, silently return empty array
       if (error?.message === 'BACKEND_UNAVAILABLE' || error?.message?.includes('compute resources')) {
@@ -1187,6 +1267,7 @@ export function useSupabase() {
     updateProvider,
     createService,
     getServices,
+    getService,
     updateService,
     deleteService,
     createContract,
