@@ -9,7 +9,6 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ChatConversationController;
 use App\Http\Controllers\ChatMessageController;
-use App\Http\Controllers\ChatStreamController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\ReviewController;
@@ -99,7 +98,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/chat/conversations/{conversationId}/messages', [ChatMessageController::class, 'index']);
     Route::post('/chat/conversations/{conversationId}/messages', [ChatMessageController::class, 'store']);
     Route::patch('/chat/conversations/{conversationId}/read', [ChatMessageController::class, 'markRead']);
-    Route::get('/chat/stream', [ChatStreamController::class, 'stream']);
 });
 
 Route::get('/users/{id}', [UserController::class, 'show']);

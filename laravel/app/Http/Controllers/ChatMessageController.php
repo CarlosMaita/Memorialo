@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ChatMessageCreated;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\ChatMessageAttachment;
@@ -169,7 +170,15 @@ class ChatMessageController extends Controller
             ]);
         }
 
-        return response()->json($this->formatMessage($message->load(['author:id,name', 'reads', 'attachments']), $user), 201);
+        $formattedMessage = $this->formatMessage($message->load(['author:id,name', 'reads', 'attachments']), $user);
+
+        event(new ChatMessageCreated(
+            $formattedMessage,
+            $conversation->participants->pluck('user_id')->map(fn ($participantUserId) => (string) $participantUserId)->values()->all(),
+            (bool) $conversation->requires_admin_intervention,
+        ));
+
+        return response()->json($formattedMessage, 201);
     }
 
     public function markRead(Request $request, string $conversationId): JsonResponse

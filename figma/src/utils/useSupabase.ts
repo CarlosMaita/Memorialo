@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
 import { getSupabaseClient, apiRequest, backendMode, laravelApiBaseUrl } from './supabase/client';
 import { ChatConversation, ChatMessage, ChatStreamPayload, User } from '../types';
 
@@ -100,6 +102,35 @@ function consumeLaravelAuthRedirectParams() {
   window.history.replaceState({}, '', cleanUrl || '/');
 
   return { token, error };
+}
+
+function resolveReverbClientConfig() {
+  const viteEnv = (import.meta as any).env || {};
+
+  let parsedApiUrl: URL | null = null;
+  try {
+    parsedApiUrl = new URL(laravelApiBaseUrl);
+  } catch {
+    parsedApiUrl = null;
+  }
+
+  const defaultScheme = parsedApiUrl?.protocol?.replace(':', '') || 'http';
+  const defaultHost = parsedApiUrl?.hostname || '127.0.0.1';
+  const defaultPort = parsedApiUrl?.port
+    ? Number(parsedApiUrl.port)
+    : (defaultScheme === 'https' ? 443 : 80);
+
+  const scheme = String(viteEnv.VITE_REVERB_SCHEME || defaultScheme).toLowerCase();
+  const host = String(viteEnv.VITE_REVERB_HOST || defaultHost);
+  const appKey = String(viteEnv.VITE_REVERB_APP_KEY || '');
+  const port = Number(viteEnv.VITE_REVERB_PORT || defaultPort);
+
+  return {
+    appKey,
+    host,
+    port,
+    forceTLS: scheme === 'https',
+  };
 }
 
 export function useSupabase() {
@@ -1117,109 +1148,67 @@ export function useSupabase() {
     onEvent: (payload: ChatStreamPayload) => void,
     onError?: (error: Error) => void,
   ) => {
-    if (!accessToken) {
+    if (!accessToken || backendMode !== 'laravel' || !currentUser?.id) {
       return () => undefined;
     }
 
-    let active = true;
-    let abortController: AbortController | null = null;
-    let since = new Date(Date.now() - 30 * 1000).toISOString();
+    const { appKey, host, port, forceTLS } = resolveReverbClientConfig();
+    if (!appKey) {
+      onError?.(new Error('Missing VITE_REVERB_APP_KEY for chat realtime.'));
+      return () => undefined;
+    }
 
-    const processSseChunk = (chunk: string) => {
-      const events = chunk.split('\n\n');
+    (globalThis as any).Pusher = Pusher;
 
-      for (const rawEvent of events) {
-        const lines = rawEvent.split('\n').map(line => line.trim()).filter(Boolean);
-        if (lines.length === 0) continue;
+    const echo = new Echo({
+      broadcaster: 'reverb',
+      key: appKey,
+      wsHost: host,
+      wsPort: port,
+      wssPort: port,
+      forceTLS,
+      enabledTransports: ['ws', 'wss'],
+      authEndpoint: `${laravelApiBaseUrl}/broadcasting/auth`,
+      auth: {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    });
 
-        let eventName = 'message';
-        let dataLine = '';
+    const channelNames = [`chat.user.${currentUser.id}`];
+    if (currentUser.role === 'admin') {
+      channelNames.push('chat.admin');
+    }
 
-        for (const line of lines) {
-          if (line.startsWith('event:')) {
-            eventName = line.slice(6).trim();
-          }
-          if (line.startsWith('data:')) {
-            dataLine += line.slice(5).trim();
-          }
-        }
+    const handleEvent = (payload: ChatStreamPayload) => {
+      onEvent(payload);
+    };
 
-        if (!dataLine || eventName === 'heartbeat') {
-          continue;
-        }
+    for (const channelName of channelNames) {
+      echo.private(channelName).listen('.chat.message.created', handleEvent);
+    }
 
-        try {
-          const parsed = JSON.parse(dataLine) as ChatStreamPayload;
-          if (parsed?.message?.createdAt) {
-            since = parsed.message.createdAt;
-          }
-          onEvent(parsed);
-        } catch {
-          // Ignore malformed SSE payloads.
-        }
+    const pusher = (echo.connector as any)?.pusher;
+    const connection = pusher?.connection;
+    const handleConnectionError = (event: any) => {
+      if (onError) {
+        const message = event?.error?.data?.message || 'Chat realtime connection error';
+        onError(new Error(message));
       }
     };
 
-    const connect = async () => {
-      while (active) {
-        abortController = new AbortController();
-
-        try {
-          const url = `${laravelApiBaseUrl}/chat/stream?since=${encodeURIComponent(since)}`;
-          const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-              Accept: 'text/event-stream',
-              Authorization: `Bearer ${accessToken}`,
-            },
-            signal: abortController.signal,
-          });
-
-          if (!response.ok || !response.body) {
-            throw new Error(`Chat stream failed (${response.status})`);
-          }
-
-          const reader = response.body.getReader();
-          const decoder = new TextDecoder();
-          let buffer = '';
-
-          while (active) {
-            const { done, value } = await reader.read();
-
-            if (done) {
-              break;
-            }
-
-            buffer += decoder.decode(value, { stream: true });
-
-            const boundary = buffer.lastIndexOf('\n\n');
-            if (boundary >= 0) {
-              const complete = buffer.slice(0, boundary);
-              buffer = buffer.slice(boundary + 2);
-              processSseChunk(complete);
-            }
-          }
-        } catch (error: any) {
-          if (!active || error?.name === 'AbortError') {
-            break;
-          }
-
-          if (onError) {
-            onError(error instanceof Error ? error : new Error('Chat stream error'));
-          }
-        }
-
-        if (active) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-    };
-
-    void connect();
+    connection?.bind?.('error', handleConnectionError);
 
     return () => {
-      active = false;
-      abortController?.abort();
+      connection?.unbind?.('error', handleConnectionError);
+
+      for (const channelName of channelNames) {
+        echo.leave(channelName);
+      }
+
+      echo.disconnect();
     };
   };
 
