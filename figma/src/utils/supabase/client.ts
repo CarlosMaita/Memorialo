@@ -73,9 +73,12 @@ export async function apiRequest(
   }
   
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
+
+  if (method !== 'GET') {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (tokenToUse) {
     headers['Authorization'] = `Bearer ${tokenToUse}`;

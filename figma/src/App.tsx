@@ -472,6 +472,16 @@ export default function App() {
     }
   }, [artists]);
 
+  // Keep review aggregates in sync without triggering extra service requests.
+  useEffect(() => {
+    if (artists.length === 0 && marketplaceArtists.length === 0) {
+      return;
+    }
+
+    setArtists((previous) => applyReviewAggregates(previous, reviews));
+    setMarketplaceArtists((previous) => applyReviewAggregates(previous, reviews));
+  }, [reviews]);
+
   // Load all users when currentUser becomes admin
   useEffect(() => {
     if (currentUser && currentUser.role === 'admin') {
@@ -587,52 +597,17 @@ export default function App() {
       } catch (error) {
         console.log('Admin user already exists or initialization not needed');
       }
-
-      // Load first marketplace page only; additional pages are loaded on demand.
-      const servicesResponse = await supabase.getServicesPage({
-        view: 'summary',
-        page: 1,
-        perPage: HOME_INITIAL_ITEMS,
-        isActive: true,
-        sort: sortBy,
-      });
-      let loadedArtists: Artist[] = [];
-      let usingMockServices = false;
       let hasEmptyTables = false;
 
-      if (servicesResponse.items && servicesResponse.items.length > 0) {
-        loadedArtists = servicesResponse.items;
-        setMarketplaceTotal(Number(servicesResponse.meta?.total || servicesResponse.items.length));
-        setMarketplaceHasMore(Boolean(servicesResponse.meta?.hasMorePages));
-      } else {
-        // If no data in DB, use mock data
-        loadedArtists = mockArtists;
-        usingMockServices = true;
-        hasEmptyTables = true;
-        setMarketplaceTotal(mockArtists.length);
-        setMarketplaceHasMore(false);
-      }
-
-      // Load reviews - use mock data as fallback
+      // Reviews are loaded here; service listing is fetched by marketplace effects.
       const reviewsData = await supabase.getReviews();
-      let loadedReviews: Review[] = [];
-      if (reviewsData && reviewsData.length > 0) {
-        loadedReviews = reviewsData;
-      } else {
-        // Only inject demo reviews when services are also in demo mode.
-        // If services are real and reviews table is empty, keep reviews empty.
-        loadedReviews = usingMockServices ? mockReviews : [];
-        if (usingMockServices) {
-          hasEmptyTables = true;
-        }
+      const loadedReviews: Review[] = reviewsData && reviewsData.length > 0 ? reviewsData : [];
+
+      if (loadedReviews.length === 0) {
+        hasEmptyTables = true;
       }
+
       setReviews(loadedReviews);
-
-      // Update artist ratings based on loaded reviews
-      const updatedArtists = applyReviewAggregates(loadedArtists, loadedReviews);
-
-      setArtists(updatedArtists);
-      setMarketplaceArtists(updatedArtists);
 
       // Load providers
       const providersData = await supabase.getProviders();
@@ -1687,7 +1662,7 @@ export default function App() {
     searchCriteria.priceRange[0],
     searchCriteria.priceRange[1],
     sortBy,
-    favoriteServiceIds.join(','),
+    currentRoute === '/favoritos' ? favoriteServiceIds.join(',') : '',
     marketplaceCacheKey,
   ]);
 
@@ -1820,9 +1795,8 @@ export default function App() {
     searchCriteria.priceRange[0],
     searchCriteria.priceRange[1],
     sortBy,
-    favoriteServiceIds.join(','),
+    currentRoute === '/favoritos' ? favoriteServiceIds.join(',') : '',
     currentUser?.id,
-    reviews,
   ]);
 
   useEffect(() => {
