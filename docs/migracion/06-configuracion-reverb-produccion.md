@@ -153,3 +153,7 @@ Validar entrega en tiempo real cross-session y autorizacion de canales.
 1. Aplicar hardening directo en `laravel/config/reverb.php` para entorno productivo.
 2. Definir manifest de despliegue/procesos (Supervisor/systemd) para `reverb` y `queue`.
 3. Automatizar smoke test de chat realtime en pipeline de staging.
+
+## Referencia Operativa
+Para implementacion paso a paso de supervisores en servidor Linux:
+- Ver `docs/migracion/07-guia-supervisor-produccion.md`.

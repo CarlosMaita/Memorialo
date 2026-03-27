@@ -29,6 +29,17 @@ type ChatApi = {
     onEvent: (payload: { type: string; message?: ChatMessage }) => void,
     onError?: (error: Error) => void,
   ) => () => void;
+  subscribeChatConversationSignals: (
+    conversationId: string,
+    handlers: {
+      onPresenceChange?: (onlineUserIds: string[]) => void;
+      onTyping?: (payload: { conversationId: string; userId: string; isTyping: boolean }) => void;
+      onError?: (error: Error) => void;
+    },
+  ) => {
+    sendTyping: (isTyping: boolean) => void;
+    unsubscribe: () => void;
+  };
 };
 
 interface ChatWidgetProps {
@@ -58,10 +69,17 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [counterpartTyping, setCounterpartTyping] = useState(false);
+  const [counterpartOnline, setCounterpartOnline] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const pendingAttachmentsRef = useRef<PendingAttachment[]>([]);
   const hydrateMessagesTimeoutRef = useRef<number | null>(null);
+  const typingResetTimeoutRef = useRef<number | null>(null);
+  const typingStopDebounceRef = useRef<number | null>(null);
+  const typingPublishedRef = useRef(false);
+  const sendTypingRef = useRef<(isTyping: boolean) => void>(() => undefined);
 
   const activeConversation = useMemo(
     () => conversations.find(conversation => conversation.id === activeConversationId) || null,
@@ -71,6 +89,11 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
   const activeCounterpart = useMemo(
     () => activeConversation?.participants.find(participant => participant.userId !== user?.id) || null,
     [activeConversation, user?.id],
+  );
+
+  const activeCounterpartUserId = useMemo(
+    () => activeCounterpart?.userId ? String(activeCounterpart.userId) : null,
+    [activeCounterpart],
   );
 
   const candidateBookings = useMemo(() => {
@@ -90,6 +113,14 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
     return () => {
       if (hydrateMessagesTimeoutRef.current !== null) {
         window.clearTimeout(hydrateMessagesTimeoutRef.current);
+      }
+
+      if (typingResetTimeoutRef.current !== null) {
+        window.clearTimeout(typingResetTimeoutRef.current);
+      }
+
+      if (typingStopDebounceRef.current !== null) {
+        window.clearTimeout(typingStopDebounceRef.current);
       }
 
       pendingAttachmentsRef.current.forEach(attachment => {
@@ -124,6 +155,14 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
   useEffect(() => {
     clearPendingAttachments();
   }, [activeConversationId]);
+
+  useEffect(() => {
+    if (!chatWindowOpen) {
+      return;
+    }
+
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, chatWindowOpen, activeConversationId]);
 
   useEffect(() => {
     if ((!conversationListOpen && !chatWindowOpen) || !user) {
@@ -189,6 +228,101 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
       cancelled = true;
     };
   }, [activeConversationId, api, chatWindowOpen, user]);
+
+  useEffect(() => {
+    if (!chatWindowOpen || !activeConversationId || !user) {
+      return;
+    }
+
+    const realtime = api.subscribeChatConversationSignals(activeConversationId, {
+      onPresenceChange: (onlineUserIds) => {
+        if (!activeCounterpartUserId) {
+          setCounterpartOnline(false);
+          return;
+        }
+
+        setCounterpartOnline(onlineUserIds.includes(activeCounterpartUserId));
+      },
+      onTyping: (payload) => {
+        if (payload.conversationId !== activeConversationId) {
+          return;
+        }
+
+        if (payload.userId === String(user.id)) {
+          return;
+        }
+
+        setCounterpartTyping(payload.isTyping);
+
+        if (typingResetTimeoutRef.current !== null) {
+          window.clearTimeout(typingResetTimeoutRef.current);
+          typingResetTimeoutRef.current = null;
+        }
+
+        if (payload.isTyping) {
+          typingResetTimeoutRef.current = window.setTimeout(() => {
+            setCounterpartTyping(false);
+            typingResetTimeoutRef.current = null;
+          }, 2000);
+        }
+      },
+      onError: (error) => {
+        console.error(error.message || 'No se pudieron sincronizar señales del chat.');
+      },
+    });
+
+    sendTypingRef.current = realtime.sendTyping;
+
+    return () => {
+      if (typingResetTimeoutRef.current !== null) {
+        window.clearTimeout(typingResetTimeoutRef.current);
+        typingResetTimeoutRef.current = null;
+      }
+
+      if (typingStopDebounceRef.current !== null) {
+        window.clearTimeout(typingStopDebounceRef.current);
+        typingStopDebounceRef.current = null;
+      }
+
+      realtime.sendTyping(false);
+      typingPublishedRef.current = false;
+      sendTypingRef.current = () => undefined;
+      setCounterpartTyping(false);
+      setCounterpartOnline(false);
+      realtime.unsubscribe();
+    };
+  }, [activeConversationId, activeCounterpartUserId, api, chatWindowOpen, user]);
+
+  useEffect(() => {
+    if (!chatWindowOpen || !activeConversationId || !user || submitting) {
+      return;
+    }
+
+    const hasText = draft.trim().length > 0;
+
+    if (hasText && !typingPublishedRef.current) {
+      sendTypingRef.current(true);
+      typingPublishedRef.current = true;
+    }
+
+    if (!hasText && typingPublishedRef.current) {
+      sendTypingRef.current(false);
+      typingPublishedRef.current = false;
+    }
+
+    if (typingStopDebounceRef.current !== null) {
+      window.clearTimeout(typingStopDebounceRef.current);
+      typingStopDebounceRef.current = null;
+    }
+
+    if (hasText) {
+      typingStopDebounceRef.current = window.setTimeout(() => {
+        sendTypingRef.current(false);
+        typingPublishedRef.current = false;
+        typingStopDebounceRef.current = null;
+      }, 1500);
+    }
+  }, [activeConversationId, chatWindowOpen, draft, submitting, user]);
 
   useEffect(() => {
     if ((!conversationListOpen && !chatWindowOpen) || !user) {
@@ -343,20 +477,55 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
       return;
     }
 
+    const draftToSend = draft.trim();
+    const attachmentsToSend = pendingAttachments.map(attachment => ({
+      imageData: attachment.imageData,
+      fileName: attachment.fileName,
+      contentType: attachment.contentType,
+      previewUrl: attachment.previewUrl,
+    }));
+    const optimisticId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const optimisticMessage: ChatMessage = {
+      id: optimisticId,
+      conversationId: activeConversationId,
+      authorUserId: String(user.id),
+      authorName: user.name,
+      body: draftToSend,
+      createdAt: new Date().toISOString(),
+      attachments: attachmentsToSend.map((attachment, index) => ({
+        id: `${optimisticId}-att-${index}`,
+        fileName: attachment.fileName,
+        mimeType: attachment.contentType,
+        sizeBytes: 0,
+        url: attachment.previewUrl,
+      })),
+      hasAttachments: attachmentsToSend.length > 0,
+      attachmentsCount: attachmentsToSend.length,
+    };
+
+    setDraft('');
+    sendTypingRef.current(false);
+    typingPublishedRef.current = false;
+    setMessages(prev => [...prev, optimisticMessage]);
+
     setSubmitting(true);
 
     try {
       const sent = await api.sendChatMessage(
         activeConversationId,
-        draft.trim(),
-        pendingAttachments.map(attachment => ({
+        draftToSend,
+        attachmentsToSend.map(attachment => ({
           imageData: attachment.imageData,
           fileName: attachment.fileName,
           contentType: attachment.contentType,
         })),
       );
 
-      setMessages(prev => [...prev, sent]);
+      setMessages(prev => {
+        const withoutOptimistic = prev.filter(message => message.id !== optimisticId);
+        const hasSent = withoutOptimistic.some(message => message.id === sent.id);
+        return hasSent ? withoutOptimistic : [...withoutOptimistic, sent];
+      });
       setConversations(prev => prev.map(conversation => conversation.id === activeConversationId ? {
         ...conversation,
         lastMessageAt: sent.createdAt,
@@ -371,9 +540,10 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
           hasAttachments: sent.hasAttachments,
         },
       } : conversation));
-      setDraft('');
       clearPendingAttachments();
     } catch (error: any) {
+      setMessages(prev => prev.filter(message => message.id !== optimisticId));
+      setDraft(draftToSend);
       console.error(error?.message || 'No se pudo enviar el mensaje.');
     } finally {
       setSubmitting(false);
@@ -521,6 +691,11 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
                 </div>
               </div>
               <div className="min-h-[16px] pl-[42px]">
+                  {activeCounterpartUserId && (
+                    <p className={`text-[11px] ${counterpartTyping ? 'text-[#1B2A47] font-medium' : 'text-gray-500'}`}>
+                      {counterpartTyping ? 'Escribiendo...' : (counterpartOnline ? 'En linea' : 'Desconectado')}
+                    </p>
+                  )}
                   {activeConversation.expiresAt && (
                     <p className="text-[11px] text-gray-500">
                       Chat e imagenes disponibles hasta {new Date(activeConversation.expiresAt).toLocaleDateString('es-VE')}
@@ -557,6 +732,8 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
                   {messages.length === 0 && (
                     <p className="text-sm text-gray-500">Aun no hay mensajes en esta conversacion.</p>
                   )}
+
+                  <div ref={messagesEndRef} />
                 </div>
               </ScrollArea>
 

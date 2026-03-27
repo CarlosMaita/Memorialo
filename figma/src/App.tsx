@@ -4016,6 +4016,7 @@ export default function App() {
           markChatConversationRead: supabase.markChatConversationRead,
           requestChatIntervention: supabase.requestChatIntervention,
           subscribeChatStream: supabase.subscribeChatStream,
+          subscribeChatConversationSignals: supabase.subscribeChatConversationSignals,
         }}
       />
 

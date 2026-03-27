@@ -1148,34 +1148,41 @@ export function useSupabase() {
     onEvent: (payload: ChatStreamPayload) => void,
     onError?: (error: Error) => void,
   ) => {
-    if (!accessToken || backendMode !== 'laravel' || !currentUser?.id) {
-      return () => undefined;
-    }
+    const createEchoClient = () => {
+      if (!accessToken || backendMode !== 'laravel' || !currentUser?.id) {
+        return null;
+      }
 
-    const { appKey, host, port, forceTLS } = resolveReverbClientConfig();
-    if (!appKey) {
-      onError?.(new Error('Missing VITE_REVERB_APP_KEY for chat realtime.'));
-      return () => undefined;
-    }
+      const { appKey, host, port, forceTLS } = resolveReverbClientConfig();
+      if (!appKey) {
+        onError?.(new Error('Missing VITE_REVERB_APP_KEY for chat realtime.'));
+        return null;
+      }
 
-    (globalThis as any).Pusher = Pusher;
+      (globalThis as any).Pusher = Pusher;
 
-    const echo = new Echo({
-      broadcaster: 'reverb',
-      key: appKey,
-      wsHost: host,
-      wsPort: port,
-      wssPort: port,
-      forceTLS,
-      enabledTransports: ['ws', 'wss'],
-      authEndpoint: `${laravelApiBaseUrl}/broadcasting/auth`,
-      auth: {
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+      return new Echo({
+        broadcaster: 'reverb',
+        key: appKey,
+        wsHost: host,
+        wsPort: port,
+        wssPort: port,
+        forceTLS,
+        enabledTransports: ['ws', 'wss'],
+        authEndpoint: `${laravelApiBaseUrl}/broadcasting/auth`,
+        auth: {
+          headers: {
+            Accept: 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
         },
-      },
-    });
+      });
+    };
+
+    const echo = createEchoClient();
+    if (!echo) {
+      return () => undefined;
+    }
 
     const channelNames = [`chat.user.${currentUser.id}`];
     if (currentUser.role === 'admin') {
@@ -1209,6 +1216,105 @@ export function useSupabase() {
       }
 
       echo.disconnect();
+    };
+  };
+
+  const subscribeChatConversationSignals = (
+    conversationId: string,
+    handlers: {
+      onPresenceChange?: (onlineUserIds: string[]) => void;
+      onTyping?: (payload: { conversationId: string; userId: string; isTyping: boolean }) => void;
+      onError?: (error: Error) => void;
+    },
+  ) => {
+    if (!accessToken || backendMode !== 'laravel' || !currentUser?.id) {
+      return {
+        sendTyping: (_isTyping: boolean) => undefined,
+        unsubscribe: () => undefined,
+      };
+    }
+
+    const { appKey, host, port, forceTLS } = resolveReverbClientConfig();
+    if (!appKey) {
+      handlers.onError?.(new Error('Missing VITE_REVERB_APP_KEY for chat realtime.'));
+      return {
+        sendTyping: (_isTyping: boolean) => undefined,
+        unsubscribe: () => undefined,
+      };
+    }
+
+    (globalThis as any).Pusher = Pusher;
+
+    const echo = new Echo({
+      broadcaster: 'reverb',
+      key: appKey,
+      wsHost: host,
+      wsPort: port,
+      wssPort: port,
+      forceTLS,
+      enabledTransports: ['ws', 'wss'],
+      authEndpoint: `${laravelApiBaseUrl}/broadcasting/auth`,
+      auth: {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    });
+
+    const channelName = `chat.conversation.${conversationId}`;
+    const channel = echo.join(channelName) as any;
+
+    const onlineUserIds = new Set<string>();
+    const emitPresence = () => {
+      handlers.onPresenceChange?.(Array.from(onlineUserIds));
+    };
+
+    channel
+      .here((members: Array<{ id: string | number }>) => {
+        onlineUserIds.clear();
+        members.forEach(member => onlineUserIds.add(String(member.id)));
+        emitPresence();
+      })
+      .joining((member: { id: string | number }) => {
+        onlineUserIds.add(String(member.id));
+        emitPresence();
+      })
+      .leaving((member: { id: string | number }) => {
+        onlineUserIds.delete(String(member.id));
+        emitPresence();
+      });
+
+    channel.listenForWhisper('typing', (payload: any) => {
+      handlers.onTyping?.({
+        conversationId: String(payload?.conversationId || conversationId),
+        userId: String(payload?.userId || ''),
+        isTyping: Boolean(payload?.isTyping),
+      });
+    });
+
+    const pusher = (echo.connector as any)?.pusher;
+    const connection = pusher?.connection;
+    const handleConnectionError = (event: any) => {
+      const message = event?.error?.data?.message || 'Chat realtime connection error';
+      handlers.onError?.(new Error(message));
+    };
+
+    connection?.bind?.('error', handleConnectionError);
+
+    return {
+      sendTyping: (isTyping: boolean) => {
+        channel.whisper('typing', {
+          conversationId,
+          userId: String(currentUser.id),
+          isTyping,
+        });
+      },
+      unsubscribe: () => {
+        connection?.unbind?.('error', handleConnectionError);
+        echo.leave(channelName);
+        echo.disconnect();
+      },
     };
   };
 
@@ -1330,6 +1436,7 @@ export function useSupabase() {
     markChatConversationRead,
     requestChatIntervention,
     subscribeChatStream,
+    subscribeChatConversationSignals,
     uploadImage,
     initializeAdmin,
     signInWithGoogle
