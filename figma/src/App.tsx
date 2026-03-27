@@ -111,6 +111,15 @@ type HomeListingSnapshot = {
   updatedAt: number;
 };
 
+type MarketplaceCacheEntry = {
+  artists: Artist[];
+  total: number;
+  hasMore: boolean;
+  page: number;
+  homeVisibleCount: number;
+  updatedAt: number;
+};
+
 type AppNavigationState = {
   fromMarketplace?: boolean;
   homeListingSnapshot?: HomeListingSnapshot;
@@ -201,6 +210,9 @@ export default function App() {
   const [providerAccountCreated, setProviderAccountCreated] = useState(false);
   const [homeVisibleCount, setHomeVisibleCount] = useState(HOME_INITIAL_ITEMS);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+  const previousRouteRef = useRef(window.location.pathname);
+  const lastMarketplaceCriteriaKeyRef = useRef('');
+  const marketplaceCacheRef = useRef<Record<string, MarketplaceCacheEntry>>({});
   const pendingHomeScrollRestoreRef = useRef<number | null>(null);
   const pendingHomeScrollRestoreAttemptsRef = useRef(0);
   const pendingHomeListingRestoreRef = useRef<HomeListingSnapshot | null>(null);
@@ -1587,10 +1599,75 @@ export default function App() {
     [currentRoute, citySlugLookup, taxonomySlugLookup]
   );
 
+  const marketplaceCacheKey = useMemo(() => {
+    const isFavorites = currentRoute === '/favoritos';
+    const cacheScope = isFavorites ? `favorites:${currentUser?.id || 'anon'}` : 'public';
+
+    const normalized = {
+      path: marketplaceRouteContext?.canonicalPath || (isFavorites ? '/favoritos' : '/'),
+      query: (searchCriteria.query || '').trim().toLowerCase(),
+      city: (searchCriteria.city || '').trim().toLowerCase(),
+      category: (searchCriteria.category || '').trim().toLowerCase(),
+      subcategory: (searchCriteria.subcategory || '').trim().toLowerCase(),
+      minPrice: Number(searchCriteria.priceRange[0] || 0),
+      maxPrice: Number(searchCriteria.priceRange[1] || 0),
+      sortBy,
+      favoritesHash: isFavorites ? favoriteServiceIds.slice().sort().join(',') : '',
+      scope: cacheScope,
+    };
+
+    return JSON.stringify(normalized);
+  }, [
+    currentRoute,
+    marketplaceRouteContext,
+    currentUser?.id,
+    searchCriteria.query,
+    searchCriteria.city,
+    searchCriteria.category,
+    searchCriteria.subcategory,
+    searchCriteria.priceRange,
+    sortBy,
+    favoriteServiceIds,
+  ]);
+
+  const isServiceDetailPath = (path: string) => {
+    const cleanPath = (path.split('?')[0] || '').replace(/\/+$/, '');
+
+    if (cleanPath.startsWith('/servicio/')) {
+      return true;
+    }
+
+    const parts = cleanPath.split('/').filter(Boolean);
+    return parts.length === 2 && /^MEM-\d{7}-.+/i.test(parts[1] || '');
+  };
+
   useEffect(() => {
     const isListingRoute = currentRoute === '/' || currentRoute === '/favoritos' || Boolean(marketplaceRouteContext);
+    const cameFromServiceDetail = isServiceDetailPath(previousRouteRef.current);
 
     if (!isListingRoute || viewMode !== 'client' || selectedArtist) {
+      return;
+    }
+
+    const criteriaChanged = lastMarketplaceCriteriaKeyRef.current !== marketplaceCacheKey;
+    if (!criteriaChanged) {
+      return;
+    }
+
+    lastMarketplaceCriteriaKeyRef.current = marketplaceCacheKey;
+
+    const cachedEntry = marketplaceCacheRef.current[marketplaceCacheKey];
+
+    if (cachedEntry) {
+      setMarketplaceArtists(cachedEntry.artists);
+      setMarketplaceTotal(cachedEntry.total);
+      setMarketplaceHasMore(cachedEntry.hasMore);
+      setMarketplacePage(Math.max(1, cachedEntry.page));
+      setHomeVisibleCount((previous) => Math.max(previous, HOME_INITIAL_ITEMS, cachedEntry.homeVisibleCount));
+      return;
+    }
+
+    if (cameFromServiceDetail && marketplaceArtists.length > 0) {
       return;
     }
 
@@ -1611,6 +1688,45 @@ export default function App() {
     searchCriteria.priceRange[1],
     sortBy,
     favoriteServiceIds.join(','),
+    marketplaceCacheKey,
+  ]);
+
+  useEffect(() => {
+    previousRouteRef.current = currentRoute;
+  }, [currentRoute]);
+
+  useEffect(() => {
+    const isListingRoute = currentRoute === '/' || currentRoute === '/favoritos' || Boolean(marketplaceRouteContext);
+
+    if (!isListingRoute || viewMode !== 'client' || selectedArtist || marketplacePage <= 0) {
+      return;
+    }
+
+    marketplaceCacheRef.current[marketplaceCacheKey] = {
+      artists: marketplaceArtists,
+      total: marketplaceTotal,
+      hasMore: marketplaceHasMore,
+      page: marketplacePage,
+      homeVisibleCount,
+      updatedAt: Date.now(),
+    };
+
+    const entries = Object.entries(marketplaceCacheRef.current)
+      .sort(([, left], [, right]) => right.updatedAt - left.updatedAt)
+      .slice(0, 12);
+
+    marketplaceCacheRef.current = Object.fromEntries(entries);
+  }, [
+    currentRoute,
+    marketplaceRouteContext,
+    viewMode,
+    selectedArtist,
+    marketplaceCacheKey,
+    marketplaceArtists,
+    marketplaceTotal,
+    marketplaceHasMore,
+    marketplacePage,
+    homeVisibleCount,
   ]);
 
   useEffect(() => {
