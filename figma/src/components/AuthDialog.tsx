@@ -6,8 +6,7 @@ import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { User } from '../types';
 import { toast } from 'sonner@2.0.3';
-import { User as UserIcon, Mail, Lock, Phone, Briefcase, Shield } from 'lucide-react';
-import { Checkbox } from './ui/checkbox';
+import { User as UserIcon, Mail, Lock } from 'lucide-react';
 
 interface AuthDialogProps {
   open: boolean;
@@ -42,10 +41,8 @@ export function AuthDialog({ open, onClose, onLogin, onSignUp, onSignIn, onSignI
   const [registerForm, setRegisterForm] = useState({
     name: '',
     email: '',
-    phone: '',
     password: '',
-    confirmPassword: '',
-    isProvider: false
+    confirmPassword: ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -92,8 +89,8 @@ export function AuthDialog({ open, onClose, onLogin, onSignUp, onSignIn, onSignI
         registerForm.email,
         registerForm.password,
         registerForm.name,
-        registerForm.phone,
-        registerForm.isProvider
+        '',
+        false
       );
       toast.success('¡Cuenta creada exitosamente!');
       onClose();
@@ -102,10 +99,8 @@ export function AuthDialog({ open, onClose, onLogin, onSignUp, onSignIn, onSignI
       setRegisterForm({
         name: '',
         email: '',
-        phone: '',
         password: '',
-        confirmPassword: '',
-        isProvider: false
+        confirmPassword: ''
       });
     } catch (error: any) {
       const errorMessage = mapAuthErrorMessage(error.message || 'Error al crear la cuenta');
@@ -260,21 +255,6 @@ export function AuthDialog({ open, onClose, onLogin, onSignUp, onSignIn, onSignI
               </div>
 
               <div>
-                <Label htmlFor="register-phone" className="mb-1 block">Teléfono</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    id="register-phone"
-                    type="tel"
-                    value={registerForm.phone}
-                    onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
-                    placeholder="(555) 123-4567"
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-
-              <div>
                 <Label htmlFor="register-password" className="mb-1 block">Contraseña</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -303,35 +283,6 @@ export function AuthDialog({ open, onClose, onLogin, onSignUp, onSignIn, onSignI
                     placeholder="••••••••"
                     className="pl-10"
                   />
-                </div>
-              </div>
-
-              <div 
-                className="flex items-center space-x-3 p-4 rounded-lg border-2 transition-all hover:shadow-md"
-                style={{ 
-                  background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, rgba(10, 31, 68, 0.05) 100%)',
-                  borderColor: registerForm.isProvider ? 'var(--gold)' : 'rgba(212, 175, 55, 0.3)'
-                }}
-              >
-                <Checkbox
-                  id="isProvider"
-                  checked={registerForm.isProvider}
-                  onCheckedChange={(checked) => 
-                    setRegisterForm({ ...registerForm, isProvider: checked as boolean })
-                  }
-                />
-                <div className="flex-1">
-                  <label
-                    htmlFor="isProvider"
-                    className="cursor-pointer flex items-center gap-2"
-                    style={{ color: 'var(--navy-blue)' }}
-                  >
-                    <Briefcase className="w-5 h-5" style={{ color: 'var(--gold)' }} />
-                    <span className="font-semibold">Quiero ofrecer mis servicios como proveedor</span>
-                  </label>
-                  <p className="text-xs mt-1 ml-7" style={{ color: 'rgba(10, 31, 68, 0.7)' }}>
-                    Crea tu perfil, publica tus servicios y recibe reservas directamente de clientes
-                  </p>
                 </div>
               </div>
 
