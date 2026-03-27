@@ -91,7 +91,7 @@ class NotificationDispatchService
         try {
             $subject = (string) ($payload['mailSubject'] ?? $payload['title'] ?? 'Nueva notificacion');
             $bodyText = (string) ($payload['mailBody'] ?? $payload['body'] ?? 'Tienes una nueva notificacion en Memorialo.');
-            $frontendUrl = rtrim((string) env('FRONTEND_URL', config('app.url', 'http://127.0.0.1:8000')), '/');
+            $frontendUrl = rtrim((string) config('frontend.url', config('app.url', 'http://127.0.0.1:8000')), '/');
             $trimmedBody = ltrim($bodyText);
             $bodyHasGreeting = (bool) preg_match('/^hola\b/i', $trimmedBody);
 
