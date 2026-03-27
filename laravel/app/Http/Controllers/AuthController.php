@@ -220,7 +220,7 @@ class AuthController extends Controller
 
     private function buildFrontendRedirectUrl(array $query = []): string
     {
-        $baseUrl = rtrim(env('FRONTEND_URL', 'http://127.0.0.1:5173'), '/');
+        $baseUrl = rtrim((string) config('app.frontend_url', 'http://127.0.0.1:5173'), '/');
 
         if ($query === []) {
             return $baseUrl;
