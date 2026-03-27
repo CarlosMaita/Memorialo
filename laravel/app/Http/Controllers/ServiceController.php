@@ -361,6 +361,17 @@ class ServiceController extends Controller
 
     private function applyListFilters(Builder $query, Request $request): void
     {
+        if ($request->filled('ids')) {
+            $ids = collect(explode(',', (string) $request->query('ids')))
+                ->map(fn (string $id) => trim($id))
+                ->filter()
+                ->values();
+
+            if ($ids->isNotEmpty()) {
+                $query->whereIn('id', $ids->all());
+            }
+        }
+
         if ($request->filled('user_id')) {
             $query->where('user_id', (int) $request->query('user_id'));
         }
@@ -369,9 +380,66 @@ class ServiceController extends Controller
             $query->where('provider_id', (int) $request->query('provider_id'));
         }
 
+        if ($request->filled('public_code')) {
+            $query->where('metadata', 'like', '%"publicCode":"'.str_replace('"', '', (string) $request->query('public_code')).'"%');
+        }
+
+        if ($request->filled('q')) {
+            $search = trim((string) $request->query('q'));
+
+            $query->where(function (Builder $builder) use ($search) {
+                $builder
+                    ->where('title', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%")
+                    ->orWhere('subcategory', 'like', "%{$search}%")
+                    ->orWhere('city', 'like', "%{$search}%")
+                    ->orWhere('metadata', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('city')) {
+            $query->where('city', 'like', '%'.trim((string) $request->query('city')).'%');
+        }
+
+        if ($request->filled('category')) {
+            $category = trim((string) $request->query('category'));
+            $query->where(function (Builder $builder) use ($category) {
+                $builder
+                    ->where('category', 'like', "%{$category}%")
+                    ->orWhere('metadata', 'like', "%{$category}%");
+            });
+        }
+
+        if ($request->filled('subcategory')) {
+            $subcategory = trim((string) $request->query('subcategory'));
+            $query->where(function (Builder $builder) use ($subcategory) {
+                $builder
+                    ->where('subcategory', 'like', "%{$subcategory}%")
+                    ->orWhere('category', 'like', "%{$subcategory}%")
+                    ->orWhere('metadata', 'like', "%{$subcategory}%");
+            });
+        }
+
+        if ($request->filled('min_price')) {
+            $query->where('price', '>=', (float) $request->query('min_price'));
+        }
+
+        if ($request->filled('max_price')) {
+            $query->where('price', '<=', (float) $request->query('max_price'));
+        }
+
         if ($request->has('is_active')) {
             $query->where('is_active', filter_var($request->query('is_active'), FILTER_VALIDATE_BOOL));
         }
+
+        match ((string) $request->query('sort', 'latest')) {
+            'rating' => $query->reorder()->orderByDesc('rating')->orderByDesc('reviews_count'),
+            'price-low' => $query->reorder()->orderBy('price')->orderByDesc('rating'),
+            'price-high' => $query->reorder()->orderByDesc('price')->orderByDesc('rating'),
+            'reviews' => $query->reorder()->orderByDesc('reviews_count')->orderByDesc('rating'),
+            default => $query->reorder()->latest(),
+        };
     }
 
     private function resolvePerPage(Request $request): ?int

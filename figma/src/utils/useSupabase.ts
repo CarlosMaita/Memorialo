@@ -7,6 +7,24 @@ const LARAVEL_AUTH_ERROR_KEY = 'laravel_auth_error';
 
 type ListQueryOptions = Record<string, string | number | boolean | null | undefined>;
 
+type ServiceQueryOptions = {
+  view?: 'summary' | 'detail';
+  page?: number;
+  perPage?: number;
+  userId?: string;
+  providerId?: string;
+  isActive?: boolean;
+  query?: string;
+  city?: string;
+  category?: string;
+  subcategory?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sort?: string;
+  ids?: string[];
+  publicCode?: string;
+};
+
 function buildQueryString(options?: ListQueryOptions): string {
   const params = new URLSearchParams();
 
@@ -33,6 +51,26 @@ function extractCollection<T>(data: any): T[] {
   }
 
   return [];
+}
+
+function buildServiceQuery(options?: ServiceQueryOptions): string {
+  return buildQueryString({
+    view: options?.view,
+    page: options?.page,
+    per_page: options?.perPage,
+    user_id: options?.userId,
+    provider_id: options?.providerId,
+    is_active: options?.isActive,
+    q: options?.query,
+    city: options?.city,
+    category: options?.category,
+    subcategory: options?.subcategory,
+    min_price: options?.minPrice,
+    max_price: options?.maxPrice,
+    sort: options?.sort,
+    ids: options?.ids?.join(','),
+    public_code: options?.publicCode,
+  });
 }
 
 function consumeLaravelAuthRedirectParams() {
@@ -582,33 +620,27 @@ export function useSupabase() {
     }
   };
 
-  const getServices = async (options?: {
-    view?: 'summary' | 'detail';
-    page?: number;
-    perPage?: number;
-    userId?: string;
-    providerId?: string;
-    isActive?: boolean;
-  }) => {
+  const getServicesPage = async (options?: ServiceQueryOptions) => {
     try {
-      const query = buildQueryString({
-        view: options?.view,
-        page: options?.page,
-        per_page: options?.perPage,
-        user_id: options?.userId,
-        provider_id: options?.providerId,
-        is_active: options?.isActive,
-      });
+      const query = buildServiceQuery(options);
       const data = await apiRequest(`/services${query}`, 'GET');
-      return extractCollection(data);
+      return {
+        items: extractCollection(data),
+        meta: data?.meta || null,
+      };
     } catch (error: any) {
       // If backend is unavailable or overloaded, silently return empty array
       if (error?.message === 'BACKEND_UNAVAILABLE' || error?.message?.includes('compute resources')) {
-        return [];
+        return { items: [], meta: null };
       }
-      console.error('Get services error:', error);
+      console.error('Get services page error:', error);
       throw error;
     }
+  };
+
+  const getServices = async (options?: ServiceQueryOptions) => {
+    const data = await getServicesPage(options);
+    return data.items;
   };
 
   const getService = async (serviceId: string) => {
@@ -1266,6 +1298,7 @@ export function useSupabase() {
     getProviderByUserId,
     updateProvider,
     createService,
+    getServicesPage,
     getServices,
     getService,
     updateService,

@@ -138,6 +138,11 @@ export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('client');
   const [dashboardView, setDashboardView] = useState<DashboardView>('provider');
   const [artists, setArtists] = useState<Artist[]>([]);
+  const [marketplaceArtists, setMarketplaceArtists] = useState<Artist[]>([]);
+  const [marketplaceTotal, setMarketplaceTotal] = useState(0);
+  const [marketplaceHasMore, setMarketplaceHasMore] = useState(false);
+  const [marketplaceLoading, setMarketplaceLoading] = useState(false);
+  const [marketplacePage, setMarketplacePage] = useState(0);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [searchCriteria, setSearchCriteria] = useState<SearchCriteria>({
     query: '',
@@ -414,6 +419,37 @@ export default function App() {
     };
   }, [currentUser?.id, currentUser?.role, currentUser?.isProvider]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProviderServices = async () => {
+      if (!currentUser?.isProvider || !currentUser.id) {
+        return;
+      }
+
+      try {
+        const providerServices = await supabase.getServices({
+          view: 'summary',
+          userId: currentUser.id,
+        });
+
+        if (cancelled || !providerServices.length) {
+          return;
+        }
+
+        setArtists((prev) => mergeArtistsById(prev, providerServices));
+      } catch (error) {
+        console.error('Error loading provider services:', error);
+      }
+    };
+
+    void loadProviderServices();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id, currentUser?.isProvider]);
+
   // Update selected artist when artists state changes
   useEffect(() => {
     if (selectedArtist) {
@@ -540,19 +576,29 @@ export default function App() {
         console.log('Admin user already exists or initialization not needed');
       }
 
-      // Load services (artists) - use mock data as fallback
-      const servicesData = await supabase.getServices({ view: 'summary' });
+      // Load first marketplace page only; additional pages are loaded on demand.
+      const servicesResponse = await supabase.getServicesPage({
+        view: 'summary',
+        page: 1,
+        perPage: HOME_INITIAL_ITEMS,
+        isActive: true,
+        sort: sortBy,
+      });
       let loadedArtists: Artist[] = [];
       let usingMockServices = false;
       let hasEmptyTables = false;
 
-      if (servicesData && servicesData.length > 0) {
-        loadedArtists = servicesData;
+      if (servicesResponse.items && servicesResponse.items.length > 0) {
+        loadedArtists = servicesResponse.items;
+        setMarketplaceTotal(Number(servicesResponse.meta?.total || servicesResponse.items.length));
+        setMarketplaceHasMore(Boolean(servicesResponse.meta?.hasMorePages));
       } else {
         // If no data in DB, use mock data
         loadedArtists = mockArtists;
         usingMockServices = true;
         hasEmptyTables = true;
+        setMarketplaceTotal(mockArtists.length);
+        setMarketplaceHasMore(false);
       }
 
       // Load reviews - use mock data as fallback
@@ -571,24 +617,10 @@ export default function App() {
       setReviews(loadedReviews);
 
       // Update artist ratings based on loaded reviews
-      const updatedArtists = loadedArtists.map(artist => {
-        const artistReviews = loadedReviews.filter(r => r.artistId === artist.id);
-
-        if (artistReviews.length === 0) {
-          return artist;
-        }
-
-        const totalRating = artistReviews.reduce((sum, r) => sum + r.rating, 0);
-        const averageRating = totalRating / artistReviews.length;
-
-        return {
-          ...artist,
-          rating: Math.round(averageRating * 10) / 10,
-          reviews: artistReviews.length
-        };
-      });
+      const updatedArtists = applyReviewAggregates(loadedArtists, loadedReviews);
 
       setArtists(updatedArtists);
+      setMarketplaceArtists(updatedArtists);
 
       // Load providers
       const providersData = await supabase.getProviders();
@@ -633,6 +665,9 @@ export default function App() {
 
       // Fallback to mock data
       setArtists(mockArtists);
+      setMarketplaceArtists(mockArtists);
+      setMarketplaceTotal(mockArtists.length);
+      setMarketplaceHasMore(false);
       setReviews(mockReviews);
       setEvents(mockEvents);
       setContracts(mockContracts);
@@ -886,7 +921,8 @@ export default function App() {
   const handleServiceCreate = async (service: Artist) => {
     try {
       const createdService = await supabase.createService(service);
-      setArtists([...artists, createdService]);
+      setArtists((prev) => mergeArtistsById(prev, [createdService]));
+      setMarketplaceArtists((prev) => mergeArtistsById(prev, [createdService]));
 
       // Link service to provider
       if (currentProvider) {
@@ -908,7 +944,8 @@ export default function App() {
   const handleServiceUpdate = async (updatedService: Artist) => {
     try {
       const updated = await supabase.updateService(updatedService.id, updatedService);
-      setArtists(artists.map(s => s.id === updated.id ? updated : s));
+      setArtists((prev) => prev.map((service) => service.id === updated.id ? updated : service));
+      setMarketplaceArtists((prev) => prev.map((service) => service.id === updated.id ? { ...service, ...updated } : service));
     } catch (error) {
       console.error('Error updating service:', error);
       toast.error('Error al actualizar servicio');
@@ -918,7 +955,8 @@ export default function App() {
   const handleServiceDelete = async (serviceId: string) => {
     try {
       await supabase.deleteService(serviceId);
-      setArtists(artists.filter(s => s.id !== serviceId));
+      setArtists((prev) => prev.filter((service) => service.id !== serviceId));
+      setMarketplaceArtists((prev) => prev.filter((service) => service.id !== serviceId));
     } catch (error) {
       console.error('Error deleting service:', error);
       toast.error('Error al eliminar servicio');
@@ -1120,6 +1158,36 @@ export default function App() {
 
   const getServiceSeoPath = (artist: Artist) => {
     return `/${serviceCategorySlug(artist)}/${serviceUserCode(artist)}-${serviceTitleSlug(artist)}`;
+  };
+
+  const mergeArtistsById = (existing: Artist[], incoming: Artist[]) => {
+    const artistMap = new Map(existing.map((artist) => [artist.id, artist]));
+
+    incoming.forEach((artist) => {
+      const current = artistMap.get(artist.id);
+      artistMap.set(artist.id, current ? { ...current, ...artist } : artist);
+    });
+
+    return Array.from(artistMap.values());
+  };
+
+  const applyReviewAggregates = (sourceArtists: Artist[], sourceReviews: Review[]) => {
+    return sourceArtists.map((artist) => {
+      const artistReviews = sourceReviews.filter((review) => review.artistId === artist.id);
+
+      if (artistReviews.length === 0) {
+        return artist;
+      }
+
+      const totalRating = artistReviews.reduce((sum, review) => sum + review.rating, 0);
+      const averageRating = totalRating / artistReviews.length;
+
+      return {
+        ...artist,
+        rating: Math.round(averageRating * 10) / 10,
+        reviews: artistReviews.length,
+      };
+    });
   };
 
   const citySlugLookup = useMemo(() => {
@@ -1520,6 +1588,128 @@ export default function App() {
   );
 
   useEffect(() => {
+    const isListingRoute = currentRoute === '/' || currentRoute === '/favoritos' || Boolean(marketplaceRouteContext);
+
+    if (!isListingRoute || viewMode !== 'client' || selectedArtist) {
+      return;
+    }
+
+    setMarketplaceArtists([]);
+    setMarketplaceTotal(0);
+    setMarketplaceHasMore(currentRoute !== '/favoritos');
+    setMarketplacePage(1);
+  }, [
+    currentRoute,
+    marketplaceRouteContext,
+    viewMode,
+    selectedArtist,
+    searchCriteria.query,
+    searchCriteria.city,
+    searchCriteria.category,
+    searchCriteria.subcategory,
+    searchCriteria.priceRange[0],
+    searchCriteria.priceRange[1],
+    sortBy,
+    favoriteServiceIds.join(','),
+  ]);
+
+  useEffect(() => {
+    const isListingRoute = currentRoute === '/' || currentRoute === '/favoritos' || Boolean(marketplaceRouteContext);
+
+    if (!isListingRoute || viewMode !== 'client' || selectedArtist || marketplacePage <= 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadMarketplaceArtists = async () => {
+      setMarketplaceLoading(true);
+
+      try {
+        if (currentRoute === '/favoritos') {
+          if (!currentUser || favoriteServiceIds.length === 0) {
+            if (!cancelled) {
+              setMarketplaceArtists([]);
+              setMarketplaceTotal(0);
+              setMarketplaceHasMore(false);
+            }
+            return;
+          }
+
+          const favoriteArtists = await supabase.getServices({
+            view: 'summary',
+            ids: favoriteServiceIds,
+            isActive: true,
+          });
+          const normalizedFavorites = applyReviewAggregates(favoriteArtists, reviews);
+
+          if (!cancelled) {
+            setMarketplaceArtists(normalizedFavorites);
+            setMarketplaceTotal(normalizedFavorites.length);
+            setMarketplaceHasMore(false);
+            setArtists((prev) => mergeArtistsById(prev, normalizedFavorites));
+          }
+
+          return;
+        }
+
+        const response = await supabase.getServicesPage({
+          view: 'summary',
+          page: marketplacePage,
+          perPage: HOME_LOAD_STEP,
+          isActive: true,
+          query: searchCriteria.query || undefined,
+          city: searchCriteria.city || undefined,
+          category: searchCriteria.category || undefined,
+          subcategory: searchCriteria.subcategory || undefined,
+          minPrice: searchCriteria.priceRange[0],
+          maxPrice: searchCriteria.priceRange[1],
+          sort: sortBy,
+        });
+
+        const normalizedItems = applyReviewAggregates(response.items, reviews);
+
+        if (cancelled) {
+          return;
+        }
+
+        setMarketplaceArtists((prev) => marketplacePage === 1 ? normalizedItems : mergeArtistsById(prev, normalizedItems));
+        setMarketplaceTotal(Number(response.meta?.total || (marketplacePage === 1 ? normalizedItems.length : marketplaceTotal)));
+        setMarketplaceHasMore(Boolean(response.meta?.hasMorePages));
+        setArtists((prev) => mergeArtistsById(prev, normalizedItems));
+      } catch (error) {
+        console.error('Error loading marketplace artists:', error);
+      } finally {
+        if (!cancelled) {
+          setMarketplaceLoading(false);
+        }
+      }
+    };
+
+    void loadMarketplaceArtists();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    currentRoute,
+    marketplaceRouteContext,
+    viewMode,
+    selectedArtist,
+    marketplacePage,
+    searchCriteria.query,
+    searchCriteria.city,
+    searchCriteria.category,
+    searchCriteria.subcategory,
+    searchCriteria.priceRange[0],
+    searchCriteria.priceRange[1],
+    sortBy,
+    favoriteServiceIds.join(','),
+    currentUser?.id,
+    reviews,
+  ]);
+
+  useEffect(() => {
     if (!marketplaceRouteContext) {
       return;
     }
@@ -1805,6 +1995,85 @@ export default function App() {
       setSelectedArtist(null);
     }
   }, [currentRoute, artists, selectedArtist]);
+
+  useEffect(() => {
+    const routeService = resolveServiceByRoute(currentRoute);
+
+    if (routeService) {
+      return;
+    }
+
+    const cleanPath = currentRoute.split('?')[0].replace(/\/+$/, '');
+
+    if (cleanPath.startsWith('/servicio/')) {
+      const serviceId = cleanPath.replace('/servicio/', '');
+
+      if (!serviceId) {
+        return;
+      }
+
+      let cancelled = false;
+
+      const loadById = async () => {
+        try {
+          const detailedService = await supabase.getService(serviceId);
+
+          if (cancelled || !detailedService) {
+            return;
+          }
+
+          setArtists((prev) => mergeArtistsById(prev, [detailedService]));
+          setMarketplaceArtists((prev) => mergeArtistsById(prev, [detailedService]));
+        } catch (error) {
+          console.error('Error hydrating legacy service route:', error);
+        }
+      };
+
+      void loadById();
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const parts = cleanPath.split('/').filter(Boolean);
+    if (parts.length !== 2) {
+      return;
+    }
+
+    const match = parts[1]?.match(/^(MEM-\d{7})-(.+)$/i);
+    if (!match) {
+      return;
+    }
+
+    const [, publicCode] = match;
+    let cancelled = false;
+
+    const loadByPublicCode = async () => {
+      try {
+        const services = await supabase.getServices({
+          view: 'summary',
+          publicCode,
+          perPage: 1,
+        });
+
+        if (cancelled || services.length === 0) {
+          return;
+        }
+
+        setArtists((prev) => mergeArtistsById(prev, services));
+        setMarketplaceArtists((prev) => mergeArtistsById(prev, services));
+      } catch (error) {
+        console.error('Error hydrating SEO service route:', error);
+      }
+    };
+
+    void loadByPublicCode();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentRoute, artists]);
 
   useEffect(() => {
     const routeService = resolveServiceByRoute(currentRoute);
@@ -2195,8 +2464,11 @@ export default function App() {
         // Update artist verified status for all services of this provider
         const provider = providers.find(p => p.id === providerId);
         if (provider) {
-          setArtists(artists.map(a =>
-            a.userId === provider.userId ? { ...a, verified: true } : a
+          setArtists((prev) => prev.map((artist) =>
+            artist.userId === provider.userId ? { ...artist, verified: true } : artist
+          ));
+          setMarketplaceArtists((prev) => prev.map((artist) =>
+            artist.userId === provider.userId ? { ...artist, verified: true } : artist
           ));
         }
 
@@ -2210,8 +2482,11 @@ export default function App() {
       // Update artist verified status for all services of this provider
       const provider = providers.find(p => p.id === providerId);
       if (provider) {
-        setArtists(artists.map(a =>
-          a.userId === provider.userId ? { ...a, verified: true } : a
+        setArtists((prev) => prev.map((artist) =>
+          artist.userId === provider.userId ? { ...artist, verified: true } : artist
+        ));
+        setMarketplaceArtists((prev) => prev.map((artist) =>
+          artist.userId === provider.userId ? { ...artist, verified: true } : artist
         ));
       }
 
@@ -2248,8 +2523,11 @@ export default function App() {
         // Hide all services of banned provider
         const provider = providers.find(p => p.id === providerId);
         if (provider) {
-          setArtists(artists.map(a =>
-            a.userId === provider.userId ? { ...a, isArchived: true } : a
+          setArtists((prev) => prev.map((artist) =>
+            artist.userId === provider.userId ? { ...artist, isArchived: true } : artist
+          ));
+          setMarketplaceArtists((prev) => prev.map((artist) =>
+            artist.userId === provider.userId ? { ...artist, isArchived: true } : artist
           ));
         }
 
@@ -2263,8 +2541,11 @@ export default function App() {
       // Hide all services of banned provider
       const provider = providers.find(p => p.id === providerId);
       if (provider) {
-        setArtists(artists.map(a =>
-          a.userId === provider.userId ? { ...a, isArchived: true } : a
+        setArtists((prev) => prev.map((artist) =>
+          artist.userId === provider.userId ? { ...artist, isArchived: true } : artist
+        ));
+        setMarketplaceArtists((prev) => prev.map((artist) =>
+          artist.userId === provider.userId ? { ...artist, isArchived: true } : artist
         ));
       }
 
@@ -2300,8 +2581,11 @@ export default function App() {
         // Show services of unbanned provider
         const provider = providers.find(p => p.id === providerId);
         if (provider) {
-          setArtists(artists.map(a =>
-            a.userId === provider.userId ? { ...a, isArchived: false } : a
+          setArtists((prev) => prev.map((artist) =>
+            artist.userId === provider.userId ? { ...artist, isArchived: false } : artist
+          ));
+          setMarketplaceArtists((prev) => prev.map((artist) =>
+            artist.userId === provider.userId ? { ...artist, isArchived: false } : artist
           ));
         }
 
@@ -2518,7 +2802,8 @@ export default function App() {
 
       const servicesData = await supabase.getServices({ view: 'summary' });
       if (servicesData) {
-        setArtists(servicesData);
+        setArtists((prev) => mergeArtistsById(prev, servicesData));
+        setMarketplaceArtists((prev) => mergeArtistsById(prev, servicesData));
       }
 
       toast.success('Acceso de proveedor cancelado');
@@ -2568,121 +2853,30 @@ export default function App() {
     console.log('Provider View - All Bookings count:', bookings.length);
   }
 
-  // Filter and sort artists based on search criteria
+  // Public marketplace listing is now fetched remotely; keep only moderation guards locally.
   const filteredArtists = useMemo(() => {
-    const resolveArtistBasePrice = (artist: Artist): number => {
-      if (artist.servicePlans && artist.servicePlans.length > 0) {
-        return Math.min(...artist.servicePlans.map((plan) => plan.price));
+    return marketplaceArtists.filter((artist) => {
+      if (artist.isArchived || artist.isPublished === false) {
+        return false;
       }
 
-      return Number(artist.pricePerHour || 0);
-    };
-
-    let filtered = [...artists];
-
-    // Filter out archived and unpublished services from public view
-    filtered = filtered.filter(artist =>
-      !artist.isArchived && (artist.isPublished !== false)
-    );
-
-    // Filter out services from banned/archived users/providers
-    filtered = filtered.filter(artist => {
-      if (artist.userId) {
-        // Check if the user is banned or archived
-        const user = allUsers.find(u => u.id === artist.userId);
-        if (user?.banned || user?.archived) {
-          return false;
-        }
-
-        // Check if the provider is banned
-        const provider = providers.find(p => p.userId === artist.userId);
-        if (provider?.banned) {
-          return false;
-        }
+      if (!artist.userId) {
+        return true;
       }
+
+      const user = allUsers.find((candidate) => candidate.id === artist.userId);
+      if (user?.banned || user?.archived) {
+        return false;
+      }
+
+      const provider = providers.find((candidate) => candidate.userId === artist.userId);
+      if (provider?.banned) {
+        return false;
+      }
+
       return true;
     });
-
-    // Filter by text query
-    if (searchCriteria.query) {
-      const query = normalizeForSearch(searchCriteria.query);
-      const queryTokens = query.split(' ').filter((token) => token.length > 1);
-
-      filtered = filtered.filter((artist) => {
-        const searchableText = normalizeForSearch([
-          artist.name,
-          artist.description,
-          artist.category,
-          artist.subcategory,
-          ...(artist.specialties || [])
-        ].filter(Boolean).join(' '));
-
-        if (searchableText.includes(query)) {
-          return true;
-        }
-
-        if (queryTokens.length === 0) {
-          return false;
-        }
-
-        const matchedTokens = queryTokens.filter((token) => searchableText.includes(token)).length;
-        return matchedTokens >= Math.max(1, Math.ceil(queryTokens.length * 0.6));
-      });
-    }
-
-    // Filter by city
-    if (searchCriteria.city) {
-      filtered = filtered.filter(artist =>
-        (artist.location?.toLowerCase() || '').includes(searchCriteria.city.toLowerCase())
-      );
-    }
-
-    // Filter by category/subcategory
-    if (searchCriteria.subcategory) {
-      filtered = filtered.filter(artist =>
-        (artist.subcategory?.toLowerCase() || '').includes(searchCriteria.subcategory.toLowerCase()) ||
-        (artist.category?.toLowerCase() || '').includes(searchCriteria.subcategory.toLowerCase()) ||
-        artist.specialties?.some(s => s.toLowerCase().includes(searchCriteria.subcategory.toLowerCase()))
-      );
-    } else if (searchCriteria.category) {
-      filtered = filtered.filter(artist =>
-        (artist.category?.toLowerCase() || '').includes(searchCriteria.category.toLowerCase()) ||
-        artist.specialties?.some(s => s.toLowerCase().includes(searchCriteria.category.toLowerCase()))
-      );
-    }
-
-    // Filter by price range
-    filtered = filtered.filter(artist => {
-      const minPrice = resolveArtistBasePrice(artist);
-      return minPrice >= searchCriteria.priceRange[0] && minPrice <= searchCriteria.priceRange[1];
-    });
-
-    // Sort
-    switch (sortBy) {
-      case 'rating':
-        filtered.sort((a, b) => b.rating - a.rating);
-        break;
-      case 'price-low':
-        filtered.sort((a, b) => {
-          const minPriceA = resolveArtistBasePrice(a);
-          const minPriceB = resolveArtistBasePrice(b);
-          return minPriceA - minPriceB;
-        });
-        break;
-      case 'price-high':
-        filtered.sort((a, b) => {
-          const minPriceA = resolveArtistBasePrice(a);
-          const minPriceB = resolveArtistBasePrice(b);
-          return minPriceB - minPriceA;
-        });
-        break;
-      case 'reviews':
-        filtered.sort((a, b) => b.reviews - a.reviews);
-        break;
-    }
-
-    return filtered;
-  }, [artists, searchCriteria, sortBy, allUsers, providers]);
+  }, [marketplaceArtists, allUsers, providers]);
 
   const isFavoritesRoute = currentRoute === '/favoritos';
   const isPrivateSystemRoute = currentRoute.startsWith('/mi-negocio') || currentRoute.startsWith('/me/');
@@ -2795,11 +2989,37 @@ export default function App() {
   }, [viewMode, selectedArtist, currentRoute, homeVisibleCount, displayedArtists.length]);
 
   useEffect(() => {
+    const isRemoteMarketplaceRoute = viewMode === 'client'
+      && !selectedArtist
+      && currentRoute !== '/favoritos'
+      && (currentRoute === '/' || Boolean(marketplaceRouteContext));
+
+    if (!isRemoteMarketplaceRoute || marketplaceLoading || !marketplaceHasMore) {
+      return;
+    }
+
+    if (homeVisibleCount <= filteredArtists.length) {
+      return;
+    }
+
+    setMarketplacePage((previous) => previous + 1);
+  }, [
+    viewMode,
+    selectedArtist,
+    currentRoute,
+    marketplaceRouteContext,
+    marketplaceLoading,
+    marketplaceHasMore,
+    homeVisibleCount,
+    filteredArtists.length,
+  ]);
+
+  useEffect(() => {
     if (viewMode !== 'client' || selectedArtist || !loadMoreSentinelRef.current) {
       return;
     }
 
-    if (homeVisibleCount >= visibleArtists.length) {
+    if (homeVisibleCount >= visibleArtists.length && !(currentRoute !== '/favoritos' && marketplaceHasMore)) {
       return;
     }
 
@@ -2810,7 +3030,15 @@ export default function App() {
           return;
         }
 
-        setHomeVisibleCount((prev) => Math.min(prev + HOME_LOAD_STEP, visibleArtists.length));
+        setHomeVisibleCount((prev) => {
+          const nextTarget = prev + HOME_LOAD_STEP;
+
+          if (currentRoute !== '/favoritos' && marketplaceHasMore) {
+            return nextTarget;
+          }
+
+          return Math.min(nextTarget, visibleArtists.length);
+        });
       },
       {
         root: null,
@@ -2824,7 +3052,7 @@ export default function App() {
     return () => {
       observer.disconnect();
     };
-  }, [viewMode, selectedArtist, visibleArtists.length, homeVisibleCount]);
+  }, [viewMode, selectedArtist, visibleArtists.length, homeVisibleCount, currentRoute, marketplaceHasMore]);
 
   // Show loading screen while checking authentication
   if (supabase.loading) {
@@ -2939,12 +3167,6 @@ export default function App() {
 
   // Service detail page route (SEO + legacy)
   const serviceArtist = resolveServiceByRoute(currentRoute);
-
-  // Redirect unknown SEO service routes to home
-  const serviceLikeRoute = currentRoute.split('/').filter(Boolean);
-  if (!serviceArtist && artists.length > 0 && serviceLikeRoute.length === 2 && /^MEM-\d{7}-.+/i.test(serviceLikeRoute[1] || '')) {
-    navigateTo('/');
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -3447,7 +3669,8 @@ export default function App() {
                       console.log('Contract marked as completed, reloading services...');
                       const servicesData = await supabase.getServices({ view: 'summary' });
                       if (servicesData && servicesData.length > 0) {
-                        setArtists(servicesData);
+                        setArtists((prev) => mergeArtistsById(prev, servicesData));
+                        setMarketplaceArtists((prev) => mergeArtistsById(prev, servicesData));
                       }
                     }
                   } catch (error) {
@@ -3537,7 +3760,7 @@ export default function App() {
             {/* Results & Sort */}
             <div className="mb-3 md:mb-4 flex flex-col-reverse md:flex-row items-start md:items-center justify-between gap-2 md:gap-3">
               <p className="text-gray-600 text-xs md:text-base leading-tight">
-                Mostrando {displayedArtists.length} de {visibleArtists.length} servicio{visibleArtists.length !== 1 ? 's' : ''} encontrado{visibleArtists.length !== 1 ? 's' : ''}
+                Mostrando {displayedArtists.length} de {(isFavoritesRoute ? visibleArtists.length : Math.max(marketplaceTotal, visibleArtists.length))} servicio{(isFavoritesRoute ? visibleArtists.length : Math.max(marketplaceTotal, visibleArtists.length)) !== 1 ? 's' : ''} encontrado{(isFavoritesRoute ? visibleArtists.length : Math.max(marketplaceTotal, visibleArtists.length)) !== 1 ? 's' : ''}
               </p>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">Ordenar por:</span>
@@ -3572,9 +3795,9 @@ export default function App() {
                     />
                   ))}
                 </div>
-                {displayedArtists.length < visibleArtists.length && (
+                {(displayedArtists.length < visibleArtists.length || (!isFavoritesRoute && marketplaceHasMore)) && (
                   <div ref={loadMoreSentinelRef} className="h-14 flex items-center justify-center text-sm text-gray-500">
-                    Cargando mas servicios...
+                    {marketplaceLoading ? 'Cargando mas servicios...' : 'Desplazate para cargar mas servicios'}
                   </div>
                 )}
               </>
@@ -3617,7 +3840,8 @@ export default function App() {
                     console.log('Contract marked as completed, reloading services...');
                     const servicesData = await supabase.getServices({ view: 'summary' });
                     if (servicesData && servicesData.length > 0) {
-                      setArtists(servicesData);
+                      setArtists((prev) => mergeArtistsById(prev, servicesData));
+                      setMarketplaceArtists((prev) => mergeArtistsById(prev, servicesData));
                     }
                   }
                 } catch (error) {
