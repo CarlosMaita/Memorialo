@@ -209,7 +209,7 @@
                 <input name="name" type="text" placeholder="Nombre completo" required style="padding:12px;border-radius:8px;border:1px solid #d4af37;font-size:1rem;" />
                 <input name="email" type="email" placeholder="Correo electrónico" required style="padding:12px;border-radius:8px;border:1px solid #d4af37;font-size:1rem;" />
                 <input name="phone" type="text" placeholder="Teléfono (opcional)" style="padding:12px;border-radius:8px;border:1px solid #d4af37;font-size:1rem;" />
-                <textarea name="message" placeholder="¿Por qué te interesa? (opcional)" rows="2" style="padding:12px;border-radius:8px;border:1px solid #d4af37;font-size:1rem;"></textarea>
+                <textarea name="message" placeholder="¿Algunas sugerencias?, ¿qué te ha gustado? (opcional)" rows="2" style="padding:12px;border-radius:8px;border:1px solid #d4af37;font-size:1rem;"></textarea>
                 <button type="submit" class="button" style="margin-top:8px;">Quiero ser parte</button>
                 @if(session('success'))
                     <div style="color:var(--gold);font-weight:600;text-align:center;">{{ session('success') }}</div>
