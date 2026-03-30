@@ -198,7 +198,7 @@
                     Ver version beta
                     <span aria-hidden="true">→</span>
                 </a>
-                <a class="url" href="https://mockup.memorialo.com" target="_blank" rel="noreferrer">mockup.memorialo.com</a>
+                <small class="url">Accesos de prueba<br>Usuario: proveedor@memorialo.test <br> Contraseña: Memorialo123*</small>
             </div>
         </main>
         <div class="">
