@@ -31,7 +31,7 @@
             body {
                 margin: 0;
                 min-height: 100%;
-                overflow: hidden;
+                /* overflow: hidden; */
             }
 
             body {
@@ -123,9 +123,24 @@
                 color: var(--navy-blue);
             }
 
+            .d-flex {
+                display: flex;
+
+            }
+            .gap-2 {
+                gap: 32px;
+            }
+            .gap-4 {
+                gap: 64px;
+            }
+
             @media (max-width: 640px) {
                 body {
                     padding: 16px;
+                }
+
+                .d-flex {
+                    flex-direction: column;
                 }
 
                 .card {
@@ -149,7 +164,7 @@
             }
         </style>
     </head>
-    <body>
+    <body class="d-flex gap-4">
         <main class="card">
             <div class="logo" aria-hidden="true">
                 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="72" height="72">
@@ -186,5 +201,21 @@
                 <a class="url" href="https://mockup.memorialo.com" target="_blank" rel="noreferrer">mockup.memorialo.com</a>
             </div>
         </main>
+        <div class="">
+            <form method="POST" action="{{ route('interested-providers.store') }}" class="interest-form" style="margin-top:32px;display:grid;gap:18px;max-width:420px;margin-left:auto;margin-right:auto;">
+                @csrf
+                <h2 style="margin:0 0 8px;font-size:1.3rem;color:var(--navy-blue);font-weight:700;">¿ Quieres ser de los primeros proveedores en Memorialo?</h2>
+                <p style="margin:0 0 10px;font-size:1rem;color:var(--muted);">Déjanos tus datos y sé parte del lanzamiento. Recibirás beneficios de fundador por ser de los primeros, ayúdanos a construir el nuevo marketplace para servicios de eventos en Venezuela.</p>
+                <input name="name" type="text" placeholder="Nombre completo" required style="padding:12px;border-radius:8px;border:1px solid #d4af37;font-size:1rem;" />
+                <input name="email" type="email" placeholder="Correo electrónico" required style="padding:12px;border-radius:8px;border:1px solid #d4af37;font-size:1rem;" />
+                <input name="phone" type="text" placeholder="Teléfono (opcional)" style="padding:12px;border-radius:8px;border:1px solid #d4af37;font-size:1rem;" />
+                <textarea name="message" placeholder="¿Por qué te interesa? (opcional)" rows="2" style="padding:12px;border-radius:8px;border:1px solid #d4af37;font-size:1rem;"></textarea>
+                <button type="submit" class="button" style="margin-top:8px;">Quiero ser parte</button>
+                @if(session('success'))
+                    <div style="color:var(--gold);font-weight:600;text-align:center;">{{ session('success') }}</div>
+                @endif
+            </form>
+
+        </div>
     </body>
 </html>
