@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, CheckCircle, AlertCircle, Calendar, DollarSign, Clock, MapPin, User, MessageCircle, Mail, Download } from 'lucide-react';
+import { FileText, CheckCircle, AlertCircle, Calendar, DollarSign, Clock, MapPin, User, MessageCircle, Mail } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -256,27 +256,6 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
             </div>
             <div className="flex items-center gap-2">
               {getStatusBadge()}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownloadPDF}
-                disabled={downloadingPdf}
-                className="hidden sm:flex"
-                title="Descargar PDF"
-              >
-                <Download className="w-4 h-4 mr-1" />
-                {downloadingPdf ? 'Generando...' : 'PDF'}
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleDownloadPDF}
-                disabled={downloadingPdf}
-                className="sm:hidden"
-                title="Descargar PDF"
-              >
-                <Download className="w-4 h-4" />
-              </Button>
             </div>
           </div>
         </DialogHeader>

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Calendar, Clock, DollarSign, Check, FileText, FolderOpen } from 'lucide-react';
+import { useState, useEffect, type FormEvent } from 'react';
+import { Calendar, Clock, DollarSign, Check, FileText, FolderOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Artist, ServicePlan, Contract, User, Booking, Event } from '../types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
@@ -22,6 +22,7 @@ interface BookingDialogProps {
   onBookingUpdate?: (booking: Booking) => void;
   user: User | null;
   onLoginRequired?: () => void;
+  onSaveContactDetails?: (updates: Partial<User>) => Promise<void>;
   events?: Event[]; // Lista de eventos del usuario
 }
 
@@ -35,6 +36,15 @@ const EVENT_TYPE_OPTIONS = [
   { value: 'other', label: 'Otro' },
 ] as const;
 
+type BookingStep = 'plan' | 'contact' | 'event' | 'summary';
+
+const BOOKING_STEPS: Array<{ id: BookingStep; label: string }> = [
+  { id: 'plan', label: 'Plan' },
+  { id: 'contact', label: 'Contacto' },
+  { id: 'event', label: 'Evento' },
+  { id: 'summary', label: 'Resumen' },
+];
+
 const normalizeText = (value?: string): string => {
   if (!value) return '';
 
@@ -45,7 +55,7 @@ const normalizeText = (value?: string): string => {
     .trim();
 };
 
-export function BookingDialog({ artist, selectedPlan, open, onClose, onContractCreated, onBookingCreated, onBookingUpdate, user, onLoginRequired, events = [] }: BookingDialogProps) {
+export function BookingDialog({ artist, selectedPlan, open, onClose, onContractCreated, onBookingCreated, onBookingUpdate, user, onLoginRequired, onSaveContactDetails, events = [] }: BookingDialogProps) {
   const allowCustomHourly = artist?.allowCustomHourly === true;
 
   const getPlanSaleType = (plan?: ServicePlan | null): 'time' | 'unit' => {
@@ -95,6 +105,8 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
   const [showContract, setShowContract] = useState(false);
   const [generatedContract, setGeneratedContract] = useState<Contract | null>(null);
   const [generatedBooking, setGeneratedBooking] = useState<Booking | null>(null);
+  const [currentStep, setCurrentStep] = useState<BookingStep>('plan');
+  const [savingContactData, setSavingContactData] = useState(false);
 
   useEffect(() => {
     if (!open || !artist) {
@@ -147,6 +159,18 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!open) {
+      setCurrentStep('plan');
+      setShowContract(false);
+      setGeneratedContract(null);
+      setGeneratedBooking(null);
+      return;
+    }
+
+    setCurrentStep('plan');
+  }, [open, artist?.id, selectedPlan?.id]);
+
   // Mapear el tipo de evento del Event a los valores del select
   const mapEventType = (eventType?: string): string => {
     if (!eventType) return '';
@@ -197,6 +221,144 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
   const isEventSelected = selectedEventId && selectedEventId !== 'new';
   const isEventTypeLocked = Boolean(isEventSelected && mappedSelectedEventType);
   const userEvents = events.filter(e => e.userId === user?.id && e.status !== 'cancelled');
+  const currentStepIndex = BOOKING_STEPS.findIndex((step) => step.id === currentStep);
+
+  const validatePlanStep = () => {
+    if (!allowCustomHourly && !selectedServicePlan) {
+      toast.error('Selecciona un plan para continuar');
+      return false;
+    }
+
+    return true;
+  };
+
+  const validateContactStep = () => {
+    if (!formData.clientName.trim()) {
+      toast.error('Ingresa tu nombre completo');
+      return false;
+    }
+
+    if (!formData.clientEmail.trim()) {
+      toast.error('Ingresa tu correo electrónico');
+      return false;
+    }
+
+    if (!formData.clientPhone.trim()) {
+      toast.error('Ingresa tu teléfono de contacto');
+      return false;
+    }
+
+    return true;
+  };
+
+  const validateEventStep = () => {
+    if (!formData.date) {
+      toast.error('Selecciona la fecha del evento');
+      return false;
+    }
+
+    if (!formData.startTime) {
+      toast.error('Indica la hora de inicio');
+      return false;
+    }
+
+    if (!selectedServicePlan && !formData.duration) {
+      toast.error('Selecciona la duración del servicio');
+      return false;
+    }
+
+    if (!formData.eventType) {
+      toast.error('Selecciona el tipo de evento');
+      return false;
+    }
+
+    if (!formData.location.trim()) {
+      toast.error('Indica la ubicación del evento');
+      return false;
+    }
+
+    return true;
+  };
+
+  const persistContactDataIfNeeded = async () => {
+    if (!user || !onSaveContactDetails) {
+      return;
+    }
+
+    const normalizedPhone = formData.clientPhone.trim();
+    const normalizedStoredPhone = (user.phone || '').trim();
+    const normalizedStoredWhatsapp = (user.whatsappNumber || '').trim();
+
+    const updates: Partial<User> = {};
+
+    if (normalizedPhone && normalizedPhone !== normalizedStoredPhone) {
+      updates.phone = normalizedPhone;
+    }
+
+    if (normalizedPhone && !normalizedStoredWhatsapp) {
+      updates.whatsappNumber = normalizedPhone;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return;
+    }
+
+    try {
+      setSavingContactData(true);
+      await onSaveContactDetails(updates);
+      toast.success('Guardamos tu número para próximas reservas');
+    } catch (error) {
+      console.error('Error saving booking contact details:', error);
+      toast.error('No se pudo guardar el teléfono automáticamente, pero puedes continuar');
+    } finally {
+      setSavingContactData(false);
+    }
+  };
+
+  const handleNextStep = async () => {
+    if (currentStep === 'plan') {
+      if (!validatePlanStep()) {
+        return;
+      }
+
+      setCurrentStep('contact');
+      return;
+    }
+
+    if (currentStep === 'contact') {
+      if (!validateContactStep()) {
+        return;
+      }
+
+      await persistContactDataIfNeeded();
+      setCurrentStep('event');
+      return;
+    }
+
+    if (currentStep === 'event') {
+      if (!validateEventStep()) {
+        return;
+      }
+
+      setCurrentStep('summary');
+    }
+  };
+
+  const handlePreviousStep = () => {
+    if (currentStep === 'summary') {
+      setCurrentStep('event');
+      return;
+    }
+
+    if (currentStep === 'event') {
+      setCurrentStep('contact');
+      return;
+    }
+
+    if (currentStep === 'contact') {
+      setCurrentStep('plan');
+    }
+  };
 
   const generateContract = (): Contract => {
     const bookingId = `BK-${Date.now()}`;
@@ -266,8 +428,17 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     };
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+
+    if (currentStep !== 'summary') {
+      void handleNextStep();
+      return;
+    }
+
+    if (!validatePlanStep() || !validateContactStep() || !validateEventStep()) {
+      return;
+    }
     
     // Check if user is logged in
     if (!user) {
@@ -376,341 +547,449 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Selected Plan Info */}
-          {selectedServicePlan && formData.planId !== '' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="secondary">Plan Seleccionado</Badge>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {BOOKING_STEPS.map((step, index) => {
+              const isActive = step.id === currentStep;
+              const isCompleted = index < currentStepIndex;
+
+              return (
+                <div
+                  key={step.id}
+                  className={`rounded-lg border px-3 py-2 text-xs md:text-sm transition-colors ${
+                    isActive
+                      ? 'border-[#D4AF37] bg-amber-50 text-[#1B2A47]'
+                      : isCompleted
+                        ? 'border-green-200 bg-green-50 text-green-700'
+                        : 'border-gray-200 bg-white text-gray-500'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+                      isActive
+                        ? 'bg-[#D4AF37] text-[#1B2A47]'
+                        : isCompleted
+                          ? 'bg-green-600 text-white'
+                          : 'bg-gray-200 text-gray-600'
+                    }`}>
+                      {isCompleted ? '✓' : index + 1}
+                    </span>
+                    <span className="font-medium">{step.label}</span>
                   </div>
-                  <h4 className="text-sm mb-1">{selectedServicePlan.name}</h4>
-                  <p className="text-xs text-gray-600 mb-2">{selectedServicePlan.description}</p>
-                  <div className="space-y-1">
-                    {selectedServicePlan.includes.slice(0, 3).map((item, idx) => (
-                      <div key={idx} className="flex items-start gap-1.5 text-xs text-gray-700">
-                        <Check className="w-3 h-3 text-green-600 flex-shrink-0 mt-0.5" />
-                        <span>{item}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {currentStep === 'plan' && (
+            <div className="space-y-4">
+              {selectedServicePlan ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="secondary">Plan seleccionado</Badge>
                       </div>
-                    ))}
-                    {selectedServicePlan.includes.length > 3 && (
-                      <p className="text-xs text-gray-500 ml-4">
-                        +{selectedServicePlan.includes.length - 3} más...
-                      </p>
+                      <h4 className="text-sm mb-1">{selectedServicePlan.name}</h4>
+                      <p className="text-xs text-gray-600 mb-2">{selectedServicePlan.description}</p>
+                      <div className="space-y-1">
+                        {(selectedServicePlan.includes || []).slice(0, 3).map((item, idx) => (
+                          <div key={idx} className="flex items-start gap-1.5 text-xs text-gray-700">
+                            <Check className="w-3 h-3 text-green-600 flex-shrink-0 mt-0.5" />
+                            <span>{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-gray-600 text-xs">Precio</p>
+                      <p className="text-green-600 font-semibold">${totalPrice}</p>
+                      <p className="text-xs text-gray-500">{formatPlanMeasure(selectedServicePlan)}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
+                  Puedes hacer una reserva personalizada o elegir uno de los planes disponibles.
+                </div>
+              )}
+
+              {!selectedPlan && artist.servicePlans && artist.servicePlans.length > 0 && (
+                <div className="space-y-3">
+                  <Label htmlFor="planSelect" className="mb-1 block">{allowCustomHourly ? 'Seleccionar Plan (Opcional)' : 'Seleccionar Plan *'}</Label>
+                  <Select 
+                    value={selectedPlanValue} 
+                    onValueChange={(value) => {
+                      setSelectedPlanValue(value);
+
+                      if (value === 'custom') {
+                        setFormData({ 
+                          ...formData, 
+                          planId: '',
+                          duration: '2'
+                        });
+                      } else {
+                        const plan = getPlanByOptionValue(value);
+                        setFormData({ 
+                          ...formData, 
+                          planId: plan?.id ? String((plan as any).id) : value,
+                          duration: plan ? plan.duration.toString() : formData.duration
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={allowCustomHourly ? 'Reserva personalizada o selecciona un plan' : 'Selecciona un plan'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allowCustomHourly && (
+                        <SelectItem value="custom">Reserva personalizada</SelectItem>
+                      )}
+                      {artist.servicePlans.map((plan, index) => (
+                        <SelectItem key={buildPlanOptionValue(plan, index)} value={buildPlanOptionValue(plan, index)}>
+                          {plan.name} - ${plan.price} ({formatPlanMeasure(plan)})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                {selectedServicePlan ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Plan</span>
+                      <span>{selectedServicePlan.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">{getPlanSaleType(selectedServicePlan) === 'unit' ? 'Cantidad' : 'Duración'}</span>
+                      <span>{formatPlanMeasure(selectedServicePlan)}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t">
+                      <span className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4" />
+                        <span>Precio total</span>
+                      </span>
+                      <span className="text-green-600 font-semibold">${totalPrice}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Tarifa por hora</span>
+                      <span>${artist.pricePerHour}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t">
+                      <span className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4" />
+                        <span>Total estimado inicial</span>
+                      </span>
+                      <span className="text-green-600 font-semibold">${totalPrice}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {currentStep === 'contact' && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Confirma tus datos de contacto. Tu número quedará guardado para futuras reservas.
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="name" className="mb-1 block">Nombre Completo *</Label>
+                  <Input
+                    id="name"
+                    required
+                    value={formData.clientName}
+                    onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                    placeholder="Juan Pérez"
+                    disabled={!!user}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="email" className="mb-1 block">Correo Electrónico *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      required
+                      value={formData.clientEmail}
+                      onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })}
+                      placeholder="juan@ejemplo.com"
+                      disabled={!!user}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="phone" className="mb-1 block">Teléfono *</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      required
+                      value={formData.clientPhone}
+                      onChange={(e) => setFormData({ ...formData, clientPhone: e.target.value })}
+                      placeholder="(555) 123-4567"
+                    />
+                    {user && (
+                      <p className="text-xs text-gray-500 mt-1">Usaremos este número para autocompletar próximas reservas.</p>
                     )}
                   </div>
                 </div>
-                <div className="text-right ml-4">
-                  <p className="text-gray-600 text-xs">Precio</p>
-                  <p className="text-green-600">${selectedServicePlan.price}</p>
-                  <p className="text-xs text-gray-500">{formatPlanMeasure(selectedServicePlan)}</p>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 'event' && (
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <h3 className="text-sm">Detalles del Evento</h3>
+
+                {userEvents.length > 0 && (
+                  <div>
+                    <Label htmlFor="eventSelect" className="mb-1 block">Asociar a un Evento (Opcional)</Label>
+                    <div className="relative">
+                      <FolderOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                      <Select 
+                        value={selectedEventId || 'new'} 
+                        onValueChange={(value) => setSelectedEventId(value === 'new' ? '' : value)}
+                      >
+                        <SelectTrigger className="pl-10">
+                          <SelectValue placeholder="Nueva reserva independiente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="new">Nueva reserva independiente</SelectItem>
+                          {userEvents.map((event) => (
+                            <SelectItem key={event.id} value={event.id}>
+                              {event.name} {event.eventDate ? `- ${new Date(event.eventDate).toLocaleDateString('es-ES')}` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {isEventSelected && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        Los campos de fecha, tipo de evento y ubicación se tomarán del evento seleccionado.
+                      </p>
+                    )}
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="date" className="mb-1 block">
+                      Fecha del Evento *
+                      {isEventSelected && <Badge variant="secondary" className="ml-2 text-xs">Del evento</Badge>}
+                    </Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        id="date"
+                        type="date"
+                        required
+                        value={formData.date}
+                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                        className="pl-10"
+                        min={new Date().toISOString().split('T')[0]}
+                        disabled={isEventSelected}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="startTime" className="mb-1 block">Hora de inicio del servicio *</Label>
+                    <div className="relative">
+                      <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        id="startTime"
+                        type="time"
+                        required
+                        value={formData.startTime}
+                        onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* Plan Selection (if no plan pre-selected) */}
-          {!selectedPlan && artist.servicePlans && artist.servicePlans.length > 0 && (
-            <div className="space-y-3">
-              <Label htmlFor="planSelect" className="mb-1 block">{allowCustomHourly ? 'Seleccionar Plan (Opcional)' : 'Seleccionar Plan *'}</Label>
-              <Select 
-                value={selectedPlanValue} 
-                onValueChange={(value) => {
-                  setSelectedPlanValue(value);
+                <div>
+                  <Label htmlFor="duration" className="mb-1 block">
+                    {selectedServicePlan && getPlanSaleType(selectedServicePlan) === 'unit' ? 'Cantidad' : 'Duración (horas)'} *
+                  </Label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    {selectedServicePlan ? (
+                      <Input
+                        id="duration"
+                        value={formatPlanMeasure(selectedServicePlan)}
+                        className="pl-10"
+                        disabled
+                      />
+                    ) : (
+                      <Select
+                        value={formData.duration}
+                        onValueChange={(value) => setFormData({ ...formData, duration: value, planId: '' })}
+                      >
+                        <SelectTrigger className="pl-10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5, 6, 8, 10].map((hours) => (
+                            <SelectItem key={hours} value={hours.toString()}>
+                              {hours} {hours === 1 ? 'hora' : 'horas'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                </div>
 
-                  if (value === 'custom') {
-                    setFormData({ 
-                      ...formData, 
-                      planId: '',
-                      duration: '2'
-                    });
-                  } else {
-                    const plan = getPlanByOptionValue(value);
-                    setFormData({ 
-                      ...formData, 
-                      planId: plan?.id ? String((plan as any).id) : value,
-                      duration: plan ? plan.duration.toString() : formData.duration
-                    });
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={allowCustomHourly ? 'Reserva personalizada o selecciona un plan' : 'Selecciona un plan'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {allowCustomHourly && (
-                    <SelectItem value="custom">Reserva personalizada</SelectItem>
-                  )}
-                  {artist.servicePlans.map((plan, index) => (
-                    <SelectItem key={buildPlanOptionValue(plan, index)} value={buildPlanOptionValue(plan, index)}>
-                      {plan.name} - ${plan.price} ({formatPlanMeasure(plan)})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Client Information */}
-          <div className="space-y-3">
-            <h3 className="text-sm">Tu Información</h3>
-            
-            <div>
-              <Label htmlFor="name" className="mb-1 block">Nombre Completo *</Label>
-              <Input
-                id="name"
-                required
-                value={formData.clientName}
-                onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                placeholder="Juan Pérez"
-                disabled={!!user}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="email" className="mb-1 block">Correo Electrónico *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  required
-                  value={formData.clientEmail}
-                  onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })}
-                  placeholder="juan@ejemplo.com"
-                  disabled={!!user}
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone" className="mb-1 block">Teléfono *</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  required
-                  value={formData.clientPhone}
-                  onChange={(e) => setFormData({ ...formData, clientPhone: e.target.value })}
-                  placeholder="(555) 123-4567"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Event Details */}
-          <div className="space-y-3 pt-4 border-t">
-            <h3 className="text-sm">Detalles del Evento</h3>
-
-            {/* Event Selection */}
-            {userEvents.length > 0 && (
-              <div>
-                <Label htmlFor="eventSelect" className="mb-1 block">Asociar a un Evento (Opcional)</Label>
-                <div className="relative">
-                  <FolderOpen className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                <div>
+                  <Label htmlFor="eventType" className="mb-1 block">
+                    Tipo de Evento *
+                    {isEventSelected && <Badge variant="secondary" className="ml-2 text-xs">Del evento</Badge>}
+                  </Label>
                   <Select 
-                    value={selectedEventId || 'new'} 
-                    onValueChange={(value) => setSelectedEventId(value === 'new' ? '' : value)}
+                    value={formData.eventType} 
+                    onValueChange={(value) => setFormData({ ...formData, eventType: value })}
+                    disabled={isEventTypeLocked}
                   >
-                    <SelectTrigger className="pl-10">
-                      <SelectValue placeholder="Nueva reserva independiente" />
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona el tipo de evento" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="new">Nueva reserva independiente</SelectItem>
-                      {userEvents.map((event) => (
-                        <SelectItem key={event.id} value={event.id}>
-                          {event.name} {event.eventDate ? `- ${new Date(event.eventDate).toLocaleDateString('es-ES')}` : ''}
+                      {EVENT_TYPE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {isEventSelected && !mappedSelectedEventType && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      El evento seleccionado no tiene un tipo válido; puedes elegirlo manualmente.
+                    </p>
+                  )}
                 </div>
-                {isEventSelected && (
-                  <p className="text-xs text-blue-600 mt-1">
-                    Los campos de fecha, tipo de evento y ubicación se tomarán del evento seleccionado
-                  </p>
-                )}
-              </div>
-            )}
-            
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="date" className="mb-1 block">
-                  Fecha del Evento *
-                  {isEventSelected && <Badge variant="secondary" className="ml-2 text-xs">Del evento</Badge>}
-                </Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+
+                <div>
+                  <Label htmlFor="location" className="mb-1 block">
+                    Ubicación del Evento *
+                    {isEventSelected && <Badge variant="secondary" className="ml-2 text-xs">Del evento</Badge>}
+                  </Label>
                   <Input
-                    id="date"
-                    type="date"
+                    id="location"
                     required
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="pl-10"
-                    min={new Date().toISOString().split('T')[0]}
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    placeholder="Ciudad, Estado o Dirección Completa"
                     disabled={isEventSelected}
                   />
                 </div>
-              </div>
 
-              <div>
-                <Label htmlFor="startTime" className="mb-1 block">Hora de inicio del servicio *</Label>
-                <div className="relative">
-                  <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    id="startTime"
-                    type="time"
-                    required
-                    value={formData.startTime}
-                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                    className="pl-10"
+                <div>
+                  <Label htmlFor="requests" className="mb-1 block">Solicitudes Especiales (Opcional)</Label>
+                  <Textarea
+                    id="requests"
+                    value={formData.specialRequests}
+                    onChange={(e) => setFormData({ ...formData, specialRequests: e.target.value })}
+                    placeholder="Detalles especiales, requisitos o información que el proveedor deba saber..."
+                    rows={3}
                   />
                 </div>
               </div>
             </div>
+          )}
 
-            <div>
-              <Label htmlFor="duration" className="mb-1 block">
-                {selectedServicePlan && getPlanSaleType(selectedServicePlan) === 'unit' ? 'Cantidad' : 'Duración (horas)'} *
-              </Label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                {selectedServicePlan ? (
-                  <Input
-                    id="duration"
-                    value={formatPlanMeasure(selectedServicePlan)}
-                    className="pl-10"
-                    disabled
-                  />
-                ) : (
-                  <Select
-                    value={formData.duration}
-                    onValueChange={(value) => setFormData({ ...formData, duration: value, planId: '' })}
-                  >
-                    <SelectTrigger className="pl-10">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5, 6, 8, 10].map((hours) => (
-                        <SelectItem key={hours} value={hours.toString()}>
-                          {hours} {hours === 1 ? 'hora' : 'horas'}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+          {currentStep === 'summary' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-gray-500">Plan</p>
+                      <p className="font-medium text-[#1B2A47]">{selectedServicePlan ? selectedServicePlan.name : 'Reserva personalizada'}</p>
+                    </div>
+                    <Badge variant="secondary">Paso final</Badge>
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Precio</span>
+                      <span className="text-green-600 font-semibold">${totalPrice}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">{selectedServicePlan ? (getPlanSaleType(selectedServicePlan) === 'unit' ? 'Cantidad' : 'Duración') : 'Duración'}</span>
+                      <span>{selectedServicePlan ? formatPlanMeasure(selectedServicePlan) : `${formData.duration} hora(s)`}</span>
+                    </div>
+                    {selectedServicePlan && (
+                      <p className="text-xs text-gray-600">{selectedServicePlan.description}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3 text-sm">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Contacto</p>
+                    <p>{formData.clientName}</p>
+                    <p className="text-gray-600">{formData.clientEmail}</p>
+                    <p className="text-gray-600">{formData.clientPhone}</p>
+                  </div>
+
+                  <div className="pt-2 border-t border-gray-200">
+                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Evento</p>
+                    <p><strong>Fecha:</strong> {formData.date || 'Sin definir'}</p>
+                    <p><strong>Hora:</strong> {formData.startTime || 'Sin definir'}</p>
+                    <p><strong>Tipo:</strong> {EVENT_TYPE_OPTIONS.find((option) => option.value === formData.eventType)?.label || 'Sin definir'}</p>
+                    <p><strong>Ubicación:</strong> {formData.location || 'Sin definir'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+                En el siguiente paso podrás revisar el contrato completo, validar el precio final y firmarlo digitalmente.
               </div>
             </div>
+          )}
 
-            <div>
-              <Label htmlFor="eventType" className="mb-1 block">
-                Tipo de Evento *
-                {isEventSelected && <Badge variant="secondary" className="ml-2 text-xs">Del evento</Badge>}
-              </Label>
-              <Select 
-                value={formData.eventType} 
-                onValueChange={(value) => setFormData({ ...formData, eventType: value })}
-                disabled={isEventTypeLocked}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona el tipo de evento" />
-                </SelectTrigger>
-                <SelectContent>
-                  {EVENT_TYPE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {isEventSelected && !mappedSelectedEventType && (
-                <p className="text-xs text-amber-600 mt-1">
-                  El evento seleccionado no tiene un tipo válido; puedes elegirlo manualmente.
-                </p>
+          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={currentStep === 'plan' ? onClose : handlePreviousStep}
+              className="flex-1"
+            >
+              {currentStep === 'plan' ? (
+                'Cancelar'
+              ) : (
+                <>
+                  <ChevronLeft className="w-4 h-4 mr-2" />
+                  Atrás
+                </>
               )}
-            </div>
+            </Button>
 
-            <div>
-              <Label htmlFor="location" className="mb-1 block">
-                Ubicación del Evento *
-                {isEventSelected && <Badge variant="secondary" className="ml-2 text-xs">Del evento</Badge>}
-              </Label>
-              <Input
-                id="location"
-                required
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="Ciudad, Estado o Dirección Completa"
-                disabled={isEventSelected}
-              />
-            </div>
-
-            <div className="">
-              <Label htmlFor="requests" className="mb-1 block">Solicitudes Especiales (Opcional)</Label>
-              <Textarea
-                id="requests"
-                value={formData.specialRequests}
-                onChange={(e) => setFormData({ ...formData, specialRequests: e.target.value })}
-                placeholder="Detalles especiales, requisitos o información que el proveedor deba saber..."
-                rows={3}
-              />
-            </div>
-          </div>
-
-          {/* Pricing Summary */}
-          <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-            {selectedServicePlan ? (
-              <>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Plan</span>
-                  <span>{selectedServicePlan.name}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">{getPlanSaleType(selectedServicePlan) === 'unit' ? 'Cantidad' : 'Duración'}</span>
-                  <span>{formatPlanMeasure(selectedServicePlan)}</span>
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <span className="flex items-center gap-2">
-                    <DollarSign className="w-4 h-4" />
-                    <span>Precio Total</span>
-                  </span>
-                  <span className="text-green-600">${totalPrice}</span>
-                </div>
-              </>
+            {currentStep !== 'summary' ? (
+              <Button
+                type="button"
+                onClick={() => void handleNextStep()}
+                className="flex-1"
+                disabled={savingContactData}
+              >
+                {currentStep === 'contact' && savingContactData ? 'Guardando...' : 'Continuar'}
+                <ChevronRight className="w-4 h-4 ml-2" />
+              </Button>
             ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Tarifa por hora</span>
-                  <span>${artist.pricePerHour}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Duración</span>
-                  <span>{formData.duration} {parseInt(formData.duration) === 1 ? 'hora' : 'horas'}</span>
-                </div>
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <span className="flex items-center gap-2">
-                    <DollarSign className="w-4 h-4" />
-                    <span>Total Estimado</span>
-                  </span>
-                  <span className="text-green-600">${totalPrice}</span>
-                </div>
-              </>
+              <Button type="submit" className="flex-1">
+                <FileText className="w-4 h-4 mr-2" />
+                Revisar contrato y firmar
+              </Button>
             )}
-            <p className="text-xs text-gray-500 pt-2">
-              {selectedServicePlan 
-                ? 'El precio incluye todo lo mencionado en el plan. El proveedor confirmará los detalles finales.'
-                : 'El precio final puede variar según los requisitos específicos y será confirmado por el proveedor.'
-              }
-            </p>
-          </div>
-
-          {/* Submit */}
-          <div className="flex gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-              Cancelar
-            </Button>
-            <Button type="submit" className="flex-1">
-              <FileText className="w-4 h-4 mr-2" />
-              Revisar Contrato y Confirmar
-            </Button>
           </div>
         </form>
       </DialogContent>

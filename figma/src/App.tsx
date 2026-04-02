@@ -4137,6 +4137,13 @@ export default function App() {
         onBookingUpdate={handleBookingUpdate}
         user={currentUser}
         onLoginRequired={() => setShowAuthDialog(true)}
+        onSaveContactDetails={async (updates) => {
+          if (!currentUser) {
+            return;
+          }
+
+          await supabase.updateUser(currentUser.id, updates);
+        }}
         events={events}
       />
 
