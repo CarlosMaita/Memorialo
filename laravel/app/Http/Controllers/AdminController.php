@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Contract;
+use App\Models\InterestedProvider;
 use App\Models\Provider;
 use App\Models\Service;
 use App\Models\User;
@@ -50,6 +51,27 @@ class AdminController extends Controller
         ]);
 
         return response()->json($users);
+    }
+
+    public function interestedProviders(Request $request): JsonResponse
+    {
+        if ($error = $this->authorizeAdmin($request)) {
+            return $error;
+        }
+
+        $interestedProviders = InterestedProvider::query()
+            ->latest()
+            ->get()
+            ->map(fn (InterestedProvider $interestedProvider) => [
+                'id' => $interestedProvider->id,
+                'name' => $interestedProvider->name,
+                'email' => $interestedProvider->email,
+                'phone' => $interestedProvider->phone,
+                'message' => $interestedProvider->message,
+                'createdAt' => optional($interestedProvider->created_at)?->toISOString(),
+            ]);
+
+        return response()->json($interestedProviders);
     }
 
     public function verifyProvider(Request $request, string $id): JsonResponse

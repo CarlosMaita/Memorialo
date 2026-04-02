@@ -33,7 +33,10 @@ import { toast } from 'sonner@2.0.3';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { AdminBillingSection } from './AdminBillingSection';
+import { AdminInterestedProvidersSection } from './AdminInterestedProvidersSection';
 import { ConfirmDialog } from './ConfirmDialog';
+import { backendMode, laravelApiBaseUrl } from '../utils/supabase/client';
+import { projectId } from '../utils/supabase/info';
 
 interface AdminDashboardProps {
   currentUser: User;
@@ -56,12 +59,17 @@ interface AdminDashboardProps {
   onRevokeProviderAccess: (userId: string) => Promise<void>;
 }
 
-type AdminSection = 'overview' | 'billing' | 'providers' | 'users' | 'services';
+type AdminSection = 'overview' | 'billing' | 'providers' | 'interested' | 'users' | 'services';
+
+const API_BASE = backendMode === 'laravel'
+  ? laravelApiBaseUrl
+  : `https://${projectId}.supabase.co/functions/v1/make-server-5d78aefb`;
 
 const adminNavItems = [
   { id: 'overview' as const, label: 'Resumen', icon: <LayoutDashboard className="w-5 h-5" /> },
   { id: 'billing' as const, label: 'Facturación', icon: <DollarSign className="w-5 h-5" /> },
   { id: 'providers' as const, label: 'Proveedores', icon: <Briefcase className="w-5 h-5" /> },
+  { id: 'interested' as const, label: 'Interesados', icon: <FileText className="w-5 h-5" /> },
   { id: 'users' as const, label: 'Usuarios', icon: <Users className="w-5 h-5" /> },
   { id: 'services' as const, label: 'Servicios', icon: <BookOpen className="w-5 h-5" /> },
 ];
@@ -103,6 +111,8 @@ export function AdminDashboard({
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [interestedUsersCount, setInterestedUsersCount] = useState(0);
+  const [loadingInterestedUsers, setLoadingInterestedUsers] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     open: boolean;
     title: string;
@@ -143,6 +153,38 @@ export function AdminDashboard({
       setConfirmModal((prev) => ({ ...prev, open: false, onConfirm: null }));
     }
   };
+
+  useEffect(() => {
+    if (!accessToken || currentUser.role !== 'admin') {
+      setInterestedUsersCount(0);
+      return;
+    }
+
+    const loadInterestedUsers = async () => {
+      setLoadingInterestedUsers(true);
+      try {
+        const response = await fetch(`${API_BASE}/admin/interested-providers`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}`);
+        }
+
+        const data = await response.json();
+        setInterestedUsersCount(Array.isArray(data) ? data.length : 0);
+      } catch {
+        setInterestedUsersCount(0);
+      } finally {
+        setLoadingInterestedUsers(false);
+      }
+    };
+
+    loadInterestedUsers();
+  }, [accessToken, currentUser.role]);
 
   // Check if current user is admin
   if (currentUser.role !== 'admin') {
@@ -426,6 +468,11 @@ export function AdminDashboard({
             >
               <span className={isActive ? 'text-[#D4AF37]' : ''}>{item.icon}</span>
               <span className="flex-1 text-left font-medium">{item.label}</span>
+              {item.id === 'interested' && interestedUsersCount > 0 && (
+                <span className={`min-w-6 rounded-full px-2 py-0.5 text-[11px] font-semibold ${isActive ? 'bg-[#D4AF37] text-[#1B2A47]' : 'bg-amber-100 text-amber-800'}`}>
+                  {interestedUsersCount}
+                </span>
+              )}
             </button>
           );
         })}
@@ -519,6 +566,29 @@ export function AdminDashboard({
               </div>
               <Briefcase className="h-8 w-8 text-gray-400" />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card
+          className="border-2 border-[#D4AF37] bg-gradient-to-br from-amber-50 via-white to-yellow-50 shadow-sm cursor-pointer transition hover:shadow-md"
+          onClick={() => handleNavClick('interested')}
+        >
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm text-[#1B2A47]">Usuarios Interesados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-3xl font-bold text-[#1B2A47]">{loadingInterestedUsers ? '…' : interestedUsersCount}</div>
+                <div className="text-xs font-medium text-amber-700">
+                  Leads captados para el lanzamiento
+                </div>
+              </div>
+              <div className="rounded-full bg-[#D4AF37]/15 p-3">
+                <FileText className="h-8 w-8 text-[#D4AF37]" />
+              </div>
+            </div>
+            <div className="mt-3 text-xs font-semibold text-[#1B2A47]">Ver lista completa →</div>
           </CardContent>
         </Card>
 
@@ -628,6 +698,10 @@ export function AdminDashboard({
                     <div className="rounded-lg border border-gray-200 p-3">
                       <p className="font-medium text-[#1B2A47]">Proveedores pendientes</p>
                       <p>{providers.filter((provider) => !provider.verified && !provider.banned).length} sin verificar</p>
+                    </div>
+                    <div className="rounded-lg border border-[#D4AF37]/40 bg-amber-50 p-3">
+                      <p className="font-medium text-[#1B2A47]">Usuarios interesados en Memorialo</p>
+                      <p>{loadingInterestedUsers ? 'Cargando…' : `${interestedUsersCount} lead${interestedUsersCount === 1 ? '' : 's'} registrado${interestedUsersCount === 1 ? '' : 's'}`}</p>
                     </div>
                     <div className="rounded-lg border border-gray-200 p-3">
                       <p className="font-medium text-[#1B2A47]">Usuarios con solicitud</p>
@@ -831,6 +905,10 @@ export function AdminDashboard({
 
           {activeSection === 'billing' && (
             <AdminBillingSection accessToken={accessToken} />
+          )}
+
+          {activeSection === 'interested' && (
+            <AdminInterestedProvidersSection accessToken={accessToken} />
           )}
 
           {activeSection === 'users' && (

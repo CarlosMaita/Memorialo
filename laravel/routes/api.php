@@ -66,6 +66,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/billing/admin/invoices/{invoiceId}/reject', [BillingController::class, 'rejectPayment']);
 
     Route::get('/admin/users', [AdminController::class, 'users']);
+    Route::get('/admin/interested-providers', [AdminController::class, 'interestedProviders']);
     Route::post('/admin/providers/{id}/verify', [AdminController::class, 'verifyProvider']);
     Route::post('/admin/providers/{id}/ban', [AdminController::class, 'banProvider']);
     Route::post('/admin/providers/{id}/unban', [AdminController::class, 'unbanProvider']);
