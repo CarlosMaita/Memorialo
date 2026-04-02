@@ -67,6 +67,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/admin/users', [AdminController::class, 'users']);
     Route::get('/admin/interested-providers', [AdminController::class, 'interestedProviders']);
+    Route::patch('/admin/marketplace-config', [AdminController::class, 'updateMarketplaceConfig']);
     Route::post('/admin/providers/{id}/verify', [AdminController::class, 'verifyProvider']);
     Route::post('/admin/providers/{id}/ban', [AdminController::class, 'banProvider']);
     Route::post('/admin/providers/{id}/unban', [AdminController::class, 'unbanProvider']);
@@ -106,6 +107,7 @@ Route::get('/providers', [ProviderController::class, 'index']);
 Route::get('/providers/user/{userId}', [ProviderController::class, 'showByUser']);
 Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/services/{id}', [ServiceController::class, 'show']);
+Route::get('/marketplace/config', [AdminController::class, 'marketplaceConfig']);
 Route::post('/contracts', [ContractController::class, 'store']);
 Route::get('/contracts', [ContractController::class, 'index']);
 Route::post('/bookings', [BookingController::class, 'store']);

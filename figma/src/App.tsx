@@ -194,6 +194,8 @@ export default function App() {
 
   // Admin
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [allMarketplaceCities, setAllMarketplaceCities] = useState<string[]>(VENEZUELAN_CITIES);
+  const [enabledMarketplaceCities, setEnabledMarketplaceCities] = useState<string[]>(VENEZUELAN_CITIES);
 
   // Notifications (N2)
   const notificationsEnabled = ((import.meta as any).env?.VITE_NOTIFICATIONS_HEADER_ENABLED ?? 'true') !== 'false';
@@ -1177,6 +1179,47 @@ export default function App() {
     });
   };
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMarketplaceConfig = async () => {
+      try {
+        const config = await supabase.getMarketplaceConfig();
+        const nextAllCities = Array.isArray(config?.allCities) && config.allCities.length > 0
+          ? config.allCities
+          : VENEZUELAN_CITIES;
+        const nextEnabledCities = Array.isArray(config?.enabledCities)
+          ? config.enabledCities
+          : nextAllCities;
+
+        if (!cancelled) {
+          setAllMarketplaceCities(nextAllCities);
+          setEnabledMarketplaceCities(nextEnabledCities);
+        }
+      } catch {
+        if (!cancelled) {
+          setAllMarketplaceCities(VENEZUELAN_CITIES);
+          setEnabledMarketplaceCities(VENEZUELAN_CITIES);
+        }
+      }
+    };
+
+    void loadMarketplaceConfig();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (searchCriteria.city && !enabledMarketplaceCities.includes(searchCriteria.city)) {
+      setSearchCriteria((previous) => ({
+        ...previous,
+        city: '',
+      }));
+    }
+  }, [enabledMarketplaceCities, searchCriteria.city]);
+
   const citySlugLookup = useMemo(() => {
     const lookup = new Map<string, string>();
 
@@ -1588,6 +1631,7 @@ export default function App() {
       maxPrice: Number(searchCriteria.priceRange[1] || 0),
       sortBy,
       favoritesHash: isFavorites ? favoriteServiceIds.slice().sort().join(',') : '',
+      enabledCitiesHash: enabledMarketplaceCities.slice().sort().join(','),
       scope: cacheScope,
     };
 
@@ -1603,6 +1647,7 @@ export default function App() {
     searchCriteria.priceRange,
     sortBy,
     favoriteServiceIds,
+    enabledMarketplaceCities,
   ]);
 
   const isServiceDetailPath = (path: string) => {
@@ -1731,6 +1776,7 @@ export default function App() {
             view: 'summary',
             ids: favoriteServiceIds,
             isActive: true,
+            publicOnly: true,
           });
           const normalizedFavorites = applyReviewAggregates(favoriteArtists, reviews);
 
@@ -1749,6 +1795,7 @@ export default function App() {
           page: marketplacePage,
           perPage: HOME_LOAD_STEP,
           isActive: true,
+          publicOnly: true,
           query: searchCriteria.query || undefined,
           city: searchCriteria.city || undefined,
           category: searchCriteria.category || undefined,
@@ -2030,10 +2077,18 @@ export default function App() {
   }, [currentRoute, currentUser?.id, currentUser?.isProvider, currentProvider?.id, currentProvider?.userId]);
 
   const resolveServiceByRoute = (path: string) => {
+    const routeVisibleArtists = artists.filter((artist) => {
+      if (currentUser?.role === 'admin' || artist.userId === currentUser?.id) {
+        return true;
+      }
+
+      return isMarketplaceCityVisible(artist);
+    });
+
     // Legacy route compatibility
     if (path.startsWith('/servicio/')) {
       const serviceId = path.replace('/servicio/', '');
-      return artists.find((a) => a.id === serviceId) || null;
+      return routeVisibleArtists.find((a) => a.id === serviceId) || null;
     }
 
     const cleanPath = path.split('?')[0].replace(/\/+$/, '');
@@ -2052,7 +2107,7 @@ export default function App() {
 
     const [, memCode, titleSlug] = match;
 
-    const exactMatch = artists.find((artist) => {
+    const exactMatch = routeVisibleArtists.find((artist) => {
       return (
         serviceCategorySlug(artist) === categorySlug &&
         serviceUserCode(artist).toLowerCase() === memCode.toLowerCase() &&
@@ -2065,7 +2120,7 @@ export default function App() {
     }
 
     // Backward compatibility: older links may have stale/alternate category slugs.
-    const codeAndTitleMatch = artists.find((artist) => {
+    const codeAndTitleMatch = routeVisibleArtists.find((artist) => {
       return (
         serviceUserCode(artist).toLowerCase() === memCode.toLowerCase() &&
         serviceTitleSlug(artist) === titleSlug
@@ -2077,7 +2132,7 @@ export default function App() {
     }
 
     // Last fallback for migrated links: keep title stable even if the code changed.
-    return artists.find((artist) => serviceTitleSlug(artist) === titleSlug) || null;
+    return routeVisibleArtists.find((artist) => serviceTitleSlug(artist) === titleSlug) || null;
   };
 
   useEffect(() => {
@@ -2145,6 +2200,7 @@ export default function App() {
           view: 'summary',
           publicCode,
           perPage: 1,
+          publicOnly: true,
         });
 
         if (cancelled || services.length === 0) {
@@ -2904,6 +2960,36 @@ export default function App() {
     }
   };
 
+  const handleUpdateMarketplaceCities = async (enabledCities: string[]) => {
+    try {
+      const config = await supabase.updateMarketplaceConfig(enabledCities);
+      const nextAllCities = Array.isArray(config?.allCities) && config.allCities.length > 0
+        ? config.allCities
+        : allMarketplaceCities;
+      const nextEnabledCities = Array.isArray(config?.enabledCities)
+        ? config.enabledCities
+        : enabledCities;
+
+      setAllMarketplaceCities(nextAllCities);
+      setEnabledMarketplaceCities(nextEnabledCities);
+      marketplaceCacheRef.current = {};
+      setMarketplacePage(1);
+
+      if (searchCriteria.city && !nextEnabledCities.includes(searchCriteria.city)) {
+        setSearchCriteria((previous) => ({
+          ...previous,
+          city: '',
+        }));
+      }
+
+      toast.success('Ciudades disponibles actualizadas');
+    } catch (error) {
+      console.error('Error updating marketplace cities:', error);
+      toast.error('No se pudo actualizar la disponibilidad por ciudad');
+      throw error;
+    }
+  };
+
   // Get user-specific data
   const userBookings = currentUser
     ? bookings.filter(b => b.userId === currentUser.id)
@@ -2943,10 +3029,24 @@ export default function App() {
     console.log('Provider View - All Bookings count:', bookings.length);
   }
 
+  const isMarketplaceCityVisible = (artist: Artist) => {
+    const serviceCity = (artist.location || '').trim();
+
+    if (!serviceCity) {
+      return true;
+    }
+
+    return enabledMarketplaceCities.includes(serviceCity);
+  };
+
   // Public marketplace listing is now fetched remotely; keep only moderation guards locally.
   const filteredArtists = useMemo(() => {
     return marketplaceArtists.filter((artist) => {
       if (artist.isArchived || artist.isPublished === false) {
+        return false;
+      }
+
+      if (!isMarketplaceCityVisible(artist)) {
         return false;
       }
 
@@ -2966,7 +3066,7 @@ export default function App() {
 
       return true;
     });
-  }, [marketplaceArtists, allUsers, providers]);
+  }, [marketplaceArtists, allUsers, providers, enabledMarketplaceCities]);
 
   const isFavoritesRoute = currentRoute === '/favoritos';
   const isPrivateSystemRoute = currentRoute.startsWith('/mi-negocio') || currentRoute.startsWith('/me/');
@@ -3722,6 +3822,9 @@ export default function App() {
               onDeleteUser={handleDeleteUser}
               onApproveProviderAccess={handleApproveProviderAccess}
               onRevokeProviderAccess={handleRevokeProviderAccess}
+              allCities={allMarketplaceCities}
+              enabledCities={enabledMarketplaceCities}
+              onUpdateEnabledCities={handleUpdateMarketplaceCities}
             />
           ) : (
             <div className="text-center py-12">
@@ -3844,6 +3947,7 @@ export default function App() {
               <AirbnbSearchBar
                 onSearch={handleSearchCriteriaChange}
                 searchCriteria={searchCriteria}
+                availableCities={enabledMarketplaceCities}
               />
             </div>
 

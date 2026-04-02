@@ -16,6 +16,7 @@ type ServiceQueryOptions = {
   userId?: string;
   providerId?: string;
   isActive?: boolean;
+  publicOnly?: boolean;
   query?: string;
   city?: string;
   category?: string;
@@ -63,6 +64,7 @@ function buildServiceQuery(options?: ServiceQueryOptions): string {
     user_id: options?.userId,
     provider_id: options?.providerId,
     is_active: options?.isActive,
+    public_only: options?.publicOnly,
     q: options?.query,
     city: options?.city,
     category: options?.category,
@@ -699,6 +701,30 @@ export function useSupabase() {
       return data;
     } catch (error) {
       console.error('Delete service error:', error);
+      throw error;
+    }
+  };
+
+  const getMarketplaceConfig = async () => {
+    try {
+      const data = await apiRequest('/marketplace/config', 'GET');
+      return {
+        allCities: Array.isArray(data?.allCities) ? data.allCities : [],
+        enabledCities: Array.isArray(data?.enabledCities) ? data.enabledCities : [],
+      };
+    } catch (error) {
+      console.error('Get marketplace config error:', error);
+      throw error;
+    }
+  };
+
+  const updateMarketplaceConfig = async (enabledCities: string[]) => {
+    try {
+      return await apiRequest('/admin/marketplace-config', 'PATCH', {
+        enabledCities,
+      }, accessToken || undefined);
+    } catch (error) {
+      console.error('Update marketplace config error:', error);
       throw error;
     }
   };
@@ -1398,6 +1424,8 @@ export function useSupabase() {
     getService,
     updateService,
     deleteService,
+    getMarketplaceConfig,
+    updateMarketplaceConfig,
     createContract,
     getContracts,
     updateContract,

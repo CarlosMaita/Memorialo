@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MarketplaceSetting;
 use App\Models\Provider;
 use App\Models\Service;
 use Illuminate\Database\Eloquent\Builder;
@@ -433,6 +434,16 @@ class ServiceController extends Controller
             $query->where('is_active', filter_var($request->query('is_active'), FILTER_VALIDATE_BOOL));
         }
 
+        if (filter_var($request->query('public_only', false), FILTER_VALIDATE_BOOL)) {
+            $enabledCities = $this->resolveEnabledMarketplaceCities();
+
+            if ($enabledCities === []) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereIn('city', $enabledCities);
+            }
+        }
+
         match ((string) $request->query('sort', 'latest')) {
             'rating' => $query->reorder()->orderByDesc('rating')->orderByDesc('reviews_count'),
             'price-low' => $query->reorder()->orderBy('price')->orderByDesc('rating'),
@@ -440,6 +451,39 @@ class ServiceController extends Controller
             'reviews' => $query->reorder()->orderByDesc('reviews_count')->orderByDesc('rating'),
             default => $query->reorder()->latest(),
         };
+    }
+
+    private function resolveEnabledMarketplaceCities(): array
+    {
+        $allCities = collect(config('marketplace.all_cities', []))
+            ->map(fn (mixed $city) => trim((string) $city))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $storedCities = MarketplaceSetting::query()->value('enabled_cities');
+
+        $enabledCities = is_array($storedCities)
+            ? collect($storedCities)
+                ->map(fn (mixed $city) => trim((string) $city))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all()
+            : $allCities;
+
+        if ($allCities === []) {
+            return $enabledCities;
+        }
+
+        $allowedLookup = array_fill_keys($allCities, true);
+
+        return collect($enabledCities)
+            ->filter(fn (string $city) => isset($allowedLookup[$city]))
+            ->values()
+            ->all();
     }
 
     private function resolvePerPage(Request $request): ?int

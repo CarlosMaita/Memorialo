@@ -24,7 +24,10 @@ import {
   X,
   Activity,
   LayoutDashboard,
-  BookOpen
+  BookOpen,
+  MapPin,
+  Save,
+  Loader2
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Textarea } from './ui/textarea';
@@ -57,6 +60,9 @@ interface AdminDashboardProps {
   onDeleteUser: (userId: string) => Promise<void>;
   onApproveProviderAccess: (userId: string) => Promise<void>;
   onRevokeProviderAccess: (userId: string) => Promise<void>;
+  allCities: string[];
+  enabledCities: string[];
+  onUpdateEnabledCities: (cities: string[]) => Promise<void>;
 }
 
 type AdminSection = 'overview' | 'billing' | 'providers' | 'interested' | 'users' | 'services';
@@ -92,7 +98,10 @@ export function AdminDashboard({
   onUnarchiveUser,
   onDeleteUser,
   onApproveProviderAccess,
-  onRevokeProviderAccess
+  onRevokeProviderAccess,
+  allCities,
+  enabledCities,
+  onUpdateEnabledCities
 }: AdminDashboardProps) {
   const ADMIN_TABLE_BATCH_SIZE = 16;
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,6 +110,8 @@ export function AdminDashboard({
   const [userAccessFilter, setUserAccessFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'none'>('all');
   const [userTypeFilter, setUserTypeFilter] = useState<'all' | 'admin' | 'provider' | 'client'>('all');
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
+  const [selectedEnabledCities, setSelectedEnabledCities] = useState<string[]>(enabledCities);
+  const [savingEnabledCities, setSavingEnabledCities] = useState(false);
   const [visibleProvidersCount, setVisibleProvidersCount] = useState(ADMIN_TABLE_BATCH_SIZE);
   const [visibleUsersCount, setVisibleUsersCount] = useState(ADMIN_TABLE_BATCH_SIZE);
   const [visibleServicesCount, setVisibleServicesCount] = useState(ADMIN_TABLE_BATCH_SIZE);
@@ -153,6 +164,10 @@ export function AdminDashboard({
       setConfirmModal((prev) => ({ ...prev, open: false, onConfirm: null }));
     }
   };
+
+  useEffect(() => {
+    setSelectedEnabledCities(enabledCities);
+  }, [enabledCities]);
 
   useEffect(() => {
     if (!accessToken || currentUser.role !== 'admin') {
@@ -356,6 +371,12 @@ export function AdminDashboard({
     [filteredServices, visibleServicesCount]
   );
 
+  const hasCityAvailabilityChanges = useMemo(() => {
+    const currentSelection = selectedEnabledCities.slice().sort().join('|');
+    const persistedSelection = enabledCities.slice().sort().join('|');
+    return currentSelection !== persistedSelection;
+  }, [selectedEnabledCities, enabledCities]);
+
   useEffect(() => {
     setVisibleProvidersCount(ADMIN_TABLE_BATCH_SIZE);
   }, [searchQuery, filterStatus, filteredProviders.length]);
@@ -424,6 +445,23 @@ export function AdminDashboard({
     setSelectedProvider(provider);
     setBanType('provider');
     setShowBanDialog(true);
+  };
+
+  const toggleEnabledCity = (cityName: string) => {
+    setSelectedEnabledCities((previous) => (
+      previous.includes(cityName)
+        ? previous.filter((city) => city !== cityName)
+        : [...previous, cityName].sort((left, right) => left.localeCompare(right, 'es'))
+    ));
+  };
+
+  const handleSaveEnabledCities = async () => {
+    try {
+      setSavingEnabledCities(true);
+      await onUpdateEnabledCities(selectedEnabledCities);
+    } finally {
+      setSavingEnabledCities(false);
+    }
   };
 
   const handleNavClick = (section: AdminSection) => {
@@ -1250,6 +1288,91 @@ export function AdminDashboard({
                 <h2 className="text-2xl font-bold text-[#1B2A47] mb-1">Servicios</h2>
                 <p className="text-gray-500 text-sm">Inventario publicado y estado general del catálogo</p>
               </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-[#D4AF37]" />
+                Ciudades disponibles en la plataforma
+              </CardTitle>
+              <CardDescription>
+                Los proveedores pueden registrar servicios en cualquier ciudad, pero en el Home y en las búsquedas públicas solo se mostrarán las ciudades habilitadas aquí.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Badge variant="secondary">{selectedEnabledCities.length} habilitadas</Badge>
+                  <span>de {allCities.length} ciudades configuradas</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedEnabledCities([...allCities].sort((left, right) => left.localeCompare(right, 'es')))}
+                  >
+                    Seleccionar todas
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedEnabledCities([])}
+                  >
+                    Ocultar todas
+                  </Button>
+                </div>
+              </div>
+
+              <div className="max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <div className="flex flex-wrap gap-2">
+                  {allCities.map((cityName) => {
+                    const isEnabled = selectedEnabledCities.includes(cityName);
+
+                    return (
+                      <button
+                        key={cityName}
+                        type="button"
+                        onClick={() => toggleEnabledCity(cityName)}
+                        className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                          isEnabled
+                            ? 'border-[#D4AF37] bg-amber-50 text-[#1B2A47]'
+                            : 'border-gray-300 bg-white text-gray-600 hover:border-[#D4AF37]/60'
+                        }`}
+                      >
+                        {isEnabled ? '✅' : '○'} {cityName}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <p className="text-xs text-gray-500">
+                  Estos cambios afectan el Home, los listados públicos y la búsqueda de clientes.
+                </p>
+                <Button
+                  type="button"
+                  onClick={handleSaveEnabledCities}
+                  disabled={savingEnabledCities || !hasCityAvailabilityChanges}
+                  className="md:self-end"
+                >
+                  {savingEnabledCities ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Guardar ciudades disponibles
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

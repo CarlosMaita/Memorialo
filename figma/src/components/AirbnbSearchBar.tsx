@@ -20,6 +20,7 @@ export interface SearchCriteria {
 interface AirbnbSearchBarProps {
   onSearch: (criteria: SearchCriteria) => void;
   searchCriteria?: SearchCriteria;
+  availableCities?: string[];
 }
 
 // Función helper para capitalizar correctamente
@@ -30,7 +31,7 @@ const capitalizeCategory = (text: string): string => {
     .join(' ');
 };
 
-export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarProps) {
+export function AirbnbSearchBar({ onSearch, searchCriteria, availableCities = VENEZUELAN_CITIES }: AirbnbSearchBarProps) {
   const [query, setQuery] = useState('');
   const [city, setCity] = useState('');
   const [category, setCategory] = useState('');
@@ -80,6 +81,7 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
   };
 
   const hasActiveFilters = query || city || category || subcategory || priceRange[0] > 0 || priceRange[1] < 5000;
+  const cityOptions = availableCities;
 
   return (
     <div className="w-full">
@@ -127,7 +129,7 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
               <CommandList>
                 <CommandEmpty>No se encontró la ciudad.</CommandEmpty>
                 <CommandGroup>
-                  {VENEZUELAN_CITIES.map((cityName) => (
+                  {cityOptions.map((cityName) => (
                     <CommandItem
                       key={cityName}
                       value={cityName}
@@ -373,7 +375,7 @@ export function AirbnbSearchBar({ onSearch, searchCriteria }: AirbnbSearchBarPro
                   <CommandList>
                     <CommandEmpty>No se encontró la ciudad.</CommandEmpty>
                     <CommandGroup>
-                      {VENEZUELAN_CITIES.map((cityName) => (
+                      {cityOptions.map((cityName) => (
                         <CommandItem
                           key={cityName}
                           value={cityName}

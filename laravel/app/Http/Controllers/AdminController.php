@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Contract;
 use App\Models\InterestedProvider;
+use App\Models\MarketplaceSetting;
 use App\Models\Provider;
 use App\Models\Service;
 use App\Models\User;
@@ -327,6 +328,43 @@ class AdminController extends Controller
         return response()->json($this->formatUser($user->fresh()));
     }
 
+    public function marketplaceConfig(): JsonResponse
+    {
+        return response()->json($this->formatMarketplaceConfig(MarketplaceSetting::query()->first()));
+    }
+
+    public function updateMarketplaceConfig(Request $request): JsonResponse
+    {
+        if ($error = $this->authorizeAdmin($request)) {
+            return $error;
+        }
+
+        $validated = $request->validate([
+            'enabledCities' => ['required', 'array'],
+            'enabledCities.*' => ['string', 'max:100'],
+        ]);
+
+        $allCities = $this->marketplaceCityCatalog();
+        $allowedLookup = array_fill_keys($allCities, true);
+
+        $enabledCities = collect($validated['enabledCities'] ?? [])
+            ->map(fn (mixed $city) => trim((string) $city))
+            ->filter(fn (string $city) => $city !== '' && isset($allowedLookup[$city]))
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $settings = MarketplaceSetting::query()->firstOrCreate([], [
+            'enabled_cities' => null,
+        ]);
+
+        $settings->enabled_cities = $enabledCities;
+        $settings->save();
+
+        return response()->json($this->formatMarketplaceConfig($settings));
+    }
+
     private function authorizeAdmin(Request $request): ?JsonResponse
     {
         $authUser = $request->user();
@@ -392,5 +430,41 @@ class AdminController extends Controller
             'totalBookings' => (int) $provider->total_bookings,
             'rating' => (float) $provider->rating,
         ];
+    }
+
+    private function formatMarketplaceConfig(?MarketplaceSetting $settings): array
+    {
+        $allCities = $this->marketplaceCityCatalog();
+        $allowedLookup = array_fill_keys($allCities, true);
+
+        $storedCities = is_array($settings?->enabled_cities)
+            ? $settings->enabled_cities
+            : $allCities;
+
+        $enabledCities = collect($storedCities)
+            ->map(fn (mixed $city) => trim((string) $city))
+            ->filter(fn (string $city) => $city !== '' && isset($allowedLookup[$city]))
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        return [
+            'allCities' => $allCities,
+            'enabledCities' => $enabledCities,
+        ];
+    }
+
+    private function marketplaceCityCatalog(): array
+    {
+        $cities = collect(config('marketplace.all_cities', []))
+            ->map(fn (mixed $city) => trim((string) $city))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        return $cities === [] ? ['Caracas'] : $cities;
     }
 }
