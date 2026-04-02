@@ -125,7 +125,10 @@
 
             .d-flex {
                 display: flex;
-
+                align-items: center;
+                justify-content: center;
+                flex-wrap: wrap;
+                width: 100%;
             }
             .gap-2 {
                 gap: 32px;
