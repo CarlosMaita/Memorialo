@@ -52,7 +52,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/services/{id}', [ServiceController::class, 'update']);
     Route::delete('/services/{id}', [ServiceController::class, 'destroy']);
 
+    Route::post('/contracts', [ContractController::class, 'store']);
+    Route::get('/contracts', [ContractController::class, 'index']);
     Route::put('/contracts/{id}', [ContractController::class, 'update']);
+
+    Route::post('/bookings', [BookingController::class, 'store']);
+    Route::get('/bookings', [BookingController::class, 'index']);
     Route::put('/bookings/{id}', [BookingController::class, 'update']);
     Route::put('/events/{id}', [EventController::class, 'update']);
     Route::delete('/events/{id}', [EventController::class, 'destroy']);
@@ -108,10 +113,6 @@ Route::get('/providers/user/{userId}', [ProviderController::class, 'showByUser']
 Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/services/{id}', [ServiceController::class, 'show']);
 Route::get('/marketplace/config', [AdminController::class, 'marketplaceConfig']);
-Route::post('/contracts', [ContractController::class, 'store']);
-Route::get('/contracts', [ContractController::class, 'index']);
-Route::post('/bookings', [BookingController::class, 'store']);
-Route::get('/bookings', [BookingController::class, 'index']);
 Route::get('/events', [EventController::class, 'index']);
 Route::get('/billing/config', [BillingController::class, 'config']);
 Route::get('/reviews', [ReviewController::class, 'index']);

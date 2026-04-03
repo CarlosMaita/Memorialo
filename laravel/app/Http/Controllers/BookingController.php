@@ -57,7 +57,7 @@ class BookingController extends Controller
 
         $bookingId = $payload['id'] ?? ('booking-'.now()->timestamp);
 
-        $authUser = $request->user();
+        $authUser = $request->user('sanctum') ?? $request->user();
         if ($authUser && ! array_key_exists('user_id', $payload)) {
             $payload['user_id'] = (string) $authUser->id;
         }
@@ -239,7 +239,7 @@ class BookingController extends Controller
             return null;
         }
 
-        $authUser = $request->user();
+        $authUser = $request->user('sanctum') ?? $request->user();
 
         if (! $authUser) {
             return response()->json(['error' => 'Unauthorized'], 401);

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\BillingInvoice;
 use App\Models\Booking;
+use App\Models\Contract;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -148,6 +149,85 @@ class ApiPhaseOneSmokeTest extends TestCase
                 'artistId' => (string) $service->id,
                 'clientName' => 'Cliente legado',
             ]);
+    }
+
+    public function test_scoped_contracts_and_bookings_accept_bearer_tokens_on_public_routes(): void
+    {
+        $provider = User::factory()->create([
+            'role' => 'provider',
+            'is_provider' => true,
+            'provider_request_status' => 'approved',
+            'provider_approved_at' => now(),
+        ]);
+
+        $client = User::factory()->create();
+
+        $service = Service::create([
+            'user_id' => $provider->id,
+            'title' => 'Mariachi premium',
+            'description' => 'Show para eventos',
+            'category' => 'music',
+            'city' => 'CDMX',
+            'price' => 3200,
+            'is_active' => true,
+        ]);
+
+        Booking::create([
+            'id' => 'token-booking-001',
+            'artist_id' => (string) $service->id,
+            'artist_user_id' => (string) $provider->id,
+            'artist_name' => 'Mariachi premium',
+            'user_id' => (string) $client->id,
+            'client_name' => 'Cliente token',
+            'client_email' => $client->email,
+            'date' => '2026-08-15',
+            'start_time' => '20:00',
+            'duration' => 3,
+            'event_type' => 'wedding',
+            'location' => 'CDMX',
+            'total_price' => 3200,
+            'status' => 'confirmed',
+            'contract_id' => 'token-contract-001',
+        ]);
+
+        Contract::create([
+            'id' => 'token-contract-001',
+            'booking_id' => 'token-booking-001',
+            'artist_id' => (string) $service->id,
+            'artist_user_id' => (string) $provider->id,
+            'artist_name' => 'Mariachi premium',
+            'client_id' => (string) $client->id,
+            'client_name' => 'Cliente token',
+            'client_email' => $client->email,
+            'status' => 'pending',
+        ]);
+
+        $clientToken = $client->createToken('client-token')->plainTextToken;
+        $providerToken = $provider->createToken('provider-token')->plainTextToken;
+
+        $this->withToken($clientToken)
+            ->getJson('/api/bookings?scope=client')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => 'token-booking-001',
+                'clientName' => 'Cliente token',
+            ]);
+
+        $this->withToken($clientToken)
+            ->getJson('/api/contracts?scope=client')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => 'token-contract-001',
+                'clientName' => 'Cliente token',
+            ]);
+
+        $this->withToken($providerToken)
+            ->getJson('/api/bookings?scope=provider')
+            ->assertOk();
+
+        $this->withToken($providerToken)
+            ->getJson('/api/contracts?scope=provider')
+            ->assertOk();
     }
 
     public function test_provider_and_service_endpoints_accept_camel_case_payloads(): void

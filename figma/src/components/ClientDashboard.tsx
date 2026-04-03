@@ -75,7 +75,7 @@ export function ClientDashboard({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchBooking, setSearchBooking] = useState('');
   const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
-  const [showEventBookings, setShowEventBookings] = useState(true);
+  const [showEventBookings, setShowEventBookings] = useState(false);
 
   const getMeasureType = (contract: any): 'time' | 'unit' => {
     if (contract?.metadata?.saleType === 'unit' || contract?.terms?.measureType === 'unit') {
