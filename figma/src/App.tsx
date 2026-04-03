@@ -144,6 +144,11 @@ type AppNavigationState = {
   bookingConfirmation?: BookingConfirmationState;
 };
 
+type OpenBookingEventDetail = {
+  bookingId?: string | null;
+  contractId?: string | null;
+};
+
 const searchCriteriaEquals = (left: SearchCriteria, right: SearchCriteria) => {
   return (
     left.query === right.query &&
@@ -228,6 +233,7 @@ export default function App() {
   const [providerDashboardSection, setProviderDashboardSection] = useState<ProviderDashboardSection | undefined>(undefined);
   const [providerFocusedBookingId, setProviderFocusedBookingId] = useState<string | null>(null);
   const [clientDashboardSection, setClientDashboardSection] = useState<ClientDashboardSection | undefined>(undefined);
+  const [clientFocusedBookingId, setClientFocusedBookingId] = useState<string | null>(null);
   const [clientFocusedContractId, setClientFocusedContractId] = useState<string | null>(null);
   const [favoriteServiceIds, setFavoriteServiceIds] = useState<string[]>([]);
   const [isCheckingProviderProfile, setIsCheckingProviderProfile] = useState(false);
@@ -1171,6 +1177,41 @@ export default function App() {
       detail: { bookingId: bookingConfirmationData.bookingId },
     }));
   };
+
+  useEffect(() => {
+    const handleOpenBookingEvent = (event: Event) => {
+      if (!currentUser) {
+        return;
+      }
+
+      const customEvent = event as CustomEvent<OpenBookingEventDetail>;
+      const bookingId = customEvent.detail?.bookingId ? String(customEvent.detail.bookingId) : null;
+      const contractId = customEvent.detail?.contractId ? String(customEvent.detail.contractId) : null;
+
+      setViewMode('business');
+
+      if (currentUser.isProvider) {
+        setDashboardView('provider');
+        setProviderDashboardSection('bookings');
+        setProviderFocusedBookingId(bookingId);
+        setClientFocusedBookingId(null);
+        navigateTo('/mi-negocio/reservas');
+        return;
+      }
+
+      setDashboardView('client');
+      setClientDashboardSection('bookings');
+      setClientFocusedBookingId(bookingId);
+      setClientFocusedContractId(contractId);
+      navigateTo('/me/reservas');
+    };
+
+    window.addEventListener('memorialo:open-booking', handleOpenBookingEvent);
+
+    return () => {
+      window.removeEventListener('memorialo:open-booking', handleOpenBookingEvent);
+    };
+  }, [currentUser]);
 
   const slugify = (value?: string) => {
     if (!value) return '';
@@ -4015,6 +4056,8 @@ export default function App() {
                   contracts={contracts}
                   user={currentUser}
                   initialSection={clientDashboardSection}
+                  focusBookingId={clientFocusedBookingId}
+                  onFocusBookingHandled={() => setClientFocusedBookingId(null)}
                   focusContractId={clientFocusedContractId}
                   onFocusContractHandled={() => setClientFocusedContractId(null)}
                   onReviewCreate={(contractId) => {
@@ -4179,6 +4222,8 @@ export default function App() {
                 contracts={contracts}
                 user={currentUser}
                 initialSection={clientDashboardSection}
+                focusBookingId={clientFocusedBookingId}
+                onFocusBookingHandled={() => setClientFocusedBookingId(null)}
                 focusContractId={clientFocusedContractId}
                 onFocusContractHandled={() => setClientFocusedContractId(null)}
                 onReviewCreate={(contractId) => {

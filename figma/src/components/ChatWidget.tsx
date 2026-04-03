@@ -96,6 +96,33 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
     [activeCounterpart],
   );
 
+  const totalUnreadCount = useMemo(
+    () => conversations.reduce((sum, conversation) => sum + Math.max(0, Number(conversation.unreadCount || 0)), 0),
+    [conversations],
+  );
+
+  const activeBooking = useMemo(() => {
+    if (!activeConversation?.bookingId) {
+      return null;
+    }
+
+    return bookings.find(booking => String(booking.id) === String(activeConversation.bookingId)) || null;
+  }, [activeConversation?.bookingId, bookings]);
+
+  const activeConversationReference = useMemo(() => {
+    const contractId = activeBooking?.contractId ? String(activeBooking.contractId).trim() : '';
+    if (contractId) {
+      return { label: 'Contrato', code: contractId };
+    }
+
+    const bookingId = activeConversation?.bookingId ? String(activeConversation.bookingId).trim() : '';
+    if (bookingId) {
+      return { label: 'Reserva', code: bookingId };
+    }
+
+    return null;
+  }, [activeBooking?.contractId, activeConversation?.bookingId]);
+
   const candidateBookings = useMemo(() => {
     if (!user) return [];
 
@@ -165,7 +192,7 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
   }, [messages, chatWindowOpen, activeConversationId]);
 
   useEffect(() => {
-    if ((!conversationListOpen && !chatWindowOpen) || !user) {
+    if (!user) {
       return;
     }
 
@@ -325,7 +352,7 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
   }, [activeConversationId, chatWindowOpen, draft, submitting, user]);
 
   useEffect(() => {
-    if ((!conversationListOpen && !chatWindowOpen) || !user) {
+    if (!user) {
       return;
     }
 
@@ -461,6 +488,22 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
     setActiveConversationId(conversationId);
     setConversationListOpen(false);
     setChatWindowOpen(true);
+  };
+
+  const handleOpenLinkedReservation = () => {
+    const bookingId = activeConversation?.bookingId ? String(activeConversation.bookingId) : null;
+    const contractId = activeBooking?.contractId ? String(activeBooking.contractId) : null;
+
+    if (!bookingId && !contractId) {
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent('memorialo:open-booking', {
+      detail: {
+        bookingId,
+        contractId,
+      },
+    }));
   };
 
   const handleToggleConversationList = () => {
@@ -667,9 +710,23 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <CardTitle className="text-[15px] leading-none text-[#1B2A47] truncate">
-                      {activeCounterpart?.name || 'Conversacion'}
-                    </CardTitle>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CardTitle className="max-w-full truncate text-[15px] leading-none text-[#1B2A47]">
+                        {activeCounterpart?.name || 'Conversacion'}
+                      </CardTitle>
+                      {activeConversationReference && (
+                        <button
+                          type="button"
+                          onClick={handleOpenLinkedReservation}
+                          className="max-w-full rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-[#1B2A47] transition hover:bg-slate-200"
+                          title="Abrir reserva vinculada"
+                        >
+                          <span className="block max-w-[180px] truncate">
+                            {activeConversationReference.label}: {activeConversationReference.code}
+                          </span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -716,10 +773,10 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
                     const mine = message.authorUserId === user.id;
 
                     return (
-                      <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[90%] rounded-xl px-3 py-2 text-sm ${mine ? 'bg-[#1B2A47] text-white' : 'bg-gray-100 text-gray-800'}`}>
-                          {!mine && <p className="mb-1 text-[11px] font-semibold">{message.authorName || 'Usuario'}</p>}
-                          {message.body && <p className="whitespace-pre-wrap break-words">{message.body}</p>}
+                      <div key={message.id} className={`flex min-w-0 ${mine ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[90%] overflow-hidden rounded-xl px-3 py-2 text-sm ${mine ? 'bg-[#1B2A47] text-white' : 'bg-gray-100 text-gray-800'}`}>
+                          {!mine && <p className="mb-1 truncate text-[11px] font-semibold">{message.authorName || 'Usuario'}</p>}
+                          {message.body && <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.body}</p>}
                           {renderAttachments(message.attachments, mine)}
                           <p className={`mt-1 text-[10px] ${mine ? 'text-white/70' : 'text-gray-500'}`}>
                             {message.createdAt ? new Date(message.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : ''}
@@ -825,7 +882,7 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
                       <button
                         key={conversation.id}
                         onClick={() => handleOpenConversation(conversation.id)}
-                        className={`w-full rounded-xl px-3 py-3 text-left transition ${isActive ? 'bg-[#1B2A47] text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                        className={`w-full overflow-hidden rounded-xl px-3 py-3 text-left transition ${isActive ? 'bg-[#1B2A47] text-white' : 'text-gray-700 hover:bg-gray-100'}`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex flex-1 items-center gap-3">
@@ -837,7 +894,7 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
                             </Avatar>
                             <div className="min-w-0 flex-1 overflow-hidden">
                               <div className="block w-full truncate text-sm font-semibold">{counterpart?.name || 'Conversacion'}</div>
-                              <div className={`mt-1 block w-full truncate text-xs ${isActive ? 'text-white/80' : 'text-gray-500'}`}>
+                              <div className={`mt-1 block w-full overflow-hidden text-xs leading-5 [overflow-wrap:anywhere] ${isActive ? 'text-white/80' : 'text-gray-500'}`}>
                                 {conversation.lastMessage?.body || 'Sin mensajes'}
                               </div>
                             </div>
@@ -865,9 +922,25 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
         )}
 
         {!chatWindowOpen && (
-          <Button onClick={handleToggleConversationList} className="bg-[#1B2A47] text-white shadow-lg hover:bg-[#2d4270]">
-            <MessageCircle className="w-4 h-4 mr-2" />
-            Chat
+          <Button
+            onClick={handleToggleConversationList}
+            aria-label="Abrir chat"
+            className="h-14 w-14 rounded-full bg-[#1B2A47] p-0 text-white shadow-lg hover:bg-[#2d4270]"
+          >
+            <span className="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-transparent">
+              <MessageCircle className="h-5 w-5" />
+              {totalUnreadCount > 0 && (
+                <>
+                  <span className="absolute -right-0.5 -top-0.5 flex size-3.5" aria-hidden="true">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#D4AF37]/70" />
+                    <span className="relative inline-flex size-3.5 rounded-full border-2 border-[#1B2A47] bg-[#D4AF37]" />
+                  </span>
+                  <span className="sr-only">
+                    {`Tienes ${totalUnreadCount} mensaje${totalUnreadCount === 1 ? '' : 's'} sin leer`}
+                  </span>
+                </>
+              )}
+            </span>
           </Button>
         )}
       </div>

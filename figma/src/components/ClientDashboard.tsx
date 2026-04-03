@@ -26,6 +26,8 @@ interface ClientDashboardProps {
   contracts: Contract[];
   user: User;
   initialSection?: SidebarSection;
+  focusBookingId?: string | null;
+  onFocusBookingHandled?: () => void;
   focusContractId?: string | null;
   onFocusContractHandled?: () => void;
   onReviewCreate: (contractId: string) => void;
@@ -48,6 +50,8 @@ export function ClientDashboard({
   contracts,
   user,
   initialSection,
+  focusBookingId,
+  onFocusBookingHandled,
   focusContractId,
   onFocusContractHandled,
   onReviewCreate,
@@ -169,6 +173,16 @@ export function ClientDashboard({
     contractsByEvent.get(eventId)!.push(contract);
   });
   const unassignedContracts = contractsByEvent.get(null) || [];
+
+  useEffect(() => {
+    if (!focusBookingId) {
+      return;
+    }
+
+    setActiveSection('bookings');
+    setExpandedBookingId(focusBookingId);
+    onFocusBookingHandled?.();
+  }, [focusBookingId, onFocusBookingHandled]);
 
   useEffect(() => {
     if (!focusContractId) {
