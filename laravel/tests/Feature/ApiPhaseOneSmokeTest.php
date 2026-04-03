@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\BillingInvoice;
+use App\Models\Booking;
+use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -98,6 +100,54 @@ class ApiPhaseOneSmokeTest extends TestCase
             ->postJson('/api/auth/logout')
             ->assertOk()
             ->assertJsonPath('message', 'Sesion cerrada correctamente.');
+    }
+
+    public function test_provider_scope_includes_legacy_bookings_linked_by_service_owner(): void
+    {
+        $provider = User::factory()->create([
+            'role' => 'provider',
+            'is_provider' => true,
+            'provider_request_status' => 'approved',
+            'provider_approved_at' => now(),
+        ]);
+
+        $client = User::factory()->create();
+
+        $service = Service::create([
+            'user_id' => $provider->id,
+            'title' => 'Legacy service',
+            'description' => 'Servicio legado',
+            'category' => 'music',
+            'city' => 'CDMX',
+            'price' => 1500,
+            'is_active' => true,
+        ]);
+
+        Booking::create([
+            'id' => 'legacy-booking-001',
+            'artist_id' => (string) $service->id,
+            'artist_user_id' => null,
+            'artist_name' => 'Legacy service',
+            'user_id' => (string) $client->id,
+            'client_name' => 'Cliente legado',
+            'date' => '2026-07-10',
+            'start_time' => '18:00',
+            'duration' => 2,
+            'event_type' => 'Boda',
+            'location' => 'CDMX',
+            'total_price' => 1500,
+            'status' => 'pending',
+        ]);
+
+        Sanctum::actingAs($provider);
+
+        $this->getJson('/api/bookings?scope=provider')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => 'legacy-booking-001',
+                'artistId' => (string) $service->id,
+                'clientName' => 'Cliente legado',
+            ]);
     }
 
     public function test_provider_and_service_endpoints_accept_camel_case_payloads(): void

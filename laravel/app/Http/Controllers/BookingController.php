@@ -254,7 +254,20 @@ class BookingController extends Controller
         }
 
         if ($scope === 'provider') {
-            $query->where('artist_user_id', (string) $authUser->id);
+            $ownedServiceIds = Service::query()
+                ->where('user_id', (string) $authUser->id)
+                ->pluck('id')
+                ->map(fn ($id) => (string) $id)
+                ->filter()
+                ->values();
+
+            $query->where(function (Builder $providerQuery) use ($authUser, $ownedServiceIds) {
+                $providerQuery->where('artist_user_id', (string) $authUser->id);
+
+                if ($ownedServiceIds->isNotEmpty()) {
+                    $providerQuery->orWhereIn('artist_id', $ownedServiceIds->all());
+                }
+            });
         }
 
         return null;
