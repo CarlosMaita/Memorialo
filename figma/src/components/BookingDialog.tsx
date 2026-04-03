@@ -20,6 +20,7 @@ interface BookingDialogProps {
   onContractCreated?: (contract: Contract) => void;
   onBookingCreated?: (booking: Booking) => void;
   onBookingUpdate?: (booking: Booking) => void;
+  onBookingConfirmed?: (payload: { booking: Booking; contract: Contract; artist: Artist; planName?: string }) => void;
   user: User | null;
   onLoginRequired?: () => void;
   onSaveContactDetails?: (updates: Partial<User>) => Promise<void>;
@@ -55,7 +56,7 @@ const normalizeText = (value?: string): string => {
     .trim();
 };
 
-export function BookingDialog({ artist, selectedPlan, open, onClose, onContractCreated, onBookingCreated, onBookingUpdate, user, onLoginRequired, onSaveContactDetails, events = [] }: BookingDialogProps) {
+export function BookingDialog({ artist, selectedPlan, open, onClose, onContractCreated, onBookingCreated, onBookingUpdate, onBookingConfirmed, user, onLoginRequired, onSaveContactDetails, events = [] }: BookingDialogProps) {
   const allowCustomHourly = artist?.allowCustomHourly === true;
 
   const getPlanSaleType = (plan?: ServicePlan | null): 'time' | 'unit' => {
@@ -497,6 +498,8 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
   };
 
   const handleContractSigned = async (signedContract: Contract) => {
+    setGeneratedContract(signedContract);
+
     if (onContractCreated) {
       onContractCreated(signedContract);
     }
@@ -527,15 +530,20 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     
     // Booking stays in 'pending' status when client signs
     // It will be confirmed only when provider signs the contract
-    
-    toast.success('¡Contrato firmado! El proveedor revisará tu solicitud y confirmará la reserva.');
-    
-    // Cerrar ambos modales después de firmar
+    toast.success('¡Reserva realizada! Redirigiendo a la confirmación.');
+
+    if (generatedBooking && onBookingConfirmed) {
+      onBookingConfirmed({
+        booking: generatedBooking,
+        contract: signedContract,
+        artist,
+        planName: selectedServicePlan?.name,
+      });
+    }
+
     setShowContract(false);
     onClose();
   };
-
-
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

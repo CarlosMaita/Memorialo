@@ -28,6 +28,7 @@ import { CancellationPolicy } from './components/legal/CancellationPolicy';
 import { RefundPolicy } from './components/legal/RefundPolicy';
 import { CodeOfConduct } from './components/legal/CodeOfConduct';
 import { ServiceDetailPage } from './components/ServiceDetailPage';
+import { BookingConfirmation } from './components/BookingConfirmation';
 import { ChatWidget } from './components/ChatWidget';
 import { SEOHead, buildMarketplaceStructuredData } from './components/SEOHead';
 import { Button } from './components/ui/button';
@@ -35,6 +36,7 @@ import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
 import { Badge } from './components/ui/badge';
 import { Toaster } from './components/ui/sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './components/ui/dropdown-menu';
+import { downloadContractPdf } from './utils/contractPdf';
 import { toast } from 'sonner@2.0.3';
 
 type ViewMode = 'client' | 'business' | 'admin';
@@ -120,9 +122,26 @@ type MarketplaceCacheEntry = {
   updatedAt: number;
 };
 
+type BookingConfirmationState = {
+  bookingId?: string;
+  contractId?: string;
+  artistName: string;
+  serviceName: string;
+  date: string;
+  time: string;
+  location: string;
+  duration: string;
+  totalPrice: number;
+  planName?: string;
+  providerPhone?: string;
+  providerEmail?: string;
+  contract?: Contract | null;
+};
+
 type AppNavigationState = {
   fromMarketplace?: boolean;
   homeListingSnapshot?: HomeListingSnapshot;
+  bookingConfirmation?: BookingConfirmationState;
 };
 
 const searchCriteriaEquals = (left: SearchCriteria, right: SearchCriteria) => {
@@ -173,6 +192,9 @@ export default function App() {
   const [showForProviders, setShowForProviders] = useState(false);
   const [showForClients, setShowForClients] = useState(false);
   const [currentRoute, setCurrentRoute] = useState(window.location.pathname);
+  const [bookingConfirmationData, setBookingConfirmationData] = useState<BookingConfirmationState | null>(
+    ((window.history.state as AppNavigationState | null | undefined)?.bookingConfirmation as BookingConfirmationState | undefined) || null
+  );
 
   // User authentication and profile
   const currentUser = supabase.currentUser;
@@ -398,11 +420,19 @@ export default function App() {
         return;
       }
 
+      const normalizedPath = (currentRoute.split('?')[0] || '/').replace(/\/+$/, '') || '/';
+      const isClientReservationsRoute = normalizedPath.startsWith('/me/');
+      const isProviderWorkspaceRoute = normalizedPath.startsWith('/mi-negocio');
+
       const scope = currentUser.role === 'admin'
         ? 'all'
-        : currentUser.isProvider
-          ? 'provider'
-          : 'client';
+        : isClientReservationsRoute
+          ? 'client'
+          : isProviderWorkspaceRoute
+            ? 'provider'
+            : currentUser.isProvider && dashboardView !== 'client'
+              ? 'provider'
+              : 'client';
 
       try {
         const [contractsData, bookingsData] = await Promise.all([
@@ -431,7 +461,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [currentUser?.id, currentUser?.role, currentUser?.isProvider]);
+  }, [currentUser?.id, currentUser?.role, currentUser?.isProvider, currentRoute, dashboardView]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1086,6 +1116,60 @@ export default function App() {
     if (options?.scrollToTop !== false) {
       window.scrollTo(0, 0);
     }
+  };
+
+  const handleBookingConfirmed = (payload: { booking: Booking; contract: Contract; artist: Artist; planName?: string }) => {
+    const isUnitBooking = payload.booking.metadata?.saleType === 'unit';
+    const unitLabel = String((payload.booking.metadata as any)?.unitLabel || 'unidad(es)');
+    const durationLabel = isUnitBooking
+      ? `${payload.booking.duration} ${unitLabel}`
+      : `${payload.booking.duration} ${payload.booking.duration === 1 ? 'hora' : 'horas'}`;
+
+    const details: BookingConfirmationState = {
+      bookingId: payload.booking.id,
+      contractId: payload.contract.id,
+      artistName: payload.artist.name,
+      serviceName: payload.planName || payload.booking.planName || payload.artist.name,
+      date: payload.booking.date,
+      time: payload.booking.startTime,
+      location: payload.booking.location,
+      duration: durationLabel,
+      totalPrice: Number(payload.booking.totalPrice || payload.contract.terms.price || 0),
+      planName: payload.planName || payload.booking.planName,
+      providerPhone: payload.contract.artistWhatsapp || payload.artist.whatsappNumber,
+      providerEmail: payload.contract.artistEmail || payload.artist.email,
+      contract: payload.contract,
+    };
+
+    setBookingConfirmationData(details);
+    setShowBooking(false);
+    setSelectedPlan(null);
+    navigateTo('/reserva-confirmada', { state: { bookingConfirmation: details } });
+  };
+
+  const handleDownloadConfirmedContract = () => {
+    if (!bookingConfirmationData?.contract) {
+      toast.error('No hay un contrato disponible para descargar');
+      return;
+    }
+
+    try {
+      downloadContractPdf(bookingConfirmationData.contract, 'client');
+    } catch (error) {
+      console.error('Error downloading confirmed contract:', error);
+      toast.error('No se pudo descargar el contrato');
+    }
+  };
+
+  const handleContactConfirmedProvider = () => {
+    if (!bookingConfirmationData?.bookingId) {
+      toast.error('No encontramos la reserva para abrir el chat');
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent('memorialo:open-chat', {
+      detail: { bookingId: bookingConfirmationData.bookingId },
+    }));
   };
 
   const slugify = (value?: string) => {
@@ -3354,6 +3438,51 @@ export default function App() {
       />
     );
   }
+  if (currentRoute === '/reserva-confirmada') {
+    const confirmationDetails = bookingConfirmationData || {
+      artistName: 'Tu proveedor',
+      serviceName: 'Reserva confirmada',
+      date: '',
+      time: '',
+      location: 'Por confirmar',
+      duration: 'Por confirmar',
+      totalPrice: 0,
+    };
+
+    return (
+      <>
+        <Toaster />
+        <BookingConfirmation
+          bookingDetails={confirmationDetails}
+          onViewBookings={() => {
+            window.location.assign('/me/reservas');
+          }}
+          onReturnHome={() => {
+            window.location.assign('/');
+          }}
+          onDownloadContract={handleDownloadConfirmedContract}
+          onContactProvider={handleContactConfirmedProvider}
+          canDownloadContract={Boolean(bookingConfirmationData?.contract)}
+          canContactProvider={Boolean(bookingConfirmationData?.bookingId)}
+        />
+
+        <ChatWidget
+          user={currentUser}
+          bookings={bookings}
+          api={{
+            getChatConversations: supabase.getChatConversations,
+            ensureChatConversation: supabase.ensureChatConversation,
+            getChatMessages: supabase.getChatMessages,
+            sendChatMessage: supabase.sendChatMessage,
+            markChatConversationRead: supabase.markChatConversationRead,
+            requestChatIntervention: supabase.requestChatIntervention,
+            subscribeChatStream: supabase.subscribeChatStream,
+            subscribeChatConversationSignals: supabase.subscribeChatConversationSignals,
+          }}
+        />
+      </>
+    );
+  }
 
   // Service detail page route (SEO + legacy)
   const serviceArtist = resolveServiceByRoute(currentRoute);
@@ -4135,6 +4264,7 @@ export default function App() {
         onContractCreated={handleContractCreated}
         onBookingCreated={handleBookingCreate}
         onBookingUpdate={handleBookingUpdate}
+        onBookingConfirmed={handleBookingConfirmed}
         user={currentUser}
         onLoginRequired={() => setShowAuthDialog(true)}
         onSaveContactDetails={async (updates) => {
