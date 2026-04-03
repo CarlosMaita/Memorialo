@@ -8,6 +8,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { ConfirmDialog } from './ConfirmDialog';
 
 type ChatApi = {
   getChatConversations: () => Promise<ChatConversation[]>;
@@ -71,6 +72,7 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
   const [submitting, setSubmitting] = useState(false);
   const [counterpartTyping, setCounterpartTyping] = useState(false);
   const [counterpartOnline, setCounterpartOnline] = useState(false);
+  const [showInterventionConfirm, setShowInterventionConfirm] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -131,6 +133,9 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
       return userIsParticipant && booking.status !== 'cancelled';
     });
   }, [bookings, user]);
+
+  const escalationAudienceLabel = user?.isProvider ? 'cliente' : 'proveedor';
+  const escalationDescription = `Usa esta opcion solo cuando necesites mediacion con el ${escalationAudienceLabel}: conflicto, incumplimiento, falta de respuesta importante o lenguaje inapropiado. Para coordinar detalles normales del servicio, sigue usando el chat. Al confirmar, notificaremos al administrador para revisar el caso.`;
 
   useEffect(() => {
     pendingAttachmentsRef.current = pendingAttachments;
@@ -698,6 +703,17 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
   return (
     <div className="fixed right-4 bottom-4 z-40">
       <div className="flex flex-col items-end gap-3">
+        <ConfirmDialog
+          open={showInterventionConfirm}
+          onOpenChange={setShowInterventionConfirm}
+          onConfirm={handleRequestIntervention}
+          title="¿Deseas escalar esta conversación?"
+          description={escalationDescription}
+          confirmText="Sí, escalar"
+          cancelText="Volver al chat"
+          variant="warning"
+        />
+
         {chatWindowOpen && activeConversation && (
           <Card className="z-50 flex h-[540px] w-[360px] max-w-[92vw] flex-col shadow-2xl border-[#1B2A47]/20">
             <CardHeader className="border-b px-4 py-3 space-y-1.5">
@@ -733,7 +749,12 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
                   {!activeConversation.requiresAdminIntervention && (
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button size="icon" variant="outline" onClick={handleRequestIntervention} className="h-8 w-8 shrink-0">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={() => setShowInterventionConfirm(true)}
+                          className="h-8 w-8 shrink-0"
+                        >
                           <AlertTriangle className="w-4 h-4" />
                         </Button>
                       </TooltipTrigger>
