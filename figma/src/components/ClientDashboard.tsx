@@ -382,36 +382,73 @@ export function ClientDashboard({
     const linkedContract = getBookingContract(booking);
     const canLeaveReview = Boolean(linkedContract && canReview(linkedContract) && !hasReviewed(linkedContract.id));
     const canDownloadContract = Boolean(linkedContract && booking.contractId);
+    const contractCode = booking.contractId ? String(booking.contractId).trim() : '';
+    const compactContractCode = contractCode.length > 18 ? `${contractCode.slice(0, 8)}…${contractCode.slice(-4)}` : contractCode;
 
     return (
-      <Card key={booking.id} className={booking.status === 'pending' ? 'border-2 border-yellow-400 bg-yellow-50/30' : ''}>
-        <CardContent className="p-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex-1 min-w-0">
+      <Card key={booking.id} className={`shadow-sm ${booking.status === 'pending' ? 'border-yellow-200 bg-yellow-50/40' : 'border-slate-200'}`}>
+        <CardContent className="px-3 py-2.5">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_130px_140px_90px_auto] md:items-center">
+            <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h4 className="text-sm truncate">{booking.artistName || 'Proveedor'}</h4>
-                <Badge variant="outline" className={`${getBookingStatusBadgeClass(booking.status)} text-xs`}>
-                  <span className="flex items-center gap-1">{getBookingStatusIcon(booking.status)}{getBookingStatusText(booking.status)}</span>
-                </Badge>
+                <h4 className="truncate text-sm font-medium text-[#1B2A47]">{booking.artistName || 'Proveedor'}</h4>
                 {linkedContract?.eventId && (
                   <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
                     {userEventsById.get(linkedContract.eventId)?.name || 'Evento'}
                   </Badge>
                 )}
               </div>
-              <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(booking.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
-                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{booking.startTime || 'N/A'}</span>
-                <span className="text-green-600 font-medium">${booking.totalPrice}</span>
-              </div>
+              <p className="mt-0.5 truncate text-xs text-gray-500">
+                {booking.eventType || 'Evento'}
+                {booking.location ? ` · ${booking.location}` : ''}
+              </p>
             </div>
-            <div className="flex items-center gap-1">
+
+            <div className="min-w-0">
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400 md:hidden">Contrato</p>
+              {contractCode ? (
+                <Badge
+                  variant="outline"
+                  className="max-w-full border-slate-200 bg-white text-slate-700"
+                  title={`Contrato ${contractCode}`}
+                >
+                  <span className="block max-w-[120px] truncate">{compactContractCode}</span>
+                </Badge>
+              ) : (
+                <span className="text-xs text-gray-400">Sin contrato</span>
+              )}
+            </div>
+
+            <div className="text-xs text-gray-600">
+              <p className="flex items-center gap-1 font-medium text-gray-700">
+                <Calendar className="w-3 h-3" />
+                {new Date(booking.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+              </p>
+              <p className="mt-0.5 flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {booking.startTime || 'N/A'}
+              </p>
+            </div>
+
+            <div>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400 md:hidden">Estado</p>
+              <Badge variant="outline" className={`${getBookingStatusBadgeClass(booking.status)} text-xs`}>
+                <span className="flex items-center gap-1">{getBookingStatusIcon(booking.status)}{getBookingStatusText(booking.status)}</span>
+              </Badge>
+            </div>
+
+            <div>
+              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400 md:hidden">Total</p>
+              <p className="text-sm font-semibold text-green-600">${booking.totalPrice}</p>
+            </div>
+
+            <div className="flex items-center justify-start gap-1 md:justify-end">
               {booking.contractId && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => handleViewContractFromBooking(booking)}
-                  className="h-8 w-8 p-0"
+                  className="h-7 w-7 p-0"
                   title="Ver contrato"
                 >
                   <FileText className="w-4 h-4 text-gray-700" />
@@ -422,7 +459,7 @@ export function ClientDashboard({
                   size="sm"
                   variant="ghost"
                   onClick={() => handleDownloadContractFromBooking(booking)}
-                  className="h-8 w-8 p-0"
+                  className="h-7 w-7 p-0"
                   title="Descargar contrato"
                 >
                   <Download className="w-4 h-4 text-gray-700" />
@@ -432,7 +469,7 @@ export function ClientDashboard({
                 size="sm"
                 variant="ghost"
                 onClick={() => handleStartChatFromBooking(booking.id)}
-                className="h-8 w-8 p-0"
+                className="h-7 w-7 p-0"
                 title="Iniciar conversación"
               >
                 <MessageCircle className="w-4 h-4 text-gray-700" />
@@ -442,7 +479,7 @@ export function ClientDashboard({
                   size="sm"
                   variant="ghost"
                   onClick={() => onReviewCreate(linkedContract.id)}
-                  className="h-8 w-8 p-0 text-[#D4AF37] hover:text-[#D4AF37]"
+                  className="h-7 w-7 p-0 text-[#D4AF37] hover:text-[#D4AF37]"
                   title="Dejar reseña"
                 >
                   <Star className="w-4 h-4" />
@@ -452,7 +489,7 @@ export function ClientDashboard({
                 size="sm"
                 variant="ghost"
                 onClick={() => setExpandedBookingId(isExpanded ? null : booking.id)}
-                className="ml-1 h-8 w-8 p-0"
+                className="h-7 w-7 p-0"
                 title={isExpanded ? 'Ocultar detalles' : 'Mostrar detalles'}
               >
                 {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-700" /> : <ChevronDown className="w-4 h-4 text-gray-700" />}
@@ -461,19 +498,19 @@ export function ClientDashboard({
           </div>
 
           {isExpanded && (
-            <div className="mt-3 pt-3 border-t space-y-3">
-              <p className="text-sm text-gray-600">{booking.eventType || 'Evento'}</p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="mt-3 space-y-3 border-t border-slate-100 pt-3">
+              <div className="grid grid-cols-2 gap-2 text-xs md:grid-cols-3">
                 <div><p className="text-gray-400">Fecha</p><p className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(booking.date).toLocaleDateString('es-ES')}</p></div>
                 <div><p className="text-gray-400">Hora</p><p className="flex items-center gap-1"><Clock className="w-3 h-3" />{booking.startTime || 'N/A'}</p></div>
                 <div><p className="text-gray-400">Duración</p><p>{getMeasureLabel(booking, booking.duration)}</p></div>
                 <div><p className="text-gray-400">Ubicación</p><p className="truncate">{booking.location}</p></div>
                 <div><p className="text-gray-400">Precio</p><p className="text-green-600">${booking.totalPrice}</p></div>
+                <div><p className="text-gray-400">Contrato</p><p className="truncate">{contractCode || 'Sin contrato'}</p></div>
               </div>
 
               {linkedContract && (
                 <div>
-                  <Label className="text-xs text-gray-500 mb-1 block">Asignar a Evento</Label>
+                  <Label className="mb-1 block text-xs text-gray-500">Asignar a Evento</Label>
                   <Select
                     value={linkedContract.eventId || 'none'}
                     onValueChange={(value) => onAssignContractToEvent(linkedContract.id, value === 'none' ? null : value)}
@@ -493,7 +530,7 @@ export function ClientDashboard({
 
               {booking.specialRequests && (
                 <div>
-                  <p className="text-gray-400 text-xs mb-1">Solicitud adicional</p>
+                  <p className="mb-1 text-xs text-gray-400">Solicitud adicional</p>
                   <p className="text-sm text-gray-700">{booking.specialRequests}</p>
                 </div>
               )}
@@ -1037,6 +1074,15 @@ export function ClientDashboard({
                       </div>
                     </div>
                   )}
+
+                  <div className="hidden md:grid grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_130px_140px_90px_auto] gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    <span>Proveedor / detalle</span>
+                    <span>Contrato</span>
+                    <span>Fecha</span>
+                    <span>Estado</span>
+                    <span>Total</span>
+                    <span className="text-right">Opciones</span>
+                  </div>
 
                   {showEventBookings ? (
                     eventBookingGroups.length === 0 ? (
