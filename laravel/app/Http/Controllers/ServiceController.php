@@ -15,7 +15,7 @@ class ServiceController extends Controller
     {
         $view = $request->query('view', 'summary');
         $perPage = $this->resolvePerPage($request);
-        $query = Service::query()->latest();
+        $query = Service::query()->with(['provider.user'])->latest();
 
         $this->applyListFilters($query, $request);
 
@@ -43,7 +43,7 @@ class ServiceController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $service = Service::find($id);
+        $service = Service::query()->with(['provider.user'])->find($id);
 
         if (! $service) {
             return response()->json(['error' => 'Service not found'], 404);
@@ -320,8 +320,23 @@ class ServiceController extends Controller
 
     private function formatService(Service $service, string $view = 'detail'): array
     {
+        $service->loadMissing(['provider.user']);
+
         $metadata = is_array($service->metadata) ? $service->metadata : [];
         $isDetailed = $view !== 'summary';
+        $provider = $service->provider ?: Provider::query()->with('user')->where('user_id', $service->user_id)->first();
+        $providerRepresentative = is_array($provider?->representative) ? $provider->representative : [];
+        $providerType = data_get($providerRepresentative, 'type', $provider?->legal_entity_type === 'company' ? 'company' : 'person');
+        $providerType = $providerType === 'company' ? 'company' : 'person';
+        $providerRepresentativeName = data_get(
+            $providerRepresentative,
+            'name',
+            $providerType === 'company'
+                ? ($provider?->business_name ?: $provider?->user?->name ?: $service->title)
+                : ($provider?->user?->name ?: $provider?->business_name ?: $service->title)
+        );
+        $providerDocumentType = data_get($providerRepresentative, 'documentType', $providerType === 'company' ? 'RIF' : 'CI');
+        $providerDocumentNumber = data_get($providerRepresentative, 'documentNumber', $provider?->identification_number);
 
         return [
             'id' => (string) $service->id,
@@ -354,6 +369,16 @@ class ServiceController extends Controller
             'customTerms' => $isDetailed ? ($metadata['customTerms'] ?? null) : null,
             'isArchived' => (bool) ($metadata['isArchived'] ?? false),
             'publicCode' => $metadata['publicCode'] ?? null,
+            'providerBusinessName' => $provider?->business_name,
+            'providerRepresentative' => [
+                'type' => $providerType,
+                'name' => $providerRepresentativeName,
+                'documentType' => $providerDocumentType,
+                'documentNumber' => $providerDocumentNumber,
+            ],
+            'providerRepresentativeName' => $providerRepresentativeName,
+            'providerLegalEntityType' => $providerType,
+            'providerIdentificationNumber' => $providerDocumentNumber,
             'metadata' => $isDetailed ? $metadata : null,
             'detailLoaded' => $isDetailed,
             'createdAt' => optional($service->created_at)?->toISOString(),

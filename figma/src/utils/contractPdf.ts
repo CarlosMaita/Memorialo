@@ -26,7 +26,15 @@ export interface ContractPdfData {
     clientLegalName?: string;
     clientRepresentativeName?: string;
     providerBusinessName?: string;
+    providerRepresentative?: {
+      type?: 'person' | 'company';
+      name?: string;
+      documentType?: 'CI' | 'RIF';
+      documentNumber?: string;
+    };
     providerRepresentativeName?: string;
+    providerLegalEntityType?: 'person' | 'company';
+    providerIdentificationNumber?: string;
   };
   terms: {
     measureType?: 'time' | 'unit';
@@ -181,6 +189,8 @@ export const downloadContractPdf = (
   options?: {
     providerName?: string;
     providerRepresentativeName?: string;
+    providerLegalEntityType?: 'person' | 'company';
+    providerIdentificationNumber?: string;
     providerEmail?: string;
     providerPhone?: string;
     clientName?: string;
@@ -202,11 +212,22 @@ export const downloadContractPdf = (
     contract.metadata?.providerBusinessName ||
     contract.providerName ||
     contract.artistName;
-  const providerRepresentativeName =
+  const providerRepresentative = contract.metadata?.providerRepresentative || {};
+  const providerLegalEntityType =
+    (options?.providerLegalEntityType || providerRepresentative.type || contract.metadata?.providerLegalEntityType) === 'company' ? 'company' : 'person';
+  const providerIdentificationLabel = String(providerRepresentative.documentType || (providerLegalEntityType === 'company' ? 'RIF' : 'CI')).toUpperCase() === 'RIF' ? 'RIF' : 'CI';
+  const providerRepresentativeFieldLabel = providerLegalEntityType === 'company' ? 'Razón social (RIF)' : 'Nombre (CI)';
+  const providerIdentificationNumber = String(options?.providerIdentificationNumber || providerRepresentative.documentNumber || contract.metadata?.providerIdentificationNumber || '').trim();
+  const providerRepresentativeName = String(
     options?.providerRepresentativeName ||
+    providerRepresentative.name ||
     contract.metadata?.providerRepresentativeName ||
     contract.artistSignature?.signedBy ||
-    providerName;
+    providerName
+  ).trim();
+  const providerRepresentativeDetail = providerIdentificationNumber && !providerRepresentativeName.includes(providerIdentificationNumber)
+    ? `${providerRepresentativeName} (${providerIdentificationLabel}: ${providerIdentificationNumber})`
+    : providerRepresentativeName;
   const providerEmail = options?.providerEmail || contract.artistEmail;
   const providerPhone = options?.providerPhone || contract.artistWhatsapp;
   const planName = getPlanName(contract);
@@ -335,7 +356,7 @@ export const downloadContractPdf = (
   drawHeader(true);
 
   addParagraph(
-    `El Cliente, ${clientLegalName.toUpperCase()}, contrata el servicio de ${serviceName} al Proveedor, ${providerName.toUpperCase()}, representado por ${providerRepresentativeName.toUpperCase()}. El servicio se llevará a cabo el día ${formatDate(contract.terms.date)} en la ciudad de ${contract.terms.location}. El objeto del presente contrato consiste en la prestación del servicio de ${serviceName}${planName ? ` bajo el plan ${planName.toUpperCase()}` : ''}.`,
+    `El Cliente, ${clientLegalName.toUpperCase()}, contrata el servicio de ${serviceName} al Proveedor, ${providerName.toUpperCase()}, representado por ${providerRepresentativeDetail.toUpperCase()}. El servicio se llevará a cabo el día ${formatDate(contract.terms.date)} en la ciudad de ${contract.terms.location}. El objeto del presente contrato consiste en la prestación del servicio de ${serviceName}${planName ? ` bajo el plan ${planName.toUpperCase()}` : ''}.`,
     { fontSize: 11, gapAfter: includedItems.length > 0 ? 8 : 12 }
   );
 
@@ -373,7 +394,7 @@ export const downloadContractPdf = (
   ];
   const providerLines = [
     providerName,
-    `Representado por: ${providerRepresentativeName}`,
+    `${providerRepresentativeFieldLabel}: ${providerRepresentativeDetail}`,
     ...(providerEmail ? [providerEmail] : []),
     ...(providerPhone ? [providerPhone] : []),
     contract.artistSignature ? `Firmado y aceptado el ${formatDateTime(contract.artistSignature.signedAt)}` : 'Pendiente de aceptación electrónica'

@@ -867,12 +867,21 @@ export default function App() {
         return;
       }
 
+      const representative = (provider as any).representative || {
+        type: (provider as any).legalEntityType || 'person',
+        name: (provider as any).representativeName || currentUser.name || '',
+        documentType: ((provider as any).legalEntityType || 'person') === 'company' ? 'RIF' : 'CI',
+        documentNumber: (provider as any).identificationNumber || '',
+      };
+
       const createdProvider = await supabase.createProvider({
         businessName: provider.businessName,
         category: provider.category,
         description: provider.description,
-        legalEntityType: (provider as any).legalEntityType || 'person',
-        identificationNumber: (provider as any).identificationNumber || '',
+        representative,
+        legalEntityType: representative.type || 'person',
+        representativeName: representative.name || currentUser.name || '',
+        identificationNumber: representative.documentNumber || '',
       });
 
       setCurrentProvider(createdProvider);
@@ -897,12 +906,21 @@ export default function App() {
 
   const handleProviderUpdate = async (provider: Provider) => {
     try {
+      const representative = (provider as any).representative || {
+        type: (provider as any).legalEntityType || 'person',
+        name: (provider as any).representativeName || currentUser?.name || '',
+        documentType: ((provider as any).legalEntityType || 'person') === 'company' ? 'RIF' : 'CI',
+        documentNumber: (provider as any).identificationNumber || '',
+      };
+
       const updatedProvider = await supabase.updateProvider(provider.id, {
         businessName: provider.businessName,
         category: provider.category,
         description: provider.description,
-        legalEntityType: (provider as any).legalEntityType || 'person',
-        identificationNumber: (provider as any).identificationNumber || '',
+        representative,
+        legalEntityType: representative.type || 'person',
+        representativeName: representative.name || currentUser?.name || '',
+        identificationNumber: representative.documentNumber || '',
       });
 
       setCurrentProvider(updatedProvider);

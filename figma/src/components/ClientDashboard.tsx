@@ -355,6 +355,8 @@ export function ClientDashboard({
     downloadContractPdf(contract, 'client', {
       providerName: (contract as any)?.metadata?.providerBusinessName || contract.artistName,
       providerRepresentativeName: (contract as any)?.metadata?.providerRepresentativeName || contract.artistSignature?.signedBy || contract.artistName,
+      providerLegalEntityType: ((contract as any)?.metadata?.providerLegalEntityType || 'person') as 'person' | 'company',
+      providerIdentificationNumber: String((contract as any)?.metadata?.providerIdentificationNumber || ''),
       providerEmail: contract.artistEmail,
       providerPhone: contract.artistWhatsapp,
       clientName: user.name,

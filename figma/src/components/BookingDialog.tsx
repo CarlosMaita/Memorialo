@@ -422,8 +422,16 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
         planId: formData.planId || undefined,
         planName: selectedServicePlan?.name,
         clientLegalName: user?.name || formData.clientName,
-        providerBusinessName: String((artist as any).providerBusinessName || artist.name),
-        providerRepresentativeName: String((artist as any).providerRepresentativeName || (artist as any).providerUserName || artist.name),
+        providerBusinessName: String((artist as any).providerBusinessName || (artist as any).businessName || artist.name),
+        providerRepresentative: {
+          type: ((artist as any).providerRepresentative?.type || (artist as any).representative?.type || (artist as any).providerLegalEntityType || (artist as any).legalEntityType || 'person') as 'person' | 'company',
+          name: String((artist as any).providerRepresentative?.name || (artist as any).representative?.name || (artist as any).providerRepresentativeName || (artist as any).representativeName || (artist as any).providerUserName || artist.name),
+          documentType: (String((artist as any).providerRepresentative?.documentType || (artist as any).representative?.documentType || (((artist as any).providerRepresentative?.type || (artist as any).representative?.type || (artist as any).providerLegalEntityType || (artist as any).legalEntityType) === 'company' ? 'RIF' : 'CI')).toUpperCase() === 'RIF' ? 'RIF' : 'CI'),
+          documentNumber: String((artist as any).providerRepresentative?.documentNumber || (artist as any).representative?.documentNumber || (artist as any).providerIdentificationNumber || (artist as any).identificationNumber || ''),
+        },
+        providerRepresentativeName: String((artist as any).providerRepresentative?.name || (artist as any).representative?.name || (artist as any).providerRepresentativeName || (artist as any).representativeName || (artist as any).providerUserName || artist.name),
+        providerLegalEntityType: ((artist as any).providerRepresentative?.type || (artist as any).representative?.type || (artist as any).providerLegalEntityType || (artist as any).legalEntityType || 'person') as 'person' | 'company',
+        providerIdentificationNumber: String((artist as any).providerRepresentative?.documentNumber || (artist as any).representative?.documentNumber || (artist as any).providerIdentificationNumber || (artist as any).identificationNumber || ''),
       },
       status: 'pending_client'
     };

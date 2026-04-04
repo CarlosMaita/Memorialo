@@ -46,6 +46,13 @@ class ProviderController extends Controller
             'business_name' => ['nullable', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string'],
+            'representative' => ['nullable', 'array'],
+            'representative.type' => ['nullable', 'in:person,company'],
+            'representative.name' => ['nullable', 'string', 'max:255'],
+            'representative.documentType' => ['nullable', 'in:CI,RIF'],
+            'representative.documentNumber' => ['nullable', 'string', 'max:50'],
+            'representativeName' => ['nullable', 'string', 'max:255'],
+            'representative_name' => ['nullable', 'string', 'max:255'],
             'legalEntityType' => ['nullable', 'in:person,company'],
             'legal_entity_type' => ['nullable', 'in:person,company'],
             'identificationNumber' => ['nullable', 'string', 'max:50'],
@@ -53,14 +60,16 @@ class ProviderController extends Controller
         ]);
 
         $businessName = $validated['businessName'] ?? $validated['business_name'] ?? $authUser->name;
+        $representative = $this->buildRepresentativeData($validated, $authUser->name, $businessName);
 
         $provider = Provider::create([
             'user_id' => $authUser->id,
             'business_name' => $businessName,
             'category' => $validated['category'] ?? 'general',
             'description' => $validated['description'] ?? '',
-            'legal_entity_type' => $validated['legalEntityType'] ?? $validated['legal_entity_type'] ?? 'person',
-            'identification_number' => $validated['identificationNumber'] ?? $validated['identification_number'] ?? null,
+            'representative' => $representative,
+            'legal_entity_type' => $representative['type'],
+            'identification_number' => $representative['documentNumber'] ?: null,
             'verified' => false,
             'services' => [],
         ]);
@@ -129,6 +138,13 @@ class ProviderController extends Controller
             'business_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'category' => ['sometimes', 'nullable', 'string', 'max:100'],
             'description' => ['sometimes', 'nullable', 'string'],
+            'representative' => ['sometimes', 'nullable', 'array'],
+            'representative.type' => ['nullable', 'in:person,company'],
+            'representative.name' => ['nullable', 'string', 'max:255'],
+            'representative.documentType' => ['nullable', 'in:CI,RIF'],
+            'representative.documentNumber' => ['nullable', 'string', 'max:50'],
+            'representativeName' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'representative_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'legalEntityType' => ['sometimes', 'nullable', 'in:person,company'],
             'legal_entity_type' => ['sometimes', 'nullable', 'in:person,company'],
             'identificationNumber' => ['sometimes', 'nullable', 'string', 'max:50'],
@@ -160,21 +176,103 @@ class ProviderController extends Controller
             unset($validated['identificationNumber']);
         }
 
+        $businessName = $validated['business_name'] ?? $provider->business_name;
+        $representative = $this->buildRepresentativeData($validated, $authUser->name, $businessName, $provider);
+        $validated['representative'] = $representative;
+        $validated['legal_entity_type'] = $representative['type'];
+        $validated['identification_number'] = $representative['documentNumber'] ?: null;
+
+        unset($validated['representativeName'], $validated['representative_name']);
+
         $provider->update($validated);
 
         return response()->json($this->formatProvider($provider->fresh()));
     }
 
+    private function buildRepresentativeData(array $validated, ?string $fallbackUserName = null, ?string $fallbackBusinessName = null, ?Provider $provider = null): array
+    {
+        $currentRepresentative = is_array($provider?->representative) ? $provider->representative : [];
+
+        $type = data_get($validated, 'representative.type')
+            ?? ($validated['legal_entity_type'] ?? null)
+            ?? ($validated['legalEntityType'] ?? null)
+            ?? data_get($currentRepresentative, 'type')
+            ?? $provider?->legal_entity_type
+            ?? 'person';
+
+        $type = $type === 'company' ? 'company' : 'person';
+
+        $defaultName = $type === 'company'
+            ? ($fallbackBusinessName ?: $fallbackUserName ?: 'Representante')
+            : ($fallbackUserName ?: $fallbackBusinessName ?: 'Representante');
+
+        $name = trim((string) (
+            data_get($validated, 'representative.name')
+            ?? ($validated['representative_name'] ?? null)
+            ?? ($validated['representativeName'] ?? null)
+            ?? data_get($currentRepresentative, 'name')
+            ?? $defaultName
+        ));
+
+        $documentType = strtoupper((string) (
+            data_get($validated, 'representative.documentType')
+            ?? data_get($currentRepresentative, 'documentType')
+            ?? ($type === 'company' ? 'RIF' : 'CI')
+        ));
+
+        $documentNumber = trim((string) (
+            data_get($validated, 'representative.documentNumber')
+            ?? ($validated['identification_number'] ?? null)
+            ?? ($validated['identificationNumber'] ?? null)
+            ?? data_get($currentRepresentative, 'documentNumber')
+            ?? $provider?->identification_number
+            ?? ''
+        ));
+
+        return [
+            'type' => $type,
+            'name' => $name !== '' ? $name : $defaultName,
+            'documentType' => $documentType === 'RIF' ? 'RIF' : 'CI',
+            'documentNumber' => $documentNumber,
+        ];
+    }
+
+    private function normalizeRepresentativeFromProvider(Provider $provider): array
+    {
+        $provider->loadMissing('user');
+
+        $storedRepresentative = is_array($provider->representative) ? $provider->representative : [];
+        $type = data_get($storedRepresentative, 'type', $provider->legal_entity_type === 'company' ? 'company' : 'person');
+        $type = $type === 'company' ? 'company' : 'person';
+
+        return [
+            'type' => $type,
+            'name' => data_get(
+                $storedRepresentative,
+                'name',
+                $type === 'company'
+                    ? ($provider->business_name ?: $provider->user?->name ?: 'Representante')
+                    : ($provider->user?->name ?: $provider->business_name ?: 'Representante')
+            ),
+            'documentType' => data_get($storedRepresentative, 'documentType', $type === 'company' ? 'RIF' : 'CI'),
+            'documentNumber' => data_get($storedRepresentative, 'documentNumber', $provider->identification_number),
+        ];
+    }
+
     private function formatProvider(Provider $provider): array
     {
+        $representative = $this->normalizeRepresentativeFromProvider($provider);
+
         return [
             'id' => (string) $provider->id,
             'userId' => (string) $provider->user_id,
             'businessName' => $provider->business_name,
             'category' => $provider->category,
             'description' => $provider->description,
-            'legalEntityType' => $provider->legal_entity_type,
-            'identificationNumber' => $provider->identification_number,
+            'representative' => $representative,
+            'representativeName' => $representative['name'],
+            'legalEntityType' => $representative['type'],
+            'identificationNumber' => $representative['documentNumber'],
             'verified' => (bool) $provider->verified,
             'verifiedAt' => optional($provider->verified_at)?->toISOString(),
             'verifiedBy' => $provider->verified_by,

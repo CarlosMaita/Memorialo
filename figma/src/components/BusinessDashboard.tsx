@@ -151,6 +151,7 @@ export function BusinessDashboard({
     category: '',
     description: '',
     legalEntityType: 'person' as 'person' | 'company',
+    representativeName: user.name || '',
     identificationNumber: ''
   });
   const [businessInfoForm, setBusinessInfoForm] = useState({
@@ -158,6 +159,7 @@ export function BusinessDashboard({
     category: '',
     description: '',
     legalEntityType: 'person' as 'person' | 'company',
+    representativeName: user.name || '',
     identificationNumber: ''
   });
 
@@ -216,25 +218,37 @@ export function BusinessDashboard({
   };
 
   const handleProviderSetup = async () => {
-    if (!providerForm.businessName || !providerForm.category) {
-      toast.error('Por favor completa todos los campos');
+    if (!providerForm.businessName.trim() || !providerForm.category.trim() || !providerForm.representativeName.trim()) {
+      toast.error('Completa el nombre del negocio, la categoría y el representante');
       return;
     }
 
-    const newProvider: Provider = {
+    if (!providerForm.identificationNumber.trim()) {
+      toast.error(providerForm.legalEntityType === 'company' ? 'El RIF del representante es obligatorio' : 'La cédula del representante es obligatoria');
+      return;
+    }
+
+    const newProvider = {
       id: `provider-${Date.now()}`,
       userId: user.id,
-      businessName: providerForm.businessName,
+      businessName: providerForm.businessName.trim(),
       category: providerForm.category,
-      description: providerForm.description,
+      description: providerForm.description.trim(),
+      representative: {
+        type: providerForm.legalEntityType,
+        name: providerForm.representativeName.trim(),
+        documentType: providerForm.legalEntityType === 'company' ? 'RIF' : 'CI',
+        documentNumber: providerForm.identificationNumber.trim(),
+      },
       legalEntityType: providerForm.legalEntityType,
-      identificationNumber: providerForm.identificationNumber,
+      representativeName: providerForm.representativeName.trim(),
+      identificationNumber: providerForm.identificationNumber.trim(),
       verified: false,
       createdAt: new Date().toISOString(),
       services: [],
       totalBookings: 0,
       rating: 5
-    };
+    } as Provider;
 
     if (!onProviderCreate) {
       toast.error('No se pudo crear el perfil de proveedor');
@@ -360,14 +374,17 @@ export function BusinessDashboard({
   }, [provider]);
 
   useEffect(() => {
+    const representative = (provider as any)?.representative || {};
+
     setBusinessInfoForm({
       businessName: provider?.businessName || '',
       category: provider?.category || '',
       description: provider?.description || '',
-      legalEntityType: (provider as any)?.legalEntityType === 'company' ? 'company' : 'person',
-      identificationNumber: String((provider as any)?.identificationNumber || '')
+      legalEntityType: representative?.type === 'company' || (provider as any)?.legalEntityType === 'company' ? 'company' : 'person',
+      representativeName: String(representative?.name || (provider as any)?.representativeName || user.name || ''),
+      identificationNumber: String(representative?.documentNumber || (provider as any)?.identificationNumber || '')
     });
-  }, [provider]);
+  }, [provider, user.name]);
 
   useEffect(() => {
     if (!focusBookingId) {
@@ -416,15 +433,37 @@ export function BusinessDashboard({
   };
 
   const handleViewContract = (contract: Contract) => {
-    setSelectedContract(contract);
+    const providerRepresentative = (provider as any)?.representative || {};
+    const enrichedContract = {
+      ...contract,
+      metadata: {
+        ...(contract as any)?.metadata,
+        providerBusinessName: (contract as any)?.metadata?.providerBusinessName || provider?.businessName || user.name,
+        providerRepresentative: (contract as any)?.metadata?.providerRepresentative || {
+          type: (providerRepresentative?.type || (provider as any)?.legalEntityType || 'person') as 'person' | 'company',
+          name: String(providerRepresentative?.name || (provider as any)?.representativeName || user.name),
+          documentType: providerRepresentative?.documentType || ((providerRepresentative?.type || (provider as any)?.legalEntityType) === 'company' ? 'RIF' : 'CI'),
+          documentNumber: String(providerRepresentative?.documentNumber || (provider as any)?.identificationNumber || ''),
+        },
+        providerRepresentativeName: (contract as any)?.metadata?.providerRepresentativeName || providerRepresentative?.name || (provider as any)?.representativeName || user.name,
+        providerLegalEntityType: ((contract as any)?.metadata?.providerLegalEntityType || providerRepresentative?.type || (provider as any)?.legalEntityType || 'person') as 'person' | 'company',
+        providerIdentificationNumber: String((contract as any)?.metadata?.providerIdentificationNumber || providerRepresentative?.documentNumber || (provider as any)?.identificationNumber || ''),
+      },
+    } as Contract;
+
+    setSelectedContract(enrichedContract);
     setShowContractView(true);
   };
 
   const handleDownloadContractPDF = (contract: Contract, eventName?: string) => {
     try {
+      const providerRepresentative = (provider as any)?.representative || {};
+
       downloadContractPdf(contract, 'artist', {
         providerName: provider?.businessName || user.name,
-        providerRepresentativeName: user.name,
+        providerRepresentativeName: String((contract as any)?.metadata?.providerRepresentativeName || providerRepresentative?.name || (provider as any)?.representativeName || user.name),
+        providerLegalEntityType: ((contract as any)?.metadata?.providerLegalEntityType || providerRepresentative?.type || (provider as any)?.legalEntityType || 'person') as 'person' | 'company',
+        providerIdentificationNumber: String((contract as any)?.metadata?.providerIdentificationNumber || providerRepresentative?.documentNumber || (provider as any)?.identificationNumber || ''),
         providerEmail: contract.artistEmail || user.email,
         providerPhone: contract.artistWhatsapp || user.whatsappNumber || user.phone,
         clientName: (contract as any)?.metadata?.clientLegalName || contract.clientName,
@@ -468,8 +507,13 @@ export function BusinessDashboard({
       return;
     }
 
+    if (!businessInfoForm.representativeName.trim()) {
+      toast.error(businessInfoForm.legalEntityType === 'company' ? 'La razón social del representante es obligatoria' : 'El nombre del representante es obligatorio');
+      return;
+    }
+
     if (!businessInfoForm.identificationNumber.trim()) {
-      toast.error(businessInfoForm.legalEntityType === 'company' ? 'El RIF es obligatorio' : 'La cédula es obligatoria');
+      toast.error(businessInfoForm.legalEntityType === 'company' ? 'El RIF del representante es obligatorio' : 'La cédula del representante es obligatoria');
       return;
     }
 
@@ -485,9 +529,16 @@ export function BusinessDashboard({
         businessName: businessInfoForm.businessName.trim(),
         category: businessInfoForm.category,
         description: businessInfoForm.description.trim(),
+        representative: {
+          type: businessInfoForm.legalEntityType,
+          name: businessInfoForm.representativeName.trim(),
+          documentType: businessInfoForm.legalEntityType === 'company' ? 'RIF' : 'CI',
+          documentNumber: businessInfoForm.identificationNumber.trim(),
+        },
         legalEntityType: businessInfoForm.legalEntityType,
+        representativeName: businessInfoForm.representativeName.trim(),
         identificationNumber: businessInfoForm.identificationNumber.trim()
-      });
+      } as Provider);
       toast.success('Información del negocio actualizada');
     } catch (error) {
       console.error('Business info update error:', error);
@@ -722,6 +773,59 @@ export function BusinessDashboard({
                 onChange={(e) => setProviderForm({ ...providerForm, description: e.target.value })}
                 placeholder="Describe tu negocio y experiencia..."
               />
+            </div>
+
+            <div className="rounded-xl border border-gray-200 p-4 space-y-4 bg-gray-50/70">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <label className="block text-sm font-medium">Representante</label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Esta figura legal aparecerá en el contrato como representante del negocio.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm ${providerForm.legalEntityType === 'person' ? 'text-[#1B2A47] font-medium' : 'text-gray-500'}`}>
+                    Persona
+                  </span>
+                  <Switch
+                    checked={providerForm.legalEntityType === 'company'}
+                    onCheckedChange={(checked) => setProviderForm((prev) => ({
+                      ...prev,
+                      legalEntityType: checked ? 'company' : 'person',
+                      identificationNumber: ''
+                    }))}
+                  />
+                  <span className={`text-sm ${providerForm.legalEntityType === 'company' ? 'text-[#1B2A47] font-medium' : 'text-gray-500'}`}>
+                    Empresa
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">
+                  {providerForm.legalEntityType === 'company' ? 'Razón social del representante *' : 'Nombre del representante *'}
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-2 border rounded-lg"
+                  value={providerForm.representativeName}
+                  onChange={(e) => setProviderForm({ ...providerForm, representativeName: e.target.value })}
+                  placeholder={providerForm.legalEntityType === 'company' ? 'Ej: Maita Decoraciones, C.A.' : 'Ej: María Fernanda Pérez'}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm mb-2">
+                  {providerForm.legalEntityType === 'company' ? 'RIF del representante *' : 'Cédula del representante *'}
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-2 border rounded-lg"
+                  value={providerForm.identificationNumber}
+                  onChange={(e) => setProviderForm({ ...providerForm, identificationNumber: e.target.value })}
+                  placeholder={providerForm.legalEntityType === 'company' ? 'Ej: J-12345678-9' : 'Ej: V-12345678'}
+                />
+              </div>
             </div>
 
             <Button onClick={handleProviderSetup} className="w-full" disabled={isCreatingProvider}>
@@ -1150,9 +1254,9 @@ export function BusinessDashboard({
                   <div className="rounded-xl border border-gray-200 p-4 space-y-4 bg-gray-50/70">
                     <div className="flex items-center justify-between gap-4">
                       <div>
-                        <Label className="text-sm font-medium">Tipo de titular</Label>
+                        <Label className="text-sm font-medium">Representante</Label>
                         <p className="text-xs text-gray-500 mt-1">
-                          Define si el titular del negocio es una persona natural o una empresa.
+                          Esta figura legal aparecerá en el contrato como representante del negocio. Define si es persona o empresa.
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
@@ -1174,7 +1278,16 @@ export function BusinessDashboard({
                     </div>
 
                     <div className="space-y-2">
-                      <Label>{businessInfoForm.legalEntityType === 'company' ? 'RIF *' : 'Cédula *'}</Label>
+                      <Label>{businessInfoForm.legalEntityType === 'company' ? 'Razón social del representante *' : 'Nombre del representante *'}</Label>
+                      <Input
+                        value={businessInfoForm.representativeName}
+                        onChange={(e) => setBusinessInfoForm((prev) => ({ ...prev, representativeName: e.target.value }))}
+                        placeholder={businessInfoForm.legalEntityType === 'company' ? 'Ej: Maita Decoraciones, C.A.' : 'Ej: María Fernanda Pérez'}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>{businessInfoForm.legalEntityType === 'company' ? 'RIF del representante *' : 'Cédula del representante *'}</Label>
                       <Input
                         value={businessInfoForm.identificationNumber}
                         onChange={(e) => setBusinessInfoForm((prev) => ({ ...prev, identificationNumber: e.target.value }))}

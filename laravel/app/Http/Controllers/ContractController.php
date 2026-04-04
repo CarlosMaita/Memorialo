@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Contract;
 use App\Models\Service;
 use App\Models\User;
+use App\Models\Provider;
 use App\Services\NotificationDispatchService;
 use App\Support\NotificationTypes;
 use Illuminate\Database\Eloquent\Builder;
@@ -234,6 +235,20 @@ class ContractController extends Controller
 
     private function formatContract(Contract $contract): array
     {
+        $metadata = is_array($contract->metadata) ? $contract->metadata : [];
+        $service = $this->resolveServiceForContract($contract);
+        $provider = $service?->provider ?: ($service ? Provider::query()->with('user')->where('user_id', $service->user_id)->first() : null);
+
+        if ($provider) {
+            $representative = $this->resolveProviderRepresentative($provider, $contract->artist_name);
+
+            $metadata['providerBusinessName'] = $provider->business_name ?: ($metadata['providerBusinessName'] ?? $contract->artist_name);
+            $metadata['providerRepresentative'] = $representative;
+            $metadata['providerRepresentativeName'] = $representative['name'];
+            $metadata['providerLegalEntityType'] = $representative['type'];
+            $metadata['providerIdentificationNumber'] = $representative['documentNumber'];
+        }
+
         return [
             'id' => (string) $contract->id,
             'bookingId' => $contract->booking_id,
@@ -251,9 +266,39 @@ class ContractController extends Controller
             'terms' => $contract->terms,
             'artistSignature' => $contract->artist_signature,
             'clientSignature' => $contract->client_signature,
-            'metadata' => $contract->metadata,
+            'metadata' => $metadata,
             'completedAt' => optional($contract->completed_at)?->toISOString(),
             'createdAt' => optional($contract->created_at)?->toISOString(),
+        ];
+    }
+
+    private function resolveServiceForContract(Contract $contract): ?Service
+    {
+        if (! $contract->artist_id || ! ctype_digit((string) $contract->artist_id)) {
+            return null;
+        }
+
+        return Service::query()->with(['provider.user'])->find((int) $contract->artist_id);
+    }
+
+    private function resolveProviderRepresentative(Provider $provider, ?string $fallbackName = null): array
+    {
+        $provider->loadMissing('user');
+        $representative = is_array($provider->representative) ? $provider->representative : [];
+        $type = data_get($representative, 'type', $provider->legal_entity_type === 'company' ? 'company' : 'person');
+        $type = $type === 'company' ? 'company' : 'person';
+
+        return [
+            'type' => $type,
+            'name' => data_get(
+                $representative,
+                'name',
+                $type === 'company'
+                    ? ($provider->business_name ?: $provider->user?->name ?: $fallbackName ?: 'Representante')
+                    : ($provider->user?->name ?: $provider->business_name ?: $fallbackName ?: 'Representante')
+            ),
+            'documentType' => data_get($representative, 'documentType', $type === 'company' ? 'RIF' : 'CI'),
+            'documentNumber' => data_get($representative, 'documentNumber', $provider->identification_number),
         ];
     }
 

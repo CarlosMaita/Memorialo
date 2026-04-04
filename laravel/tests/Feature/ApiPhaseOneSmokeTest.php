@@ -245,12 +245,21 @@ class ApiPhaseOneSmokeTest extends TestCase
             'businessName' => 'Studio Carlo',
             'category' => 'music',
             'description' => 'Live band services',
+            'representative' => [
+                'type' => 'person',
+                'name' => 'Carlo Provider',
+                'documentType' => 'CI',
+                'documentNumber' => 'V-12345678',
+            ],
         ]);
 
         $provider
             ->assertCreated()
             ->assertJsonPath('userId', (string) $user->id)
-            ->assertJsonPath('businessName', 'Studio Carlo');
+            ->assertJsonPath('businessName', 'Studio Carlo')
+            ->assertJsonPath('representative.name', 'Carlo Provider')
+            ->assertJsonPath('representative.documentType', 'CI')
+            ->assertJsonPath('representative.documentNumber', 'V-12345678');
 
         $providerId = $provider->json('id');
 
@@ -281,12 +290,20 @@ class ApiPhaseOneSmokeTest extends TestCase
         $providerByUser
             ->assertOk()
             ->assertJsonPath('id', (string) $providerId)
-            ->assertJsonPath('userId', (string) $user->id);
+            ->assertJsonPath('userId', (string) $user->id)
+            ->assertJsonPath('representative.name', 'Carlo Provider')
+            ->assertJsonPath('representative.documentNumber', 'V-12345678');
 
         $providerUpdate = $this->putJson('/api/providers/'.$providerId, [
             'businessName' => 'Studio Carlo Prime',
             'category' => 'wedding-music',
             'description' => 'Live band and DJ services',
+            'representative' => [
+                'type' => 'company',
+                'name' => 'Studio Carlo Prime, C.A.',
+                'documentType' => 'RIF',
+                'documentNumber' => 'J-12345678-9',
+            ],
             'totalBookings' => 12,
         ]);
 
@@ -295,6 +312,10 @@ class ApiPhaseOneSmokeTest extends TestCase
             ->assertJsonPath('businessName', 'Studio Carlo Prime')
             ->assertJsonPath('category', 'wedding-music')
             ->assertJsonPath('description', 'Live band and DJ services')
+            ->assertJsonPath('representative.type', 'company')
+            ->assertJsonPath('representative.name', 'Studio Carlo Prime, C.A.')
+            ->assertJsonPath('representative.documentType', 'RIF')
+            ->assertJsonPath('representative.documentNumber', 'J-12345678-9')
             ->assertJsonPath('totalBookings', 12);
 
         $this->getJson('/api/providers')
@@ -318,10 +339,42 @@ class ApiPhaseOneSmokeTest extends TestCase
             ->assertJsonPath('userId', (string) $user->id)
             ->assertJsonPath('providerId', (string) $providerId)
             ->assertJsonPath('title', 'Banda para eventos')
+            ->assertJsonPath('providerBusinessName', 'Studio Carlo Prime')
+            ->assertJsonPath('providerRepresentative.name', 'Studio Carlo Prime, C.A.')
+            ->assertJsonPath('providerRepresentative.documentType', 'RIF')
+            ->assertJsonPath('providerRepresentative.documentNumber', 'J-12345678-9')
             ->assertJsonPath('reviews', 0)
             ->assertJsonPath('isActive', true);
 
         $serviceId = $service->json('id');
+
+        $contract = $this->postJson('/api/contracts', [
+            'id' => 'provider-contract-001',
+            'artistId' => (string) $serviceId,
+            'artistUserId' => (string) $user->id,
+            'artistName' => 'Banda para eventos',
+            'clientId' => 'client-001',
+            'clientName' => 'Cliente Demo',
+            'status' => 'pending',
+            'terms' => [
+                'serviceDescription' => 'Show de 2 horas',
+                'price' => 4500,
+                'duration' => 2,
+                'date' => '2026-09-10',
+                'location' => 'CDMX',
+                'paymentTerms' => 'Contado',
+                'cancellationPolicy' => '48 horas',
+                'additionalTerms' => [],
+            ],
+        ]);
+
+        $contract
+            ->assertCreated()
+            ->assertJsonPath('metadata.providerBusinessName', 'Studio Carlo Prime')
+            ->assertJsonPath('metadata.providerRepresentative.name', 'Studio Carlo Prime, C.A.')
+            ->assertJsonPath('metadata.providerRepresentative.documentType', 'RIF')
+            ->assertJsonPath('metadata.providerRepresentative.documentNumber', 'J-12345678-9')
+            ->assertJsonPath('metadata.providerRepresentativeName', 'Studio Carlo Prime, C.A.');
 
         $update = $this->putJson('/api/services/'.$serviceId, [
             'reviews' => 7,

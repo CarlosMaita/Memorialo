@@ -34,7 +34,15 @@ interface ContractRecord {
     clientLegalName?: string;
     clientRepresentativeName?: string;
     providerBusinessName?: string;
+    providerRepresentative?: {
+      type?: 'person' | 'company';
+      name?: string;
+      documentType?: 'CI' | 'RIF';
+      documentNumber?: string;
+    };
     providerRepresentativeName?: string;
+    providerLegalEntityType?: 'person' | 'company';
+    providerIdentificationNumber?: string;
   };
   terms: {
     measureType?: 'time' | 'unit';
@@ -150,10 +158,16 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
   const { specialRequest, additionalTermsWithoutSpecialRequest } = extractSpecialRequest(contract);
   const clientLegalName = contract.metadata?.clientLegalName || contract.clientName;
   const providerBusinessName = contract.metadata?.providerBusinessName || contract.artistName;
+  const providerRepresentative = contract.metadata?.providerRepresentative || {};
+  const providerLegalEntityType = (providerRepresentative.type || contract.metadata?.providerLegalEntityType) === 'company' ? 'company' : 'person';
+  const providerIdentificationLabel = String(providerRepresentative.documentType || (providerLegalEntityType === 'company' ? 'RIF' : 'CI')).toUpperCase() === 'RIF' ? 'RIF' : 'CI';
+  const providerRepresentativeFieldLabel = providerLegalEntityType === 'company' ? 'Razón social (RIF)' : 'Nombre (CI)';
+  const providerIdentificationNumber = String(providerRepresentative.documentNumber || contract.metadata?.providerIdentificationNumber || '').trim();
   const providerRepresentativeName =
-    contract.metadata?.providerRepresentativeName ||
-    contract.artistSignature?.signedBy ||
-    contract.artistName;
+    String(providerRepresentative.name || contract.metadata?.providerRepresentativeName || contract.artistSignature?.signedBy || contract.artistName).trim();
+  const providerRepresentativeDetail = providerIdentificationNumber && !providerRepresentativeName.includes(providerIdentificationNumber)
+    ? `${providerRepresentativeName} (${providerIdentificationLabel}: ${providerIdentificationNumber})`
+    : providerRepresentativeName;
 
   const handleSign = () => {
     if (!agreedToTerms) {
@@ -165,7 +179,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
 
     setTimeout(() => {
       const signature: ContractSignature = {
-        signedBy: userType === 'client' ? clientLegalName : providerRepresentativeName,
+        signedBy: userType === 'client' ? clientLegalName : providerRepresentativeDetail,
         signedAt: new Date().toISOString()
       };
 
@@ -273,7 +287,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                     <p className="text-sm text-gray-600">Proveedor de Servicios</p>
                   </div>
                   <p>{providerBusinessName}</p>
-                  <p className="text-xs text-gray-500">Representado por {providerRepresentativeName}</p>
+                  <p className="text-xs text-gray-500">{providerRepresentativeFieldLabel}: {providerRepresentativeDetail}</p>
                   {contract.artistSignature && (
                     <div className="flex items-center gap-1 mt-1 text-green-600 text-xs">
                       <CheckCircle className="w-3 h-3" />

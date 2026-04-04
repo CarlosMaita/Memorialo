@@ -16,6 +16,7 @@ class Provider extends Model
         'business_name',
         'category',
         'description',
+        'representative',
         'legal_entity_type',
         'identification_number',
         'verified',
@@ -35,6 +36,7 @@ class Provider extends Model
     protected function casts(): array
     {
         return [
+            'representative' => 'array',
             'verified' => 'boolean',
             'banned' => 'boolean',
             'services' => 'array',

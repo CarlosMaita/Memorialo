@@ -44,6 +44,29 @@ async function verifyAdmin(authResult: any) {
   } catch { return false; }
 }
 
+function normalizeRepresentative(source: any, fallbackName = '', fallbackBusinessName = '') {
+  const type = source?.representative?.type === 'company' || source?.legalEntityType === 'company' || source?.legal_entity_type === 'company'
+    ? 'company'
+    : 'person';
+
+  const name = String(
+    source?.representative?.name
+      || source?.representativeName
+      || (type === 'company' ? (fallbackBusinessName || source?.businessName || source?.business_name || fallbackName) : (fallbackName || fallbackBusinessName || source?.businessName || source?.business_name))
+      || 'Representante'
+  ).trim();
+
+  const documentType = String(source?.representative?.documentType || (type === 'company' ? 'RIF' : 'CI')).toUpperCase() === 'RIF' ? 'RIF' : 'CI';
+  const documentNumber = String(source?.representative?.documentNumber || source?.identificationNumber || source?.identification_number || '').trim();
+
+  return {
+    type,
+    name: name || 'Representante',
+    documentType,
+    documentNumber,
+  };
+}
+
 // Health
 app.get(`${P}/health`, (c) => c.json({ status: "ok" }));
 
@@ -183,9 +206,20 @@ app.post(`${P}/providers`, async (c) => {
   if (!auth) return c.json({ error: 'Unauthorized' }, 401);
   try {
     const d = await c.req.json();
+    const representative = normalizeRepresentative(d, String(auth.user.user_metadata?.name || auth.user.email || ''), String(d.businessName || d.business_name || ''));
     const provider = {
-      id: `provider-${Date.now()}`, userId: auth.user.id, ...d,
-      verified: false, createdAt: new Date().toISOString(), services: [], totalBookings: 0, rating: 5
+      id: `provider-${Date.now()}`,
+      userId: auth.user.id,
+      ...d,
+      representative,
+      legalEntityType: representative.type,
+      representativeName: representative.name,
+      identificationNumber: representative.documentNumber,
+      verified: false,
+      createdAt: new Date().toISOString(),
+      services: [],
+      totalBookings: 0,
+      rating: 5
     };
     await kv.set(`provider:${provider.id}`, provider);
     const user = await kv.get(`user:${auth.user.id}`);
@@ -212,10 +246,18 @@ app.get(`${P}/providers/user/:userId`, async (c) => {
     const user = await kv.get(`user:${userId}`);
     if (!user?.isProvider) return c.json(null);
 
+    const npRepresentative = {
+      type: 'person',
+      name: user.name || 'Representante',
+      documentType: 'CI',
+      documentNumber: '',
+    };
+
     const np = {
       id: user.providerId || `provider-${Date.now()}`, userId: user.id,
       businessName: user.name || 'Mi Negocio', category: 'general', description: '',
-      legalEntityType: 'person', identificationNumber: '',
+      representative: npRepresentative,
+      legalEntityType: npRepresentative.type, representativeName: npRepresentative.name, identificationNumber: npRepresentative.documentNumber,
       verified: false, createdAt: new Date().toISOString(), services: [], totalBookings: 0, rating: 5
     };
     await kv.set(`provider:${np.id}`, np);
@@ -238,7 +280,15 @@ app.put(`${P}/providers/:id`, async (c) => {
     const cur = await kv.get(`provider:${id}`);
     if (!cur) return c.json({ error: 'Provider not found' }, 404);
     if (cur.userId !== auth.user.id) return c.json({ error: 'Forbidden' }, 403);
-    const updated = { ...cur, ...updates };
+    const representative = normalizeRepresentative(updates, String(auth.user.user_metadata?.name || cur?.representativeName || ''), String(updates?.businessName || cur?.businessName || ''));
+    const updated = {
+      ...cur,
+      ...updates,
+      representative,
+      legalEntityType: representative.type,
+      representativeName: representative.name,
+      identificationNumber: representative.documentNumber,
+    };
     await kv.set(`provider:${id}`, updated);
     return c.json(updated);
   } catch (error) {
