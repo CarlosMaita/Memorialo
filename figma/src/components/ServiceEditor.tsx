@@ -10,7 +10,7 @@ import { Badge } from './ui/badge';
 import { Checkbox } from './ui/checkbox';
 import { Switch } from './ui/switch';
 import { ServicePlan } from '../types';
-import { Plus, Trash2, DollarSign, Clock, Check, Image, X, Upload, Star, Edit, XCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Plus, Trash2, DollarSign, Clock, Check, Image, X, Upload, Star, Edit, XCircle, AlertCircle, Eye, EyeOff, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useSupabase } from '../utils/useSupabase';
@@ -76,6 +76,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
   
   // Form ready state - para asegurar que los Select se rendericen con los valores
   const [formReady, setFormReady] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
 
   // Ref para rastrear si ya cargamos los datos
   const hasLoadedDataRef = useRef(false);
@@ -154,6 +155,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
         additionalTerms: [...DEFAULT_TERMS.additionalTerms]
       });
       setEditingPlanId(null);
+      setCurrentStep(0);
       return;
     }
 
@@ -501,6 +503,95 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     toast.success('Términos restaurados a la plantilla por defecto');
   };
 
+  const steps = [
+    {
+      title: 'Base del servicio',
+      description: 'Nombre, categoría y datos de contacto',
+      icon: Check
+    },
+    {
+      title: 'Detalles visuales',
+      description: 'Especialidades, disponibilidad e imágenes',
+      icon: Image
+    },
+    {
+      title: 'Planes y precios',
+      description: 'Paquetes, duración y valor por hora',
+      icon: DollarSign
+    },
+    {
+      title: 'Contrato y publicación',
+      description: 'Términos finales y revisión antes de publicar',
+      icon: FileText
+    }
+  ];
+
+  const isBasicStepComplete = Boolean(
+    formData.name &&
+    formData.category &&
+    formData.subcategory &&
+    formData.location &&
+    formData.whatsappNumber &&
+    formData.email
+  );
+  const hasMediaOrDetails = Boolean(
+    specialties.some((specialty) => specialty.trim() !== '') ||
+    availability.length > 0 ||
+    mainImage ||
+    portfolioImages.some((img) => img.trim() !== '')
+  );
+  const isPricingStepComplete = servicePlans.length > 0 && (
+    !formData.allowCustomHourly ||
+    (Boolean(formData.pricePerHour) && parseFloat(formData.pricePerHour) > 0)
+  );
+  const setupProgress = [
+    isBasicStepComplete,
+    hasMediaOrDetails,
+    isPricingStepComplete,
+    Boolean(customTerms.paymentTerms.trim() && customTerms.cancellationPolicy.trim())
+  ].filter(Boolean).length;
+
+  const validateStep = (stepIndex: number = currentStep) => {
+    if (stepIndex === 0 && !isBasicStepComplete) {
+      toast.error('Completa nombre, ubicación, categoría, subcategoría y contacto para continuar');
+      return false;
+    }
+
+    if (stepIndex === 2) {
+      if (servicePlans.length === 0) {
+        toast.error('Agrega al menos un plan de servicio para continuar');
+        return false;
+      }
+
+      if (formData.allowCustomHourly && (!formData.pricePerHour || parseFloat(formData.pricePerHour) <= 0)) {
+        toast.error('Indica un precio base por hora válido');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleStepChange = (targetStep: number) => {
+    if (targetStep > currentStep && !validateStep(currentStep)) {
+      return;
+    }
+
+    setCurrentStep(targetStep);
+  };
+
+  const handleNextStep = () => {
+    if (!validateStep(currentStep)) {
+      return;
+    }
+
+    setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
+  };
+
+  const handlePrevStep = () => {
+    setCurrentStep((prev) => Math.max(prev - 1, 0));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -561,24 +652,85 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
   const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
   const handleClose = () => {
+    setCurrentStep(0);
     onClose();
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {existingService ? 'Editar Servicio' : 'Crear Nuevo Servicio'}
-          </DialogTitle>
-          <DialogDescription>
-            Completa la información de tu servicio para que los clientes puedan encontrarte
-          </DialogDescription>
+      <DialogContent className="w-[95vw] max-w-5xl overflow-hidden rounded-[28px] border-none bg-slate-50 p-0 shadow-2xl">
+        <DialogHeader className="border-b border-slate-200 bg-white px-5 py-4 sm:px-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1 text-left">
+              <DialogTitle className="text-2xl font-semibold text-slate-900">
+                {existingService ? 'Editar Servicio' : 'Crear Nuevo Servicio'}
+              </DialogTitle>
+              <DialogDescription className="max-w-2xl text-sm text-slate-600">
+                Completa tu servicio paso a paso con un flujo más claro, minimalista y fácil de terminar.
+              </DialogDescription>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left sm:min-w-[190px]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Paso {currentStep + 1} de {steps.length}
+              </p>
+              <p className="mt-1 text-sm font-medium text-slate-900">{steps[currentStep].title}</p>
+              <p className="text-xs text-slate-500">{setupProgress}/{steps.length} bloques listos</p>
+            </div>
+          </div>
+
+          <Progress value={((currentStep + 1) / steps.length) * 100} className="mt-4 h-2" />
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Information */}
-          <Card>
+        <form onSubmit={handleSubmit} className="flex max-h-[calc(92vh-88px)] flex-col">
+          <div className="overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+            <div className="grid gap-2 sm:grid-cols-4">
+              {steps.map((step, index) => {
+                const StepIcon = step.icon;
+                const isActive = index === currentStep;
+                const isComplete =
+                  index < currentStep ||
+                  (index === 0 && isBasicStepComplete) ||
+                  (index === 1 && hasMediaOrDetails) ||
+                  (index === 2 && isPricingStepComplete);
+
+                return (
+                  <button
+                    key={step.title}
+                    type="button"
+                    onClick={() => handleStepChange(index)}
+                    className={`rounded-2xl border px-3 py-3 text-left transition-all ${
+                      isActive
+                        ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                        isActive ? 'bg-white/15 text-white' : isComplete ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        <StepIcon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{step.title}</p>
+                        <p className={`text-xs ${isActive ? 'text-slate-200' : 'text-slate-500'}`}>{step.description}</p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mb-4 mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-sm font-semibold text-slate-900">{steps[currentStep].title}</p>
+              <p className="mt-1 text-sm text-slate-600">{steps[currentStep].description}</p>
+            </div>
+
+            <div className="space-y-4">
+              {currentStep === 0 && (
+                <>
+                  {/* Basic Information */}
+                  <Card className="rounded-2xl border-slate-200 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg">Información Básica</CardTitle>
             </CardHeader>
@@ -591,7 +743,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Ej: Mariachi Los Camperos"
+                    placeholder="Ej: Decoraciones para fiestas"
                   />
                 </div>
                 <div>
@@ -729,8 +881,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                 <Textarea
                   id="bio"
                   value={formData.bio}
-                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  placeholder="Describe tu servicio, experiencia y qué te hace especial..."
+                  onChange={(e) => setFormData({ ...formData, bio: e.target.value, description: e.target.value })}
+                  placeholder="Cuéntale al cliente qué haces, cómo trabajas y qué hace especial tu propuesta..."
                   rows={4}
                 />
               </div>
@@ -759,8 +911,13 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
             </CardContent>
           </Card>
 
-          {/* Specialties */}
-          <Card>
+                </>
+              )}
+
+              {currentStep === 1 && (
+                <>
+                  {/* Specialties */}
+                  <Card className="rounded-2xl border-slate-200 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg">Especialidades</CardTitle>
             </CardHeader>
@@ -796,8 +953,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
             </CardContent>
           </Card>
 
-          {/* Availability */}
-          <Card>
+                  {/* Availability */}
+                  <Card className="rounded-2xl border-slate-200 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg">Disponibilidad</CardTitle>
             </CardHeader>
@@ -818,8 +975,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
             </CardContent>
           </Card>
 
-          {/* Images */}
-          <Card>
+                  {/* Images */}
+                  <Card className="rounded-2xl border-slate-200 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg">Imágenes del Servicio</CardTitle>
             </CardHeader>
@@ -960,8 +1117,13 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
             </CardContent>
           </Card>
 
-          {/* Service Plans */}
-          <Card>
+                </>
+              )}
+
+              {currentStep === 2 && (
+                <>
+                  {/* Service Plans */}
+                  <Card className="rounded-2xl border-slate-200 shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg">Planes de Servicio *</CardTitle>
             </CardHeader>
@@ -1222,8 +1384,34 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
             </CardContent>
           </Card>
 
-          {/* Terms and Conditions */}
-          <Card>
+                </>
+              )}
+
+              {currentStep === 3 && (
+                <>
+                  <Card className="rounded-2xl border-slate-200 shadow-sm">
+                    <CardContent className="grid gap-3 pt-6 sm:grid-cols-4">
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-xs uppercase tracking-wide text-slate-500">Servicio</p>
+                        <p className="mt-1 text-sm font-medium text-slate-900">{formData.name || 'Pendiente'}</p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-xs uppercase tracking-wide text-slate-500">Ubicación</p>
+                        <p className="mt-1 text-sm font-medium text-slate-900">{formData.location || 'Pendiente'}</p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-xs uppercase tracking-wide text-slate-500">Categoría</p>
+                        <p className="mt-1 text-sm font-medium text-slate-900">{formData.subcategory || formData.category || 'Pendiente'}</p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-xs uppercase tracking-wide text-slate-500">Planes</p>
+                        <p className="mt-1 text-sm font-medium text-slate-900">{servicePlans.length} configurado(s)</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Terms and Conditions */}
+                  <Card className="rounded-2xl border-slate-200 shadow-sm">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
@@ -1323,14 +1511,44 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
             </CardContent>
           </Card>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={handleClose} className="flex-1">
-              Cancelar
-            </Button>
-            <Button type="submit" className="flex-1">
-              {existingService ? 'Actualizar Servicio' : 'Crear Servicio'}
-            </Button>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 bg-white px-4 py-4 sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-slate-500">
+                {currentStep === 0 && 'Completa lo esencial de tu servicio para seguir.'}
+                {currentStep === 1 && 'Agrega detalles visuales para que tu propuesta genere más confianza.'}
+                {currentStep === 2 && 'Define al menos un plan para comenzar a recibir reservas.'}
+                {currentStep === 3 && 'Revisa el resumen final y guarda cuando todo esté listo.'}
+              </p>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button type="button" variant="outline" onClick={handleClose}>
+                  Cancelar
+                </Button>
+
+                {currentStep > 0 && (
+                  <Button type="button" variant="outline" onClick={handlePrevStep}>
+                    <ChevronLeft className="mr-2 h-4 w-4" />
+                    Anterior
+                  </Button>
+                )}
+
+                {currentStep < steps.length - 1 ? (
+                  <Button type="button" onClick={handleNextStep}>
+                    Siguiente
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button type="submit">
+                    {existingService ? 'Guardar cambios' : 'Crear servicio'}
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
         </form>
       </DialogContent>
