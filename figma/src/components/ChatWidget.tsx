@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ScrollArea } from './ui/scroll-area';
 import { Textarea } from './ui/textarea';
 import { Badge } from './ui/badge';
+import { Alert, AlertDescription } from './ui/alert';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { ConfirmDialog } from './ConfirmDialog';
 
@@ -61,6 +62,8 @@ type OpenChatEventDetail = {
   bookingId?: string;
 };
 
+const CHAT_WARNING_DISMISSED_STORAGE_KEY = 'memorialo-chat-warning-dismissed';
+
 export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
   const [conversationListOpen, setConversationListOpen] = useState(false);
   const [chatWindowOpen, setChatWindowOpen] = useState(false);
@@ -74,6 +77,19 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
   const [counterpartOnline, setCounterpartOnline] = useState(false);
   const [showInterventionConfirm, setShowInterventionConfirm] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
+  const [dismissedClientWarnings, setDismissedClientWarnings] = useState<Record<string, boolean>>(() => {
+    if (typeof window === 'undefined') {
+      return {};
+    }
+
+    try {
+      const storedValue = window.localStorage.getItem(CHAT_WARNING_DISMISSED_STORAGE_KEY);
+      const parsed = storedValue ? JSON.parse(storedValue) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const pendingAttachmentsRef = useRef<PendingAttachment[]>([]);
@@ -700,6 +716,44 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
     return null;
   }
 
+  const activeConversationHasHistory = Boolean(
+    activeConversation?.lastMessageAt ||
+    activeConversation?.lastMessage?.body ||
+    messageHasAttachments(activeConversation?.lastMessage ?? null),
+  );
+
+  const shouldShowClientAgreementWarning = Boolean(
+    chatWindowOpen &&
+    activeConversation &&
+    !user.isProvider &&
+    !activeConversationHasHistory &&
+    messages.length === 0 &&
+    !dismissedClientWarnings[activeConversation.id],
+  );
+
+  const handleDismissClientWarning = () => {
+    if (!activeConversation) {
+      return;
+    }
+
+    setDismissedClientWarnings(previous => {
+      const next = {
+        ...previous,
+        [activeConversation.id]: true,
+      };
+
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem(CHAT_WARNING_DISMISSED_STORAGE_KEY, JSON.stringify(next));
+        } catch {
+          // Ignore storage write failures and keep the warning dismissed for this session.
+        }
+      }
+
+      return next;
+    });
+  };
+
   return (
     <div className="fixed right-4 bottom-4 z-40">
       <div className="flex flex-col items-end gap-3">
@@ -788,7 +842,27 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
             </CardHeader>
 
             <CardContent className="flex min-h-0 flex-1 flex-col p-0">
-              <ScrollArea className="min-h-0 flex-1 px-3 py-3">
+              {shouldShowClientAgreementWarning && (
+                <div className="px-3 pt-3">
+                  <Alert className="border-amber-300 bg-amber-50 pr-10 text-amber-950 [&>svg]:text-amber-700">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription className="text-amber-900">
+                      <p className="font-medium">Usa este canal para establecer todos los acuerdos del servicio.</p>
+                      <p>Este chat sera la fuente unica de garantia en caso de controversia.</p>
+                    </AlertDescription>
+                    <button
+                      type="button"
+                      onClick={handleDismissClientWarning}
+                      aria-label="Cerrar advertencia del chat"
+                      className="absolute right-2 top-2 rounded-full p-1 text-amber-700 transition hover:bg-amber-100"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </Alert>
+                </div>
+              )}
+
+              <ScrollArea className={`min-h-0 flex-1 px-3 py-3 ${shouldShowClientAgreementWarning ? 'pt-2' : ''}`}>
                 <div className="space-y-2">
                   {messages.map(message => {
                     const mine = message.authorUserId === user.id;
