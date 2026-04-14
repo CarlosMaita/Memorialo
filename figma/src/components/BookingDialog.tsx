@@ -39,12 +39,7 @@ const EVENT_TYPE_OPTIONS = [
 
 type BookingStep = 'plan' | 'contact' | 'event' | 'summary';
 
-const BOOKING_STEPS: Array<{ id: BookingStep; label: string }> = [
-  { id: 'plan', label: 'Plan' },
-  { id: 'contact', label: 'Contacto' },
-  { id: 'event', label: 'Evento' },
-  { id: 'summary', label: 'Resumen' },
-];
+const BOOKING_STEPS: BookingStep[] = ['plan', 'contact', 'event', 'summary'];
 
 const normalizeText = (value?: string): string => {
   if (!value) return '';
@@ -222,7 +217,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
   const isEventSelected = selectedEventId && selectedEventId !== 'new';
   const isEventTypeLocked = Boolean(isEventSelected && mappedSelectedEventType);
   const userEvents = events.filter(e => e.userId === user?.id && e.status !== 'cancelled');
-  const currentStepIndex = BOOKING_STEPS.findIndex((step) => step.id === currentStep);
+  const currentStepIndex = BOOKING_STEPS.findIndex((step) => step === currentStep);
 
   const validatePlanStep = () => {
     if (!allowCustomHourly && !selectedServicePlan) {
@@ -437,14 +432,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     };
   };
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-
-    if (currentStep !== 'summary') {
-      void handleNextStep();
-      return;
-    }
-
+  const handleReviewContract = () => {
     if (!validatePlanStep() || !validateContactStep() || !validateEventStep()) {
       return;
     }
@@ -563,72 +551,32 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+          <div className="flex items-center justify-center gap-3 md:gap-4">
             {BOOKING_STEPS.map((step, index) => {
-              const isActive = step.id === currentStep;
+              const isActive = step === currentStep;
               const isCompleted = index < currentStepIndex;
 
               return (
-                <div
-                  key={step.id}
-                  className={`rounded-lg border px-3 py-2 text-xs md:text-sm transition-colors ${
+                <span
+                  key={step}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
                     isActive
-                      ? 'border-[#D4AF37] bg-amber-50 text-[#1B2A47]'
+                      ? 'bg-[#D4AF37] text-[#1B2A47]'
                       : isCompleted
-                        ? 'border-green-200 bg-green-50 text-green-700'
-                        : 'border-gray-200 bg-white text-gray-500'
+                        ? 'bg-[#1B2A47] text-white'
+                        : 'bg-gray-200 text-gray-600'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
-                      isActive
-                        ? 'bg-[#D4AF37] text-[#1B2A47]'
-                        : isCompleted
-                          ? 'bg-green-600 text-white'
-                          : 'bg-gray-200 text-gray-600'
-                    }`}>
-                      {isCompleted ? '✓' : index + 1}
-                    </span>
-                    <span className="font-medium">{step.label}</span>
-                  </div>
-                </div>
+                  {index + 1}
+                </span>
               );
             })}
           </div>
 
           {currentStep === 'plan' && (
             <div className="space-y-4">
-              {selectedServicePlan ? (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="secondary">Plan seleccionado</Badge>
-                      </div>
-                      <h4 className="text-sm mb-1">{selectedServicePlan.name}</h4>
-                      <p className="text-xs text-gray-600 mb-2">{selectedServicePlan.description}</p>
-                      <div className="space-y-1">
-                        {(selectedServicePlan.includes || []).slice(0, 3).map((item, idx) => (
-                          <div key={idx} className="flex items-start gap-1.5 text-xs text-gray-700">
-                            <Check className="w-3 h-3 text-green-600 flex-shrink-0 mt-0.5" />
-                            <span>{item}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-gray-600 text-xs">Precio</p>
-                      <p className="text-green-600 font-semibold">${totalPrice}</p>
-                      <p className="text-xs text-gray-500">{formatPlanMeasure(selectedServicePlan)}</p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
-                  Puedes hacer una reserva personalizada o elegir uno de los planes disponibles.
-                </div>
-              )}
+              
 
               {!selectedPlan && artist.servicePlans && artist.servicePlans.length > 0 && (
                 <div className="space-y-3">
@@ -671,6 +619,39 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
                 </div>
               )}
 
+
+
+              {selectedServicePlan ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="secondary">Plan seleccionado</Badge>
+                      </div>
+                      <h4 className="text-sm mb-1">{selectedServicePlan.name}</h4>
+                      <p className="text-xs text-gray-600 mb-2">{selectedServicePlan.description}</p>
+                      <div className="space-y-1">
+                        {(selectedServicePlan.includes || []).slice(0, 3).map((item, idx) => (
+                          <div key={idx} className="flex items-start gap-1.5 text-xs text-gray-700">
+                            <Check className="w-3 h-3 text-green-600 flex-shrink-0 mt-0.5" />
+                            <span>{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-gray-600 text-xs">Precio</p>
+                      <p className="text-green-600 font-semibold">${totalPrice}</p>
+                      <p className="text-xs text-gray-500">{formatPlanMeasure(selectedServicePlan)}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
+                  Puedes hacer una reserva personalizada o elegir uno de los planes disponibles.
+                </div>
+              )}
+              
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 {selectedServicePlan ? (
                   <>
@@ -706,6 +687,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
                   </>
                 )}
               </div>
+
             </div>
           )}
 
@@ -923,57 +905,63 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
           )}
 
           {currentStep === 'summary' && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-gray-500">Plan</p>
-                      <p className="font-medium text-[#1B2A47]">{selectedServicePlan ? selectedServicePlan.name : 'Reserva personalizada'}</p>
-                    </div>
-                    <Badge variant="secondary">Paso final</Badge>
-                  </div>
-
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Precio</span>
-                      <span className="text-green-600 font-semibold">${totalPrice}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">{selectedServicePlan ? (getPlanSaleType(selectedServicePlan) === 'unit' ? 'Cantidad' : 'Duración') : 'Duración'}</span>
-                      <span>{selectedServicePlan ? formatPlanMeasure(selectedServicePlan) : `${formData.duration} hora(s)`}</span>
-                    </div>
-                    {selectedServicePlan && (
-                      <p className="text-xs text-gray-600">{selectedServicePlan.description}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3 text-sm">
+            <div className="space-y-3">
+              <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm">
+                <div className="space-y-3">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Contacto</p>
-                    <p>{formData.clientName}</p>
-                    <p className="text-gray-600">{formData.clientEmail}</p>
-                    <p className="text-gray-600">{formData.clientPhone}</p>
+                    <p className="text-[11px] uppercase tracking-wide text-gray-500">Plan</p>
+                    <div className="mt-1 grid gap-1.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-gray-600">Servicio</span>
+                        <span className="text-right font-medium text-[#1B2A47]">{selectedServicePlan ? selectedServicePlan.name : 'Reserva personalizada'}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-gray-600">{selectedServicePlan ? (getPlanSaleType(selectedServicePlan) === 'unit' ? 'Cantidad' : 'Duración') : 'Duración'}</span>
+                        <span className="text-right">{selectedServicePlan ? formatPlanMeasure(selectedServicePlan) : `${formData.duration} hora(s)`}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-gray-600">Precio</span>
+                        <span className="text-right font-semibold text-green-600">${totalPrice}</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="pt-2 border-t border-gray-200">
-                    <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">Evento</p>
-                    <p><strong>Fecha:</strong> {formData.date || 'Sin definir'}</p>
-                    <p><strong>Hora:</strong> {formData.startTime || 'Sin definir'}</p>
-                    <p><strong>Tipo:</strong> {EVENT_TYPE_OPTIONS.find((option) => option.value === formData.eventType)?.label || 'Sin definir'}</p>
-                    <p><strong>Ubicación:</strong> {formData.location || 'Sin definir'}</p>
+                  <div className="border-t border-gray-200 pt-3">
+                    <p className="text-[11px] uppercase tracking-wide text-gray-500">Contacto</p>
+                    <div className="mt-1 grid gap-1 text-sm">
+                      <p className="font-medium text-[#1B2A47]">{formData.clientName}</p>
+                      <p className="text-gray-600">{formData.clientEmail}</p>
+                      <p className="text-gray-600">{formData.clientPhone}</p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-200 pt-3">
+                    <p className="text-[11px] uppercase tracking-wide text-gray-500">Evento</p>
+                    <div className="mt-1 grid gap-1.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-gray-600">Fecha</span>
+                        <span className="text-right">{formData.date || 'Sin definir'}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-gray-600">Hora</span>
+                        <span className="text-right">{formData.startTime || 'Sin definir'}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-gray-600">Tipo</span>
+                        <span className="text-right">{EVENT_TYPE_OPTIONS.find((option) => option.value === formData.eventType)?.label || 'Sin definir'}</span>
+                      </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-gray-600">Ubicación</span>
+                        <span className="max-w-[70%] text-right">{formData.location || 'Sin definir'}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
-                En el siguiente paso podrás revisar el contrato completo, validar el precio final y firmarlo digitalmente.
               </div>
             </div>
           )}
 
-          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-1">
             <Button
               type="button"
               variant="outline"
@@ -1001,7 +989,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
                 <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
-              <Button type="submit" className="flex-1">
+              <Button type="button" className="flex-1" onClick={handleReviewContract}>
                 <FileText className="w-4 h-4 mr-2" />
                 Revisar contrato y firmar
               </Button>
