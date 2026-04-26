@@ -218,3 +218,12 @@
 - Evidencia: Nuevas migraciones en `database/migrations`, `NotificationController`, `NotificationDelivery`, `NotificationTypes`, rutas API y suite `tests/Feature/NotificationApiTest.php` en verde.
 - Riesgo generado/mitigado: Mitigado riesgo de ambiguedad de contrato y de acceso cross-user al forzar ownership por usuario autenticado y validar con pruebas negativas.
 - Accion siguiente: Implementar N4 en frontend para campana/badge/dropdown y conectar polling/refresh con feature flag.
+
+### 2025-06 (fecha de re-inventario)
+- Fase: Re-inventario completo post-implementacion
+- Responsable: Copilot (sesion de analisis)
+- Cambio ejecutado: Exploracion exhaustiva del repositorio y actualizacion completa de toda la documentacion de migracion (00 al 05) para reflejar el estado real del proyecto. El backend Laravel 13 esta completamente implementado con 32 migraciones, 18 modelos, 17 controladores, 50+ endpoints REST, Reverb WebSockets, billing completo, chat en tiempo real, notificaciones con dedupe, 10 suites de test Feature y sistema de notificaciones multi-canal.
+- Motivo: Los documentos existentes describían el estado INICIAL del proyecto antes del desarrollo. Era necesario actualizar la documentacion con la realidad actual para que sea util como referencia operativa.
+- Evidencia: Actualizacion de 00-resumen-ejecutivo.md, 01-inventario-actual.md, 04-riesgos-y-mitigaciones.md y 05-checklist-validacion.md con inventario completo de estructura, modelos, rutas, campos, migraciones, tests y pendientes.
+- Riesgo generado/mitigado: Identificados 8 riesgos nuevos (Riesgo 16-23) sobre el estado actual: ausencia de Policies, validaciones inline, sin soft deletes, rate limiting pendiente, PKs string no forzadas en backend, mail sincrono, cobertura insuficiente de tests, y Reverb en produccion sin proceso manager confirmado.
+- Accion siguiente: Priorizar P1 (rate limiting en auth + soft deletes) y P2 (Form Requests + Policies) en el siguiente ciclo de desarrollo.

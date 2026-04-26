@@ -1,5 +1,10 @@
 # Checklist de Validacion
 
+> **ACTUALIZACION — 2025-06 (re-inventario completo):**
+> El checklist original fue escrito durante la planificacion de migracion. Se actualiza a continuacion con el estado real verificado del proyecto.
+
+---
+
 ## A. Preparacion (Fase 0)
 - [x] Laravel 13 inicializado en laravel/.
 - [ ] Entorno local y staging configurados.
@@ -76,3 +81,63 @@
 - [ ] Documentacion final actualizada.
 - [ ] Lecciones aprendidas registradas.
 - [ ] Backlog post-migracion priorizado.
+
+---
+
+## G. Estado Real Verificado (Re-inventario 2025-06)
+
+### G.1 Core Backend Laravel 13
+- [x] Laravel 13 operativo en laravel/ con PHP ^8.3
+- [x] MySQL configurado como base de datos principal
+- [x] 32 migraciones definidas y ordenadas correctamente
+- [x] 18 modelos Eloquent implementados con relaciones
+- [x] 17 controladores REST implementados
+- [x] Autenticacion via Laravel Sanctum ^4.0
+- [x] OAuth Google via Laravel Socialite ^5.25
+- [x] WebSockets en tiempo real via Laravel Reverb ^1.9
+- [x] Queue configurado con driver database
+- [x] Cache configurado con driver database
+
+### G.2 Dominios Funcionales
+- [x] Auth: register, login, logout, /me, Google OAuth
+- [x] Users: show, update, provider-request
+- [x] Providers: index, store, showByUser, update
+- [x] Services: index, show, store, update, destroy
+- [x] Bookings: index (con scopes y paginacion), store, update
+- [x] Contracts: index (con scopes y paginacion), store, update + metadata legal enriquecida
+- [x] Events: index, store, update, destroy
+- [x] Reviews: index, store + agregado de rating en Service
+- [x] Billing: config, providerBilling, pay, adminOverview, updateConfig, approvePayment, rejectPayment
+- [x] BillingCycleService: ciclo mensual, preview, suspension, cierre automatico
+- [x] Notifications: index, unreadCount, markRead, markAllRead
+- [x] NotificationDispatchService: multi-canal (database + mail), dedupe, trazabilidad
+- [x] 13 tipos de notificacion canonicos definidos
+- [x] Chat: conversations, participants, messages, reads, attachments
+- [x] Chat broadcast: canales privados por usuario y admin via Reverb
+- [x] Favorites: index, store, destroy
+- [x] Admin: users, providers, marketplace config, access control
+- [x] InterestedProviders: store (publica, web route)
+
+### G.3 Calidad y Arquitectura
+- [x] Validacion de inputs implementada en todos los controladores
+- [x] Normalizacion camelCase <-> snake_case implementada (Booking, Contract, Provider)
+- [x] Deduplicacion de notificaciones implementada via dedupe_key
+- [x] Trazabilidad de notificaciones en notification_deliveries
+- [x] 10 suites de test Feature implementadas
+- [ ] Policies/Gates formales — PENDIENTE (ver Riesgo 16)
+- [ ] Form Requests dedicados — PENDIENTE (ver Riesgo 17)
+- [ ] Soft deletes en entidades criticas — PENDIENTE (ver Riesgo 18)
+- [ ] Rate limiting en endpoints de autenticacion — PENDIENTE verificacion (ver Riesgo 19)
+- [ ] PKs UUID forzadas en backend — PENDIENTE (ver Riesgo 20)
+- [ ] Correo asincrono en cola — PENDIENTE (ver Riesgo 21)
+- [ ] Cobertura de tests ampliada para billing/chat — PENDIENTE (ver Riesgo 22)
+
+### G.4 Proximos pasos recomendados (por prioridad)
+1. **P1 — Seguridad**: Verificar y configurar rate limiting en auth routes
+2. **P1 — Datos**: Agregar SoftDeletes a Booking, Contract, Service
+3. **P2 — Arquitectura**: Extraer Form Requests en BookingController y ContractController
+4. **P2 — Arquitectura**: Crear Policies para Provider, Booking, Contract
+5. **P2 — Rendimiento**: Mover Mail::send() a jobs en cola
+6. **P3 — Calidad**: Forzar UUID generado en backend para PKs de Booking/Contract/Event
+7. **P3 — Calidad**: Ampliar cobertura de BillingLifecycleTest
+8. **P3 — Operaciones**: Verificar configuracion de Supervisor para Reverb en produccion

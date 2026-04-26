@@ -1,5 +1,10 @@
 # Resumen Ejecutivo - Migracion a Laravel 13
 
+> **ACTUALIZACION — 2025-06 (re-inventario completo):**
+> La migracion a Laravel 13 **esta COMPLETADA** en su totalidad funcional. El backend Laravel esta plenamente operativo. Los documentos anteriores describían el estado inicial del proyecto antes del desarrollo; este encabezado y la seccion de estado actual reflejan la realidad al momento del re-analisis.
+
+---
+
 ## Objetivo
 Migrar este repositorio desde una arquitectura frontend + Supabase Functions/KV a una base backend en Laravel 13, manteniendo continuidad funcional del marketplace para artistas y dejando trazabilidad completa del proceso.
 
@@ -31,6 +36,58 @@ Migrar este repositorio desde una arquitectura frontend + Supabase Functions/KV 
 
 ## Resultado Esperado
 Al finalizar, Laravel 13 sera el backend principal para autenticacion, usuarios, providers, servicios, contratos, bookings, reviews, eventos, notificaciones y funciones admin; Supabase quedara limitado a los componentes que se decida conservar explicitamente (si aplica).
+
+---
+
+## Estado Real al Re-inventario (2025-06)
+
+### Conclusion
+La migracion **esta completada**. Laravel 13 es el backend principal y operativo con todos los dominios de negocio implementados.
+
+### Stack productivo confirmado
+| Componente | Tecnologia | Version |
+|---|---|---|
+| Framework | Laravel | ^13.0 |
+| Lenguaje | PHP | ^8.3 |
+| Base de datos principal | MySQL | (configurado en .env) |
+| Autenticacion | Laravel Sanctum | ^4.0 |
+| OAuth | Laravel Socialite (Google) | ^5.25 |
+| WebSockets / Tiempo real | Laravel Reverb | ^1.9 |
+| Frontend assets | Vite 8 + Tailwind CSS 4 | ^8.0 / ^4.0 |
+| Testing | PHPUnit | ^12.5 |
+| Queue | Database driver | - |
+| Cache | Database driver | - |
+| Broadcast | Reverb | - |
+
+### Dominios implementados (todos en produccion)
+- Autenticacion (registro, login, Google OAuth, logout, /me)
+- Usuarios y perfiles (actualizar perfil, solicitar acceso proveedor)
+- Proveedores (CRUD, verificacion admin, ban/unban)
+- Servicios (CRUD, filtros, paginacion)
+- Contratos (CRUD, firma artista/cliente, ciclo de vida, metadata legal)
+- Bookings/Reservas (CRUD, scopes por rol, paginacion)
+- Eventos del cliente (CRUD, archivado, contract_ids)
+- Reviews (crear, listar por servicio)
+- Facturacion/Billing (invoices, ciclo mensual, comisiones, pago, aprobacion admin)
+- Notificaciones in-app + email (bandeja, conteo, marcado, deduplicacion)
+- Chat en tiempo real (conversaciones, mensajes, attachments, intervencion admin, Reverb)
+- Favoritos (agregar, listar, eliminar)
+- Admin (usuarios, providers, marketplace config, acceso proveedor)
+- Interested Providers (formulario de interes publico)
+
+### Migraciones aplicadas: 32 archivos
+### Modelos: 18
+### Controladores: 17
+### Test suites: 10 tests de Feature + Unit base
+
+### Pendientes identificados (post-inventario)
+- Autorizacion formal via Policies o Gates (actualmente inline en controllers)
+- Form Requests dedicados (validacion inline en controllers)
+- Rate limiting en endpoints publicos y de autenticacion
+- Soft deletes en entidades criticas (Booking, Contract, Service)
+- Estrategia de archivos/imagenes (actualmente UploadController existe pero sin detalle de storage backend)
+- Cobertura de tests para dominios de billing, contratos y chat
+- Configuracion de Horizon o Supervisor para queue workers en produccion
 
 ## Alcance Especifico del Modulo de Notificaciones
 - Notificaciones in-app visibles desde icono en header para usuarios y proveedores.

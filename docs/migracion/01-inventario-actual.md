@@ -1,5 +1,11 @@
 # Inventario Actual
 
+> **ACTUALIZACION — 2025-06 (re-inventario completo):**
+> Las secciones 1–10 a continuacion documentan el estado inicial del proyecto ANTES del desarrollo backend.
+> A partir de la seccion 11 se documenta el **estado real y completo actual** del backend Laravel operativo.
+
+---
+
 ## 1. Estructura del Repositorio
 - figma/: aplicacion frontend React + Vite con logica de UI y consumo de backend.
 - laravel/: carpeta reservada para backend destino (actualmente vacia).
@@ -232,3 +238,430 @@
 - Frontend: apagar icono/dropdown via `VITE_NOTIFICATIONS_HEADER_ENABLED=false`.
 - Backend: mantener endpoints disponibles solo para soporte interno o apagarlos via `NOTIFICATIONS_IN_APP_ENABLED=false`.
 - Persistencia: no eliminar historico ni migraciones de N1.
+
+---
+
+## 11. Inventario Real del Backend Laravel (Re-inventario 2025-06)
+
+### 11.1 Estructura de directorios relevante
+```
+laravel/
+├── app/
+│   ├── Console/
+│   ├── Events/
+│   │   └── ChatMessageCreated.php          # Evento broadcast Reverb
+│   ├── Http/
+│   │   └── Controllers/
+│   │       ├── AdminController.php
+│   │       ├── AuthController.php
+│   │       ├── BillingController.php
+│   │       ├── BookingController.php
+│   │       ├── ChatConversationController.php
+│   │       ├── ChatMessageController.php
+│   │       ├── ContractController.php
+│   │       ├── Controller.php
+│   │       ├── EventController.php
+│   │       ├── FavoriteController.php
+│   │       ├── InterestedProviderController.php
+│   │       ├── NotificationController.php
+│   │       ├── ProviderController.php
+│   │       ├── ReviewController.php
+│   │       ├── ServiceController.php
+│   │       ├── UploadController.php
+│   │       └── UserController.php
+│   ├── Models/                             # 18 modelos Eloquent
+│   ├── Providers/
+│   │   └── AppServiceProvider.php
+│   ├── Services/
+│   │   ├── BillingCycleService.php         # Logica de facturacion mensual
+│   │   └── NotificationDispatchService.php # Despacho multi-canal con dedupe
+│   └── Support/
+│       └── NotificationTypes.php           # Constantes de tipos de notificacion
+├── database/
+│   ├── factories/
+│   │   └── UserFactory.php
+│   ├── migrations/                         # 32 archivos
+│   └── seeders/
+│       ├── DatabaseSeeder.php
+│       └── LoadTestSeeder.php
+├── resources/
+│   ├── css/
+│   ├── js/
+│   │   ├── app.js
+│   │   └── bootstrap.js
+│   └── views/
+│       ├── emails/
+│       └── welcome.blade.php
+├── routes/
+│   ├── api.php                             # 50+ endpoints REST
+│   ├── channels.php                        # Canales broadcast Reverb
+│   ├── console.php
+│   └── web.php
+└── tests/
+    ├── Feature/                            # 10 suites de prueba
+    └── Unit/
+```
+
+### 11.2 Modelos Eloquent — Tabla de Referencia Completa
+
+| Modelo | Tabla | PK | Tipo PK | Relaciones clave |
+|---|---|---|---|---|
+| User | users | id | bigint autoincrement | belongsTo Provider; hasMany Service, ChatParticipant, ChatMessage, ChatMessageRead |
+| Provider | providers | id | bigint autoincrement | belongsTo User; hasMany Service |
+| Service | services | id | bigint autoincrement | belongsTo User, Provider |
+| Booking | bookings | id | string (UUID-like) | Sin relaciones Eloquent (join manual) |
+| Contract | contracts | id | string (UUID-like) | Sin relaciones Eloquent (join manual) |
+| Event | events | id | string (UUID-like) | Sin relaciones Eloquent |
+| Review | reviews | id | bigint autoincrement | belongsTo Service (artist), User |
+| BillingInvoice | billing_invoices | id | bigint autoincrement | belongsTo Provider |
+| BillingSetting | billing_settings | id | bigint autoincrement | - |
+| ChatConversation | chat_conversations | id | UUID | belongsTo User (client), User (provider), Service; hasMany ChatParticipant, ChatMessage; hasOne ChatMessage (latest) |
+| ChatMessage | chat_messages | id | string UUID | belongsTo ChatConversation, User (author); hasMany ChatMessageRead, ChatMessageAttachment |
+| ChatParticipant | chat_participants | id | bigint autoincrement | belongsTo ChatConversation, User |
+| ChatMessageAttachment | chat_message_attachments | id | bigint autoincrement | belongsTo ChatMessage |
+| Favorite | favorites | id | bigint autoincrement | belongsTo User, Service |
+| InterestedProvider | interested_providers | id | bigint autoincrement | - |
+| MarketplaceSetting | marketplace_settings | id | bigint autoincrement | - |
+| NotificationDelivery | notification_deliveries | id | bigint autoincrement | - |
+
+### 11.3 Campos criticos por modelo
+
+#### User
+```
+id, name, email, google_id, password, phone, whatsapp_number, avatar
+is_provider (bool), provider_id (FK), provider_request_status, provider_requested_at
+provider_approved_at, provider_approved_by, role (user|provider|admin)
+banned (bool), banned_at, banned_reason
+billing_suspended_at, billing_suspension_reason
+archived (bool), archived_at
+```
+
+#### Provider
+```
+id, user_id (FK), business_name, category, description
+representative (JSON: {type, name, documentType, documentNumber})
+legal_entity_type (person|company), identification_number
+verified (bool), verified_at, verified_by
+banned (bool), banned_at, banned_by, banned_reason, unbanned_at, unbanned_by
+rating (decimal:2), total_bookings, services (JSON)
+```
+
+#### Booking
+```
+id (string), artist_id, artist_user_id, artist_name
+user_id, client_name, client_email, client_phone
+date, start_time, duration (int), event_type, location, special_requests
+total_price (decimal:2), status (pending|confirmed|completed|cancelled)
+plan_id, plan_name, contract_id, metadata (JSON)
+```
+
+#### Contract
+```
+id (string), booking_id, artist_id, artist_user_id, artist_name, artist_email, artist_whatsapp
+client_id, client_name, client_email, client_whatsapp, event_id
+status (draft|active|completed|cancelled)
+terms (JSON), artist_signature (JSON), client_signature (JSON)
+completed_at, metadata (JSON)
+```
+
+#### BillingInvoice
+```
+id, provider_id (FK), month (YYYY-MM), period_start, period_end
+commission_rate (decimal:4), contract_count (int), total_sales (decimal:2)
+amount (decimal:2), status (pending|submitted|approved|rejected|overdue|empty)
+due_date, grace_period_end, payment_reference, payment_submitted_at
+paid_at, payment_reviewed_at, payment_reviewed_by, payment_rejection_reason
+billing_snapshot (JSON), generated_at
+```
+
+#### BillingSetting
+```
+id, closure_day (tinyint), payment_grace_days (tinyint)
+commission_rate (decimal:4), last_closed_month (YYYY-MM)
+```
+
+#### ChatConversation
+```
+id (UUID), booking_id, service_id (FK), client_user_id (FK), provider_user_id (FK)
+requires_admin_intervention (bool), intervention_requested_at
+intervention_requested_by (FK), last_message_at, expires_at
+```
+
+### 11.4 Migraciones — Listado Completo Ordenado
+
+| # | Archivo | Descripcion |
+|---|---|---|
+| 01 | 0001_01_01_000000_create_users_table | Tabla base users, password_reset_tokens, sessions |
+| 02 | 0001_01_01_000001_create_cache_table | Cache en base de datos |
+| 03 | 0001_01_01_000002_create_jobs_table | Queue jobs y batches |
+| 04 | 2026_03_21_034017_create_personal_access_tokens_table | Sanctum tokens |
+| 05 | 2026_03_21_050000_create_providers_table | Tabla providers base |
+| 06 | 2026_03_21_050100_create_services_table | Tabla services |
+| 07 | 2026_03_21_050200_add_migration_fields_to_users_table | Campos provider/role/banned/archived en users |
+| 08 | 2026_03_21_060000_create_reviews_table | Tabla reviews |
+| 09 | 2026_03_21_070000_create_contracts_table | Tabla contracts (PK string, JSON terms/signatures) |
+| 10 | 2026_03_21_070100_add_bookings_completed_to_services_table | bookings_completed en services |
+| 11 | 2026_03_21_071000_create_bookings_table | Tabla bookings (PK string) |
+| 12 | 2026_03_21_072000_create_events_table | Tabla events del cliente (PK string) |
+| 13 | 2026_03_21_073000_create_billing_invoices_table | Tabla billing_invoices base |
+| 14 | 2026_03_21_074000_add_admin_fields_to_providers_table | Campos admin (verified, banned) en providers |
+| 15 | 2026_03_21_080000_create_notifications_table | Notificaciones nativas Laravel |
+| 16 | 2026_03_21_080100_create_notification_deliveries_table | Auditoria de entrega por canal |
+| 17 | 2026_03_22_210000_add_google_id_to_users_table | OAuth Google: google_id, avatar en users |
+| 18 | 2026_03_22_220000_create_favorites_table | Tabla favorites |
+| 19 | 2026_03_22_230000_add_provider_access_fields_to_users_table | Campos de solicitud proveedor en users |
+| 20 | 2026_03_23_120000_create_chat_conversations_table | Conversaciones de chat (UUID) |
+| 21 | 2026_03_23_120100_create_chat_participants_table | Participantes por conversacion |
+| 22 | 2026_03_23_120200_create_chat_messages_table | Mensajes de chat (UUID) |
+| 23 | 2026_03_23_120300_create_chat_message_reads_table | Lectura de mensajes |
+| 24 | 2026_03_24_090000_add_expires_at_to_chat_conversations_table | Vencimiento de conversaciones |
+| 25 | 2026_03_24_090100_create_chat_message_attachments_table | Adjuntos en mensajes |
+| 26 | 2026_03_25_000100_create_billing_settings_table | Configuracion global de facturacion |
+| 27 | 2026_03_25_000200_expand_billing_invoices_table | Expansion billing: period, grace, review |
+| 28 | 2026_03_25_000300_add_billing_suspension_fields_to_users_table | Suspension por mora en users |
+| 29 | 2026_03_25_120000_add_legal_fields_to_providers_table | Campos legales en providers |
+| 30 | 2026_03_30_000000_create_interested_providers_table | Formulario interes de proveedores |
+| 31 | 2026_04_02_000100_create_marketplace_settings_table | Configuracion de ciudades del marketplace |
+| 32 | 2026_04_03_150000_add_representative_json_to_providers_table | JSON representative en providers |
+
+### 11.5 API Routes — Mapa Completo
+
+#### Publicas (sin auth)
+```
+GET  /api/health
+GET  /api/users/{id}
+GET  /api/providers
+GET  /api/providers/user/{userId}
+GET  /api/services
+GET  /api/services/{id}
+GET  /api/marketplace/config
+GET  /api/events
+GET  /api/billing/config
+GET  /api/reviews
+
+POST /api/auth/register
+POST /api/auth/login
+GET  /api/auth/google/redirect
+GET  /api/auth/google/callback
+POST /interested-providers    [web route]
+```
+
+#### Autenticadas (auth:sanctum)
+```
+GET  /api/auth/me
+POST /api/auth/logout
+GET  /api/user
+
+PUT    /api/users/{id}
+POST   /api/users/{id}/provider-request
+
+POST   /api/providers
+PUT    /api/providers/{id}
+
+POST   /api/services
+PUT    /api/services/{id}
+DELETE /api/services/{id}
+
+POST   /api/contracts
+GET    /api/contracts
+PUT    /api/contracts/{id}
+
+POST   /api/bookings
+GET    /api/bookings
+PUT    /api/bookings/{id}
+
+POST   /api/events
+PUT    /api/events/{id}
+DELETE /api/events/{id}
+
+GET    /api/billing/provider/{providerId}
+POST   /api/billing/provider/{providerId}/pay
+GET    /api/billing/admin/overview
+PATCH  /api/billing/admin/config
+POST   /api/billing/admin/invoices/{invoiceId}/approve
+POST   /api/billing/admin/invoices/{invoiceId}/reject
+
+GET    /api/admin/users
+GET    /api/admin/interested-providers
+PATCH  /api/admin/marketplace-config
+POST   /api/admin/providers/{id}/verify
+POST   /api/admin/providers/{id}/ban
+POST   /api/admin/providers/{id}/unban
+POST   /api/admin/users/{id}/ban
+POST   /api/admin/users/{id}/unban
+POST   /api/admin/users/{id}/archive
+POST   /api/admin/users/{id}/unarchive
+POST   /api/admin/users/{id}/provider-access/approve
+POST   /api/admin/users/{id}/provider-access/revoke
+DELETE /api/admin/users/{id}
+
+POST   /api/upload-image
+POST   /api/reviews
+
+GET    /api/notifications
+GET    /api/notifications/unread-count
+PATCH  /api/notifications/{id}/read
+PATCH  /api/notifications/read-all
+
+GET    /api/favorites
+POST   /api/favorites
+DELETE /api/favorites/{serviceId}
+
+GET    /api/chat/conversations
+POST   /api/chat/conversations
+GET    /api/chat/conversations/{id}
+PATCH  /api/chat/conversations/{id}/intervention
+GET    /api/chat/conversations/{conversationId}/messages
+POST   /api/chat/conversations/{conversationId}/messages
+PATCH  /api/chat/conversations/{conversationId}/read
+```
+
+#### Canales Broadcast (Reverb / auth:sanctum)
+```
+App.Models.User.{id}               → privado por usuario
+chat.user.{id}                     → privado por usuario (mensajes)
+chat.admin                         → privado solo admin
+chat.conversation.{conversationId} → presencia: participantes + admin con intervencion
+```
+
+### 11.6 Servicios y soporte
+
+#### BillingCycleService
+- `getSettings()` — obtiene o crea configuracion global
+- `syncExpiredBookingsAndContracts()` — completa bookings cuya fecha paso
+- `buildOpenPeriodPreview()` — preview de facturacion del periodo abierto
+- `submitInvoicePayment()` — registra pago del proveedor
+- `approveInvoice()` — admin aprueba pago
+- `rejectInvoice()` — admin rechaza con razon
+- `resolveNextClosureDate()` — calcula proximo cierre de ciclo
+- `formatInvoice()` — formatea invoice para API response
+
+#### NotificationDispatchService
+- `dispatchToUser(User $recipient, string $type, array $payload)` — despacha a canales `database` y/o `mail`
+- Deduplicacion por `dedupe_key + channel + recipient_key`
+- Trazabilidad en `notification_deliveries`
+- Envio de mail con template Blade `emails.notification`
+- Flag `NOTIFICATIONS_MAIL_ENABLED` para habilitar/deshabilitar correos
+
+#### NotificationTypes (constantes)
+```
+welcome, service_request_created, contract_approved, review_requested,
+review_received, provider_role_activated, chat_message_received,
+chat_intervention_requested, billing_invoice_generated,
+billing_payment_submitted, billing_payment_approved,
+billing_payment_rejected, billing_account_suspended
+```
+
+### 11.7 Tests existentes
+
+| Archivo | Suite | Descripcion |
+|---|---|---|
+| ApiPhaseOneSmokeTest.php | Feature | Smoke test endpoints principales |
+| BillingLifecycleTest.php | Feature | Ciclo completo de facturacion |
+| ChatApiTest.php | Feature | API de chat y mensajes |
+| ExampleTest.php | Feature | Test de ejemplo base |
+| FavoriteApiTest.php | Feature | CRUD de favoritos |
+| GoogleAuthTest.php | Feature | Flujo OAuth Google |
+| MarketplaceCityAvailabilityTest.php | Feature | Configuracion de ciudades |
+| NotificationApiTest.php | Feature | API de notificaciones |
+| NotificationGenerationTest.php | Feature | Generacion de notificaciones |
+| ProviderAccessWorkflowTest.php | Feature | Flujo de solicitud/aprobacion proveedor |
+| ExampleTest.php | Unit | Test unit base |
+
+### 11.8 Como ejecutar la aplicacion
+
+#### Setup inicial
+```bash
+cd laravel
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --force
+npm install
+npm run build
+```
+
+#### Desarrollo (todo en paralelo via concurrently)
+```bash
+composer run dev
+# Equivale a:
+# php artisan serve
+# php artisan queue:listen --tries=1 --timeout=0
+# php artisan pail --timeout=0
+# npm run dev
+```
+
+#### Solo artisan serve
+```bash
+php artisan serve
+```
+
+#### Migraciones
+```bash
+php artisan migrate              # aplicar pendientes
+php artisan migrate:fresh        # borrar y recrear todo
+php artisan migrate:rollback     # revertir ultimo batch
+php artisan migrate:status       # ver estado
+```
+
+#### Seeders
+```bash
+php artisan db:seed                           # crea usuario test@example.com
+LOAD_TEST_SEED=true php artisan db:seed       # incluye datos de carga de prueba
+```
+
+#### Tests
+```bash
+composer run test
+# Equivale a:
+php artisan config:clear && php artisan test
+
+# Solo una suite
+php artisan test --testsuite=Feature
+php artisan test --testsuite=Unit
+
+# Un archivo especifico
+php artisan test tests/Feature/BillingLifecycleTest.php
+
+# Con cobertura (requiere Xdebug o PCOV)
+php artisan test --coverage
+```
+
+#### Queue worker
+```bash
+php artisan queue:listen --tries=1 --timeout=0
+php artisan queue:work
+```
+
+#### Reverb (WebSockets)
+```bash
+php artisan reverb:start
+php artisan reverb:start --host=0.0.0.0 --port=8080
+```
+
+#### Variables de entorno criticas
+```
+APP_KEY=           # Requerido (key:generate)
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_DATABASE=marketplaceappforartists
+DB_USERNAME=root
+DB_PASSWORD=
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=http://127.0.0.1:8000/api/auth/google/callback
+
+REVERB_APP_ID=
+REVERB_APP_KEY=
+REVERB_APP_SECRET=
+
+MAIL_MAILER=log    # smtp / postmark / resend / ses en produccion
+NOTIFICATIONS_MAIL_ENABLED=true
+
+FRONTEND_URL=http://127.0.0.1:5173
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+
+ADMIN_DEFAULT_EMAIL=admin@memorialo.local
+ADMIN_DEFAULT_PASSWORD=Admin12345!
+```

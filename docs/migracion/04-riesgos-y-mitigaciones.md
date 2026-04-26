@@ -1,5 +1,12 @@
 # Riesgos y Mitigaciones
 
+> **ACTUALIZACION — 2025-06 (re-inventario completo):**
+> Los riesgos 1 y 2 (falta de baseline y modelo KV) ya estan **RESUELTOS**. El backend Laravel esta completamente implementado.
+> Los riesgos 3–15 se mantienen para documentacion historica y como base de analisis de los pendientes actuales.
+> A partir del riesgo 16 se documentan riesgos identificados en el estado actual real del proyecto.
+
+---
+
 ## Riesgo 1 - Falta de baseline Laravel
 - Descripcion: No existe app Laravel inicializada en laravel/.
 - Impacto: Alto.
@@ -104,3 +111,71 @@
 - Probabilidad: Media.
 - Mitigacion: Calcular sobre fuente de verdad (`read_at IS NULL`), invalidar cache en `read/read-all` y validar idempotencia.
 - Senal de alerta: Badge en header muestra un numero distinto al listado de no leidas.
+
+---
+
+## Riesgos identificados en estado actual real (2025-06)
+
+## Riesgo 16 - Ausencia de Policies/Gates formales (ACTIVO)
+- Descripcion: La autorizacion esta implementada de forma inline en cada controlador (checks manuales de `role`, `user_id`, ownership). No existen Laravel Policies ni Gates.
+- Impacto: Alto — un refactor de logica de roles puede quedar inconsistente entre endpoints.
+- Probabilidad: Alta en proyectos en crecimiento.
+- Mitigacion: Crear Policies para las entidades criticas (Provider, Booking, Contract, BillingInvoice) e integrar con middleware authorize.
+- Senal de alerta: Nueva regla de negocio aplicada en un controlador pero omitida en otro para la misma entidad.
+- Estado: ABIERTO.
+
+## Riesgo 17 - Validaciones inline en controladores (ACTIVO)
+- Descripcion: Toda la validacion de inputs vive directamente en los metodos de controlador. Los controladores BookingController y ContractController tienen bloques de validacion muy extensos (140+ lineas de reglas).
+- Impacto: Medio — baja legibilidad y mayor superficie de error al actualizar validaciones.
+- Probabilidad: Media.
+- Mitigacion: Extraer a Form Requests dedicados por operacion. Priorizar BookingController y ContractController.
+- Senal de alerta: Reglas duplicadas entre metodos `store` y `update` dentro del mismo controlador.
+- Estado: ABIERTO.
+
+## Riesgo 18 - Sin soft deletes en entidades criticas (ACTIVO)
+- Descripcion: Booking, Contract, Service y Review usan hard delete. El AdminController elimina usuarios con cascade manual en Booking/Contract/Service/Provider.
+- Impacto: Alto — eliminacion accidental o por mal uso produce perdida de datos de negocio.
+- Probabilidad: Media.
+- Mitigacion: Agregar SoftDeletes a al menos Booking, Contract y Service. Auditar delete cascade en AdminController.
+- Senal de alerta: Datos de contratos o bookings irrecuperables tras operacion de admin.
+- Estado: ABIERTO.
+
+## Riesgo 19 - Sin rate limiting en endpoints de autenticacion (ACTIVO)
+- Descripcion: `POST /api/auth/login` y `POST /api/auth/register` no tienen throttle declarado en rutas. Laravel tiene un throttle por defecto en `api` middleware pero debe verificarse su configuracion.
+- Impacto: Alto — vulnerabilidad a ataques de fuerza bruta.
+- Probabilidad: Media.
+- Mitigacion: Agregar `throttle:5,1` (5 intentos por minuto) en rutas de autenticacion. Verificar configuracion del middleware api en bootstrap/app.php.
+- Senal de alerta: Intentos de login masivos no bloqueados en logs.
+- Estado: ABIERTO - requiere verificacion.
+
+## Riesgo 20 - PKs string sin formato UUID validado (ACTIVO)
+- Descripcion: Booking, Contract y Event usan PK string libre. El backend acepta el `id` del cliente sin validar formato UUID. Se generan IDs como `booking-{timestamp}` si el cliente no envia el campo.
+- Impacto: Medio — inconsistencia de formato entre registros puede dificultar busquedas e indexes.
+- Probabilidad: Alta — ya ocurre en la implementacion actual.
+- Mitigacion: Forzar generacion de UUID en backend ignorando el campo `id` del cliente, o validar formato UUID cuando se recibe.
+- Senal de alerta: PKs en base de datos con formatos mezclados (uuid vs booking-timestamp).
+- Estado: ABIERTO.
+
+## Riesgo 21 - Correo enviado sincronamente en request principal (PARCIALMENTE ACTIVO)
+- Descripcion: NotificationDispatchService envia correos de forma sincrona via `Mail::send()` dentro del request HTTP. Si el servidor SMTP tiene latencia, el response al cliente se demora o falla.
+- Impacto: Alto en produccion con volumen real.
+- Probabilidad: Alta si se habilita SMTP real.
+- Mitigacion: Mover envio de mail a Jobs en cola (`Mail::queue()` o Notification con `ShouldQueue`). Queue ya esta configurado con driver database.
+- Senal de alerta: Endpoints de booking, contrato o registro lentos cuando hay actividad de correo.
+- Estado: ACTIVO — `Mail::send()` es sincrono actualmente.
+
+## Riesgo 22 - Sin cobertura de tests para dominio de billing y chat (ACTIVO)
+- Descripcion: Aunque existen `BillingLifecycleTest` y `ChatApiTest`, la cobertura del ciclo completo de BillingCycleService (suspension, cierre de periodo, recalculo) no esta confirmada como completa.
+- Impacto: Medio — regressions en logica de facturacion no detectadas.
+- Probabilidad: Media.
+- Mitigacion: Ampliar BillingLifecycleTest para cubrir: invoice generado, pago submitido, aprobado y rechazado. Verificar cobertura de ChatApiTest para intervencion admin y expiracion de conversacion.
+- Senal de alerta: Bug en calculo de comisiones detectado en produccion.
+- Estado: ABIERTO.
+
+## Riesgo 23 - Configuracion de Reverb en produccion no documentada operativamente (ACTIVO)
+- Descripcion: Reverb require proceso persistente en produccion. Sin Supervisor o equivalente el proceso cae y el chat queda inoperativo.
+- Impacto: Alto en funcionalidad de chat en tiempo real.
+- Probabilidad: Alta si no hay proceso manager configurado.
+- Mitigacion: Ver docs/migracion/07-guia-supervisor-produccion.md (ya existe). Verificar que el runbook incluye comando de reverb en la configuracion de Supervisor.
+- Senal de alerta: Mensajes de chat no llegan en tiempo real; clientes reportan delay.
+- Estado: Documentado en 07. Verificar implementacion en produccion.
