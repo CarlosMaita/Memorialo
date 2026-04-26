@@ -605,7 +605,7 @@ export function ProviderDashboard({
                   ))}
                 </div>
                 <p className="text-xs text-gray-400 mt-2">
-                  Los acuerdos quedaran anexados al contrato como compromisos acordados durante la negociación.
+                  Los acuerdos quedarán anexados al contrato como compromisos acordados durante la negociación.
                 </p>
               </div>
 

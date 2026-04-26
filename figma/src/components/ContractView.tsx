@@ -615,14 +615,14 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
             </Card>
           )}
 
-
+          {clientSignedAndWaiting && (
             <Card className="bg-green-50 border-green-200">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3 text-green-700">
                   <CheckCircle className="w-8 h-8" />
                   <div>
                     <p><strong>¡Contrato firmado!</strong></p>
-                    <p className="text-sm">Has firmado el contrato. El proveedor coordinará los métodos de pago disponibles contigo.</p>
+                    <p className="text-sm">Has firmado el contrato. Selecciona el método de pago del proveedor para completar tu reserva.</p>
                   </div>
                 </div>
               </CardContent>
