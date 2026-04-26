@@ -1,15 +1,17 @@
 <?php
 
-use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AgreementController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\ChatConversationController;
+use App\Http\Controllers\ChatMessageController;
 use App\Http\Controllers\ContractController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FavoriteController;
-use App\Http\Controllers\ChatConversationController;
-use App\Http\Controllers\ChatMessageController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PaymentMethodController;
 use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ServiceController;
@@ -55,6 +57,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/contracts', [ContractController::class, 'store']);
     Route::get('/contracts', [ContractController::class, 'index']);
     Route::put('/contracts/{id}', [ContractController::class, 'update']);
+    Route::post('/contracts/{id}/send', [ContractController::class, 'sendContract']);
+    Route::post('/contracts/{id}/reject', [ContractController::class, 'rejectContract']);
+
+    Route::get('/agreements', [AgreementController::class, 'index']);
+    Route::post('/agreements', [AgreementController::class, 'store']);
+    Route::delete('/agreements/{id}', [AgreementController::class, 'destroy']);
+
+    Route::get('/payment-methods', [PaymentMethodController::class, 'index']);
+    Route::post('/payment-methods', [PaymentMethodController::class, 'store']);
+    Route::put('/payment-methods/{id}', [PaymentMethodController::class, 'update']);
+    Route::delete('/payment-methods/{id}', [PaymentMethodController::class, 'destroy']);
 
     Route::post('/bookings', [BookingController::class, 'store']);
     Route::get('/bookings', [BookingController::class, 'index']);

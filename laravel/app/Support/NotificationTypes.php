@@ -30,10 +30,16 @@ class NotificationTypes
 
     public const BILLING_ACCOUNT_SUSPENDED = 'billing_account_suspended';
 
+    public const CONTRACT_SENT_TO_CLIENT = 'contract_sent_to_client';
+
+    public const CONTRACT_REJECTED_BY_CLIENT = 'contract_rejected_by_client';
+
     public const ALL = [
         self::WELCOME,
         self::SERVICE_REQUEST_CREATED,
         self::CONTRACT_APPROVED,
+        self::CONTRACT_SENT_TO_CLIENT,
+        self::CONTRACT_REJECTED_BY_CLIENT,
         self::REVIEW_REQUESTED,
         self::REVIEW_RECEIVED,
         self::PROVIDER_ROLE_ACTIVATED,

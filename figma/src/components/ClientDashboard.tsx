@@ -3,7 +3,7 @@ import {
   Calendar, Clock, DollarSign, FileText, Star, CheckCircle, XCircle,
   AlertCircle, MessageSquare, FolderOpen, Package, Edit2, ChevronDown,
   ChevronUp, Eye, Archive, Menu, X, CalendarDays, BookOpen, Activity, MessageCircle,
-  Search, Download
+  Search, Download, CreditCard, Handshake
 } from 'lucide-react';
 import { Contract, User, Review, Event } from '../types';
 import { Card, CardContent, CardHeader } from './ui/card';
@@ -19,6 +19,7 @@ import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
 import { Switch } from './ui/switch';
 import { downloadContractPdf } from '../utils/contractPdf';
+import { PaymentMethodsView } from './PaymentMethodsView';
 
 type SidebarSection = 'events' | 'bookings';
 
@@ -40,6 +41,9 @@ interface ClientDashboardProps {
   onContractUpdate: (contract: Contract) => void;
   bookings?: any[];
   onBookingUpdate?: (booking: any) => void;
+  paymentMethodsApi?: {
+    getPaymentMethods: (userId: string) => Promise<any[]>;
+  };
 }
 
 const navItems: { id: SidebarSection; label: string; icon: React.ReactNode }[] = [
@@ -63,7 +67,8 @@ export function ClientDashboard({
   onAssignContractToEvent,
   onContractUpdate,
   bookings = [],
-  onBookingUpdate
+  onBookingUpdate,
+  paymentMethodsApi,
 }: ClientDashboardProps) {
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [showContractView, setShowContractView] = useState(false);
@@ -221,12 +226,16 @@ export function ClientDashboard({
     setExpandedContracts(s);
   };
 
-  const getStatusBadge = (status: Contract['status']) => {
+  const getStatusBadge = (status: Contract['status'] | string) => {
     switch (status) {
       case 'pending_client':
-        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">Pendiente tu firma</Badge>;
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">Contrato por firmar</Badge>;
       case 'pending_artist':
         return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">Esperando proveedor</Badge>;
+      case 'en_negociacion':
+        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">En negociación</Badge>;
+      case 'esperando_pago':
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">Contrato firmado - Pago pendiente</Badge>;
       case 'active':
         return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">Confirmado</Badge>;
       case 'completed':
@@ -288,12 +297,16 @@ export function ClientDashboard({
     switch (status) {
       case 'pending':
         return 'Pendiente';
+      case 'en_negociacion':
+        return 'En negociación';
       case 'confirmed':
         return 'Confirmada';
       case 'completed':
         return 'Completada';
       case 'cancelled':
         return 'Cancelada';
+      case 'esperando_pago':
+        return 'Esperando pago';
       default:
         return status;
     }
@@ -303,12 +316,16 @@ export function ClientDashboard({
     switch (status) {
       case 'pending':
         return 'bg-yellow-50 text-yellow-700 border-yellow-300';
+      case 'en_negociacion':
+        return 'bg-yellow-50 text-yellow-700 border-yellow-300';
       case 'confirmed':
         return 'bg-blue-50 text-blue-700 border-blue-300';
       case 'completed':
         return 'bg-green-50 text-green-700 border-green-300';
       case 'cancelled':
         return 'bg-red-50 text-red-700 border-red-300';
+      case 'esperando_pago':
+        return 'bg-green-50 text-green-700 border-green-300';
       default:
         return 'bg-gray-50 text-gray-700 border-gray-300';
     }
@@ -317,9 +334,11 @@ export function ClientDashboard({
   const getBookingStatusIcon = (status: string) => {
     switch (status) {
       case 'pending':
+      case 'en_negociacion':
         return <Clock className="w-3 h-3" />;
       case 'confirmed':
       case 'completed':
+      case 'esperando_pago':
         return <CheckCircle className="w-3 h-3" />;
       case 'cancelled':
         return <XCircle className="w-3 h-3" />;
@@ -712,8 +731,36 @@ export function ClientDashboard({
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm">
               <div className="flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-yellow-600 shrink-0 mt-0.5" />
-                <p className="text-yellow-800">Por favor revisa y firma el contrato para confirmar tu reserva.</p>
+                <div>
+                  <p className="text-yellow-800 font-medium">El proveedor te ha enviado el contrato para firmar</p>
+                  <p className="text-yellow-700 text-xs mt-1">Revisa los acuerdos y firma para proceder al pago.</p>
+                </div>
               </div>
+            </div>
+          )}
+          {contract.status === 'en_negociacion' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+              <div className="flex items-start gap-2">
+                <Handshake className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-amber-800 font-medium">Mesa de negociación activa</p>
+                  <p className="text-amber-700 text-xs mt-1">Usa el chat para coordinar los detalles con el proveedor. Cuando lleguen a un acuerdo, el proveedor te enviará el contrato.</p>
+                </div>
+              </div>
+            </div>
+          )}
+          {(contract.status === 'esperando_pago' || (contract.status === 'active' && contract.clientSignature)) && paymentMethodsApi && (contract as any).artistUserId && (
+            <div className="mt-2">
+              <div className="flex items-center gap-2 mb-2">
+                <CreditCard className="w-4 h-4 text-green-600" />
+                <p className="text-sm font-medium text-green-700">Métodos de pago del proveedor</p>
+              </div>
+              <PaymentMethodsView
+                providerUserId={(contract as any).artistUserId}
+                contractId={contract.id}
+                clientName={user.name}
+                api={paymentMethodsApi as any}
+              />
             </div>
           )}
           {contract.status === 'pending_artist' && (
@@ -724,7 +771,7 @@ export function ClientDashboard({
               </div>
             </div>
           )}
-          {contract.status === 'active' && !isEventPassed && (
+          {contract.status === 'active' && !isEventPassed && !(contract as any).artistUserId && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm">
               <div className="flex items-start gap-2">
                 <CheckCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
@@ -1145,10 +1192,15 @@ export function ClientDashboard({
             onContractUpdate(signedContract);
             if (onBookingUpdate && bookings) {
               const associatedBooking = bookings.find(b => b.contractId === signedContract.id);
-              if (associatedBooking && signedContract.status === 'active') {
+              if (associatedBooking && (signedContract.status === 'active' || signedContract.status === 'esperando_pago')) {
                 onBookingUpdate({ ...associatedBooking, status: 'confirmed' as const });
               }
             }
+            setShowContractView(false);
+            setSelectedContract(null);
+          }}
+          onReject={(rejectedContract) => {
+            onContractUpdate(rejectedContract);
             setShowContractView(false);
             setSelectedContract(null);
           }}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, CheckCircle, AlertCircle, Calendar, DollarSign, Clock, MapPin, User, MessageCircle, Mail } from 'lucide-react';
+import { FileText, CheckCircle, AlertCircle, Calendar, DollarSign, Clock, MapPin, User, MessageCircle, Mail, Handshake } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -7,9 +7,10 @@ import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
 import { toast } from 'sonner@2.0.3';
-import { ConfirmDialog } from './ConfirmDialog';
 import { downloadContractPdf } from '../utils/contractPdf';
+import { Agreement } from '../types';
 
 interface ContractSignature {
   signedBy: string;
@@ -19,7 +20,7 @@ interface ContractSignature {
 interface ContractRecord {
   id: string;
   createdAt: string;
-  status: 'active' | 'completed' | 'pending_client' | 'pending_artist' | 'draft' | 'cancelled';
+  status: 'active' | 'completed' | 'pending_client' | 'pending_artist' | 'draft' | 'cancelled' | 'en_negociacion' | 'esperando_pago';
   artistName: string;
   clientName: string;
   artistWhatsapp?: string;
@@ -28,6 +29,8 @@ interface ContractRecord {
   specialRequests?: string;
   artistSignature?: ContractSignature;
   clientSignature?: ContractSignature;
+  providerSignedAt?: string;
+  rejectionReason?: string;
   metadata?: {
     saleType?: 'time' | 'unit';
     unitLabel?: string;
@@ -43,6 +46,7 @@ interface ContractRecord {
     providerRepresentativeName?: string;
     providerLegalEntityType?: 'person' | 'company';
     providerIdentificationNumber?: string;
+    providerUserId?: string;
   };
   terms: {
     measureType?: 'time' | 'unit';
@@ -95,7 +99,8 @@ interface ContractViewProps {
   onClose: () => void;
   userType: 'client' | 'artist';
   onSign?: (contract: ContractRecord) => void;
-  onReject?: (contract: ContractRecord) => void;
+  onReject?: (contract: ContractRecord, reason?: string) => void;
+  agreements?: Agreement[];
 }
 
 const formatDate = (date: string) => new Date(date).toLocaleDateString('es-ES');
@@ -125,12 +130,14 @@ const getMeasureTitle = (contract: ContractRecord) => {
 };
 
 
-export function ContractView({ contract, open, onClose, userType, onSign, onReject }: ContractViewProps) {
+export function ContractView({ contract, open, onClose, userType, onSign, onReject, agreements = [] }: ContractViewProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [signing, setSigning] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   if (!contract) return null;
 
@@ -147,7 +154,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
   };
 
   const canSign = userType === 'client'
-    ? !contract.clientSignature
+    ? !contract.clientSignature && contract.status === 'pending_client'
     : !contract.artistSignature;
 
   const otherPartyHasSigned = userType === 'client'
@@ -155,6 +162,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     : !!contract.clientSignature;
 
   const bothPartiesSigned = Boolean(contract.clientSignature && contract.artistSignature);
+  const clientSignedAndWaiting = contract.status === 'esperando_pago';
   const { specialRequest, additionalTermsWithoutSpecialRequest } = extractSpecialRequest(contract);
   const clientLegalName = contract.metadata?.clientLegalName || contract.clientName;
   const providerBusinessName = contract.metadata?.providerBusinessName || contract.artistName;
@@ -183,15 +191,26 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
         signedAt: new Date().toISOString()
       };
 
+      // When client signs a contract already signed by provider → esperando_pago
+      // Otherwise keep previous logic
+      let newStatus: ContractRecord['status'];
+      if (userType === 'client' && contract.artistSignature) {
+        newStatus = 'esperando_pago';
+      } else if (userType === 'artist' && contract.clientSignature) {
+        newStatus = 'active';
+      } else if (userType === 'client') {
+        newStatus = 'pending_artist';
+      } else {
+        newStatus = 'pending_client';
+      }
+
       const updatedContract: ContractRecord = {
         ...contract,
         ...(userType === 'client'
           ? { clientSignature: signature }
           : { artistSignature: signature }
         ),
-        status: (userType === 'client' && contract.artistSignature) || (userType === 'artist' && contract.clientSignature)
-          ? 'active'
-          : (userType === 'client' ? 'pending_artist' : 'pending_client')
+        status: newStatus,
       };
 
       if (onSign) {
@@ -202,7 +221,9 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
       setSigning(false);
       setAgreedToTerms(false);
 
-      if (updatedContract.status === 'active') {
+      if (newStatus === 'esperando_pago') {
+        toast.success('🎉 ¡Contrato firmado! Ahora selecciona el método de pago.');
+      } else if (newStatus === 'active') {
         toast.success('🎉 ¡El contrato está completamente firmado por ambas partes!');
       }
 
@@ -213,7 +234,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
   };
 
   const handleRejectClick = () => {
-    setShowRejectConfirm(true);
+    setShowRejectForm(true);
   };
 
   const handleRejectConfirmed = () => {
@@ -222,15 +243,17 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     setTimeout(() => {
       const rejectedContract: ContractRecord = {
         ...contract,
-        status: 'cancelled'
+        status: 'en_negociacion',
+        rejectionReason: rejectionReason.trim() || undefined,
       };
 
       if (onReject) {
-        onReject(rejectedContract);
+        onReject(rejectedContract, rejectionReason.trim() || undefined);
       }
 
-      toast.error('Contrato rechazado');
+      toast.info('Contrato rechazado. Se volverá a la mesa de negociación.');
       setRejecting(false);
+      setRejectionReason('');
       onClose();
     }, 1000);
   };
@@ -249,6 +272,10 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
         return <Badge variant="secondary">Borrador</Badge>;
       case 'cancelled':
         return <Badge variant="destructive">Cancelado</Badge>;
+      case 'en_negociacion':
+        return <Badge className="bg-yellow-500 text-white">En negociación</Badge>;
+      case 'esperando_pago':
+        return <Badge className="bg-green-600">Esperando pago</Badge>;
       default:
         return null;
     }
@@ -425,6 +452,26 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                 </>
               )}
 
+              {agreements.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Handshake className="w-4 h-4 text-[#D4AF37]" />
+                      <h4 className="text-sm font-medium">Acuerdos Específicos Negociados</h4>
+                    </div>
+                    <ul className="space-y-2">
+                      {agreements.map((agreement, idx) => (
+                        <li key={agreement.id || idx} className="text-sm text-gray-700 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                          <span className="text-[#D4AF37] font-bold shrink-0">{idx + 1}.</span>
+                          <span>{agreement.description}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              )}
+
               <Separator />
 
               <div className="bg-blue-50 p-4 rounded-lg">
@@ -442,7 +489,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
             </CardContent>
           </Card>
 
-          {!bothPartiesSigned && canSign && contract.status !== 'completed' && contract.status !== 'active' && contract.status !== 'cancelled' && (
+          {!bothPartiesSigned && canSign && contract.status !== 'completed' && contract.status !== 'active' && contract.status !== 'cancelled' && contract.status !== 'esperando_pago' && (
             <Card className="border-primary">
               <CardHeader>
                 <CardTitle className="text-sm">Firma del Contrato</CardTitle>
@@ -475,9 +522,16 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                     <div className="flex items-center gap-2 text-green-700">
                       <CheckCircle className="w-4 h-4" />
                       <p className="text-sm">
-                        La otra parte ya ha firmado el contrato. Revisa los términos y firma para completar el acuerdo.
+                        El proveedor ya ha firmado el contrato. Revisa los acuerdos y términos, y firma para proceder al pago.
                       </p>
                     </div>
+                  </div>
+                )}
+
+                {contract.rejectionReason && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p className="text-xs font-medium text-amber-700 mb-1">Motivo del rechazo anterior:</p>
+                    <p className="text-sm text-amber-800">{contract.rejectionReason}</p>
                   </div>
                 )}
 
@@ -501,14 +555,14 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                   >
                     {signing ? 'Firmando...' : 'Firmar Contrato'}
                   </Button>
-                  {userType === 'artist' && (
+                  {userType === 'client' && (
                     <Button
                       variant="outline"
                       onClick={handleRejectClick}
                       disabled={signing || rejecting}
                       className="flex-1 sm:flex-initial border-red-600 text-red-600 hover:bg-red-50"
                     >
-                      {rejecting ? 'Rechazando...' : 'Rechazar'}
+                      {rejecting ? 'Rechazando...' : 'Rechazar y proponer cambios'}
                     </Button>
                   )}
                   <Button
@@ -518,6 +572,58 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                   >
                     Revisar Después
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {showRejectForm && (
+            <Card className="border-red-300 bg-red-50">
+              <CardHeader>
+                <CardTitle className="text-sm text-red-700">Rechazar contrato y volver a negociar</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-red-600">El contrato volverá a la mesa de negociación. El proveedor podrá ajustar los términos según tus comentarios.</p>
+                <div>
+                  <Label className="text-xs mb-1 block">Motivo o cambios propuestos (opcional)</Label>
+                  <Textarea
+                    placeholder="Describe los cambios que propones o el motivo del rechazo..."
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    rows={3}
+                    className="text-sm bg-white"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    onClick={handleRejectConfirmed}
+                    disabled={rejecting}
+                    className="flex-1"
+                  >
+                    {rejecting ? 'Rechazando...' : 'Confirmar rechazo'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => { setShowRejectForm(false); setRejectionReason(''); }}
+                    disabled={rejecting}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+
+            <Card className="bg-green-50 border-green-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3 text-green-700">
+                  <CheckCircle className="w-8 h-8" />
+                  <div>
+                    <p><strong>¡Contrato firmado!</strong></p>
+                    <p className="text-sm">Has firmado el contrato. El proveedor coordinará los métodos de pago disponibles contigo.</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -556,17 +662,6 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
           </Button>
         </div>
       </DialogContent>
-
-      <ConfirmDialog
-        open={showRejectConfirm}
-        onOpenChange={setShowRejectConfirm}
-        onConfirm={handleRejectConfirmed}
-        title="¿Rechazar este contrato?"
-        description="¿Estás seguro de que deseas rechazar este contrato? Esta acción no se puede deshacer y el contrato será cancelado permanentemente."
-        confirmText="Sí, rechazar"
-        cancelText="No, volver"
-        variant="danger"
-      />
     </Dialog>
   );
 }

@@ -432,6 +432,61 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     };
   };
 
+  const handleSendBookingRequest = async () => {
+    if (!validatePlanStep() || !validateContactStep() || !validateEventStep()) {
+      return;
+    }
+
+    if (!user) {
+      toast.error('Debes iniciar sesión para hacer una reserva');
+      if (onLoginRequired) {
+        onLoginRequired();
+      }
+      return;
+    }
+
+    if (artist.userId === user.id) {
+      toast.error('No puedes reservar tu propia publicación');
+      onClose();
+      return;
+    }
+
+    const bookingId = `booking-${Date.now()}`;
+    const booking: Booking = {
+      id: bookingId,
+      artistId: artist.id,
+      artistUserId: artist.userId,
+      artistName: artist.name,
+      userId: user.id,
+      clientName: formData.clientName,
+      clientEmail: formData.clientEmail,
+      clientPhone: formData.clientPhone,
+      date: formData.date,
+      startTime: formData.startTime,
+      duration: parseInt(formData.duration),
+      eventType: formData.eventType,
+      location: formData.location,
+      specialRequests: formData.specialRequests,
+      totalPrice: totalPrice,
+      status: 'en_negociacion',
+      planId: formData.planId || undefined,
+      planName: selectedServicePlan?.name,
+      metadata: {
+        saleType: selectedPlanSaleType,
+        unitLabel: selectedPlanMeasureLabel,
+      },
+    };
+
+    setGeneratedBooking(booking);
+
+    if (onBookingCreated) {
+      onBookingCreated(booking);
+    }
+
+    toast.success('¡Solicitud enviada! El proveedor se pondrá en contacto contigo pronto.');
+    onClose();
+  };
+
   const handleReviewContract = () => {
     if (!validatePlanStep() || !validateContactStep() || !validateEventStep()) {
       return;
@@ -547,7 +602,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
         <DialogHeader>
           <DialogTitle>Reservar a {artist.name}</DialogTitle>
           <DialogDescription>
-            Completa el formulario para solicitar una reserva. El proveedor responderá en {artist.responseTime}.
+            Completa el formulario para enviar tu solicitud de reserva. El proveedor te contactará para negociar los detalles.
           </DialogDescription>
         </DialogHeader>
 
@@ -989,9 +1044,9 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
                 <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
-              <Button type="button" className="flex-1" onClick={handleReviewContract}>
+              <Button type="button" className="flex-1" onClick={() => void handleSendBookingRequest()}>
                 <FileText className="w-4 h-4 mr-2" />
-                Revisar contrato y firmar
+                Enviar solicitud de reserva
               </Button>
             )}
           </div>

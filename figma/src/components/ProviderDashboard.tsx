@@ -3,9 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Input } from './ui/input';
+import { Textarea } from './ui/textarea';
+import { Label } from './ui/label';
 import { Artist, Contract, User, Provider } from '../types';
 import { ServiceEditor } from './ServiceEditor';
 import { ContractView } from './ContractView';
+import { PaymentMethodsConfig } from './PaymentMethodsView';
 import { 
   Plus, 
   Edit, 
@@ -16,7 +20,11 @@ import {
   Star,
   Eye,
   TrendingUp,
-  CheckCircle2
+  CheckCircle2,
+  MessageCircle,
+  Send,
+  CreditCard,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -32,6 +40,13 @@ interface ProviderDashboardProps {
   onServiceDelete: (serviceId: string) => void;
   onContractUpdate: (contract: Contract) => void;
   onProviderCreate?: (provider: Provider) => void;
+  paymentMethodsApi?: {
+    getPaymentMethods: (userId: string) => Promise<any[]>;
+    createPaymentMethod: (data: any) => Promise<any>;
+    updatePaymentMethod: (id: number, data: any) => Promise<any>;
+    deletePaymentMethod: (id: number) => Promise<void>;
+  };
+  onSendContract?: (contractId: string, agreements: { description: string }[]) => Promise<void>;
 }
 
 const categories = [
@@ -51,7 +66,9 @@ export function ProviderDashboard({
   onServiceUpdate, 
   onServiceDelete,
   onContractUpdate,
-  onProviderCreate
+  onProviderCreate,
+  paymentMethodsApi,
+  onSendContract,
 }: ProviderDashboardProps) {
   const [showServiceEditor, setShowServiceEditor] = useState(false);
   const [editingService, setEditingService] = useState<Artist | null>(null);
@@ -60,6 +77,12 @@ export function ProviderDashboard({
   const [showProviderSetup, setShowProviderSetup] = useState(!provider);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
+
+  // Send contract state
+  const [showSendContractForm, setShowSendContractForm] = useState(false);
+  const [sendingContractId, setSendingContractId] = useState<string | null>(null);
+  const [agreementItems, setAgreementItems] = useState<string[]>(['']);
+  const [sendingContract, setSendingContract] = useState(false);
 
   // Setup Provider Profile
   const [providerForm, setProviderForm] = useState({
@@ -134,14 +157,56 @@ export function ProviderDashboard({
     setShowContractView(true);
   };
 
+  const handleOpenSendContract = (contractId: string) => {
+    setSendingContractId(contractId);
+    setAgreementItems(['']);
+    setShowSendContractForm(true);
+  };
+
+  const handleAddAgreementItem = () => {
+    setAgreementItems((prev) => [...prev, '']);
+  };
+
+  const handleAgreementChange = (idx: number, value: string) => {
+    setAgreementItems((prev) => prev.map((item, i) => (i === idx ? value : item)));
+  };
+
+  const handleRemoveAgreementItem = (idx: number) => {
+    setAgreementItems((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSendContractSubmit = async () => {
+    if (!sendingContractId) return;
+    setSendingContract(true);
+    try {
+      const agreements = agreementItems
+        .map((d) => d.trim())
+        .filter(Boolean)
+        .map((description) => ({ description }));
+      if (onSendContract) {
+        await onSendContract(sendingContractId, agreements);
+      }
+      toast.success('¡Contrato enviado al cliente con tu firma!');
+      setShowSendContractForm(false);
+      setSendingContractId(null);
+      setAgreementItems(['']);
+    } catch (error) {
+      toast.error('Error al enviar el contrato');
+    } finally {
+      setSendingContract(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const statusColors: { [key: string]: string } = {
       'pending': 'bg-yellow-100 text-yellow-800',
+      'en_negociacion': 'bg-yellow-100 text-yellow-800',
       'confirmed': 'bg-blue-100 text-blue-800',
       'signed': 'bg-green-600',
       'pending_client': 'border-orange-500 text-orange-700',
       'pending_artist': 'border-orange-500 text-orange-700',
-      'cancelled': 'bg-red-100 text-red-800'
+      'esperando_pago': 'bg-green-100 text-green-800',
+      'cancelled': 'bg-red-100 text-red-800',
     };
 
     return statusColors[status] || 'bg-gray-100 text-gray-800';
@@ -150,11 +215,13 @@ export function ProviderDashboard({
   const getStatusText = (status: string) => {
     const statusTexts: { [key: string]: string } = {
       'pending': 'Pendiente',
+      'en_negociacion': 'En negociación',
       'confirmed': 'Confirmada',
       'signed': 'Firmado',
-      'pending_client': 'Pendiente del cliente',
+      'pending_client': 'Contrato enviado al cliente',
       'pending_artist': 'Pendiente de tu firma',
-      'cancelled': 'Cancelado'
+      'esperando_pago': 'Esperando pago',
+      'cancelled': 'Cancelado',
     };
 
     return statusTexts[status] || status;
@@ -288,7 +355,7 @@ export function ProviderDashboard({
 
       {/* Main Content */}
       <Tabs defaultValue="services" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="services">Mis Servicios</TabsTrigger>
           <TabsTrigger value="contracts">
             Contratos
@@ -297,6 +364,10 @@ export function ProviderDashboard({
                 {pendingContracts.length}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="payments">
+            <CreditCard className="w-4 h-4 mr-1" />
+            Pagos
           </TabsTrigger>
         </TabsList>
 
@@ -454,13 +525,111 @@ export function ProviderDashboard({
                       <FileText className="w-4 h-4 mr-2" />
                       Ver Contrato Completo
                     </Button>
+                    {(contract.status === 'en_negociacion' || contract.status === 'pending') && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenSendContract(contract.id)}
+                        className="w-full border-[#1B2A47] text-[#1B2A47] hover:bg-[#1B2A47] hover:text-white"
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        Firmar y Enviar Contrato
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ))}
             </div>
           )}
         </TabsContent>
+
+        {/* Payments Tab */}
+        <TabsContent value="payments" className="space-y-4">
+          {paymentMethodsApi ? (
+            <PaymentMethodsConfig userId={user.id} api={paymentMethodsApi} />
+          ) : (
+            <div className="text-center py-8 text-gray-500 text-sm">
+              <CreditCard className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p>Los métodos de pago no están disponibles en este momento.</p>
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+
+      {/* Send Contract Form */}
+      {showSendContractForm && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Firmar y Enviar Contrato</CardTitle>
+                <Button variant="ghost" size="sm" onClick={() => setShowSendContractForm(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-sm text-gray-500">
+                Agrega los acuerdos negociados con el cliente. Al enviar, el contrato llevará tu firma y el cliente deberá aceptarlo o rechazarlo.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-sm font-medium">Acuerdos negociados (opcional)</Label>
+                  <Button size="sm" variant="outline" onClick={handleAddAgreementItem}>
+                    <Plus className="w-3 h-3 mr-1" />
+                    Agregar
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {agreementItems.map((item, idx) => (
+                    <div key={idx} className="flex gap-2 items-start">
+                      <span className="text-xs text-gray-400 mt-2.5 w-4 shrink-0">{idx + 1}.</span>
+                      <Textarea
+                        placeholder="Ej: El cliente se compromete a pagar el 50% del total como adelanto..."
+                        value={item}
+                        onChange={(e) => handleAgreementChange(idx, e.target.value)}
+                        rows={2}
+                        className="flex-1 text-sm"
+                      />
+                      {agreementItems.length > 1 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-500 mt-0.5 shrink-0"
+                          onClick={() => handleRemoveAgreementItem(idx)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">
+                  Los acuerdos quedaran anexados al contrato como compromisos acordados durante la negociación.
+                </p>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                <strong>Al enviar:</strong> el contrato quedará firmado por ti y será enviado al cliente para su revisión. El cliente podrá aceptarlo (→ pago) o rechazarlo (→ volver a negociar).
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  className="flex-1 bg-[#1B2A47] hover:bg-[#1B2A47]/90"
+                  onClick={() => void handleSendContractSubmit()}
+                  disabled={sendingContract}
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  {sendingContract ? 'Enviando...' : 'Firmar y Enviar'}
+                </Button>
+                <Button variant="outline" onClick={() => setShowSendContractForm(false)} disabled={sendingContract}>
+                  Cancelar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Dialogs */}
       <ServiceEditor

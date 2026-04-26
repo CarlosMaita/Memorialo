@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Agreement;
 use App\Models\Contract;
+use App\Models\Provider;
 use App\Models\Service;
 use App\Models\User;
-use App\Models\Provider;
 use App\Services\NotificationDispatchService;
 use App\Support\NotificationTypes;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,9 +15,7 @@ use Illuminate\Http\Request;
 
 class ContractController extends Controller
 {
-    public function __construct(private NotificationDispatchService $notifications)
-    {
-    }
+    public function __construct(private NotificationDispatchService $notifications) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -100,6 +99,113 @@ class ContractController extends Controller
         return response()->json($this->formatContract($contract), 201);
     }
 
+    public function sendContract(Request $request, string $id): JsonResponse
+    {
+        $authUser = $request->user('sanctum') ?? $request->user();
+
+        if (! $authUser) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $contract = Contract::find($id);
+
+        if (! $contract) {
+            return response()->json(['error' => 'Contract not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'agreements' => ['sometimes', 'array'],
+            'agreements.*.description' => ['required_with:agreements', 'string', 'max:2000'],
+            'terms' => ['sometimes', 'nullable', 'array'],
+        ]);
+
+        // Register provider signature
+        $contract->artist_signature = [
+            'signedBy' => $authUser->name ?? 'Proveedor',
+            'signedAt' => now()->toISOString(),
+        ];
+        $contract->provider_signed_at = now();
+        $contract->status = 'pending_client';
+
+        if (! empty($validated['terms'])) {
+            $contract->terms = array_merge(is_array($contract->terms) ? $contract->terms : [], $validated['terms']);
+        }
+
+        $contract->save();
+
+        // Store agreements
+        if (! empty($validated['agreements'])) {
+            foreach ($validated['agreements'] as $agreementData) {
+                Agreement::create([
+                    'contract_id' => $contract->id,
+                    'description' => $agreementData['description'],
+                ]);
+            }
+        }
+
+        $freshContract = $contract->fresh();
+
+        // Notify client
+        $clientUser = $this->resolveUserById($freshContract->client_id);
+        if ($clientUser) {
+            $this->notifications->dispatchToUser($clientUser, NotificationTypes::CONTRACT_SENT_TO_CLIENT, [
+                'channels' => ['database', 'mail'],
+                'title' => 'El proveedor te envió el contrato',
+                'body' => $freshContract->artist_name.' ha enviado el contrato para tu revisión y firma.',
+                'mailSubject' => 'Contrato listo para firmar',
+                'mailBody' => "El proveedor {$freshContract->artist_name} ha firmado el contrato y lo ha enviado para tu revisión.\n\nRevisa los acuerdos y firma para continuar con el pago.\n",
+                'ctaUrl' => '/',
+                'entity' => ['type' => 'contract', 'id' => (string) $freshContract->id],
+                'dedupeKey' => NotificationTypes::CONTRACT_SENT_TO_CLIENT.':'.$freshContract->id,
+            ]);
+        }
+
+        return response()->json($this->formatContract($freshContract));
+    }
+
+    public function rejectContract(Request $request, string $id): JsonResponse
+    {
+        $authUser = $request->user('sanctum') ?? $request->user();
+
+        if (! $authUser) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $contract = Contract::find($id);
+
+        if (! $contract) {
+            return response()->json(['error' => 'Contract not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'reason' => ['sometimes', 'nullable', 'string', 'max:1000'],
+        ]);
+
+        $contract->status = 'en_negociacion';
+        $contract->rejection_reason = $validated['reason'] ?? null;
+        $contract->client_signature = null;
+        $contract->provider_signed_at = null;
+        $contract->artist_signature = null;
+        $contract->save();
+
+        // Notify provider
+        $providerUser = $this->resolveUserById($contract->artist_user_id);
+        if ($providerUser) {
+            $this->notifications->dispatchToUser($providerUser, NotificationTypes::CONTRACT_REJECTED_BY_CLIENT, [
+                'channels' => ['database', 'mail'],
+                'title' => 'El cliente rechazó el contrato',
+                'body' => ($contract->client_name ?? 'El cliente').' rechazó el contrato y propone cambios.',
+                'mailSubject' => 'Contrato rechazado por el cliente',
+                'mailBody' => "El cliente {$contract->client_name} rechazó el contrato.\n\nMotivo: ".($validated['reason'] ?? 'No especificado')."\n\nRevisa la mesa de negociación para ajustar los términos.\n",
+                'ctaUrl' => '/',
+                'entity' => ['type' => 'contract', 'id' => (string) $contract->id],
+                'dedupeKey' => NotificationTypes::CONTRACT_REJECTED_BY_CLIENT.':'.$contract->id.':'.now()->timestamp,
+            ]);
+        }
+
+        return response()->json($this->formatContract($contract->fresh()));
+    }
+
     public function update(Request $request, string $id): JsonResponse
     {
         $authUser = $request->user();
@@ -154,6 +260,13 @@ class ContractController extends Controller
         $contract->update($payload);
 
         $freshContract = $contract->fresh();
+
+        if (($payload['status'] ?? null) === 'esperando_pago' && $previousStatus !== 'esperando_pago') {
+            // Client signed — record client signature timestamp if not already set
+            if (! empty($payload['client_signature']) && is_array($freshContract->client_signature)) {
+                // Already set by the update above
+            }
+        }
 
         if (($payload['status'] ?? null) === 'active' && $previousStatus !== 'active') {
             $clientUser = $this->resolveUserById($freshContract->client_id);
@@ -265,7 +378,9 @@ class ContractController extends Controller
             'status' => $contract->status,
             'terms' => $contract->terms,
             'artistSignature' => $contract->artist_signature,
+            'providerSignedAt' => optional($contract->provider_signed_at)?->toISOString(),
             'clientSignature' => $contract->client_signature,
+            'rejectionReason' => $contract->rejection_reason,
             'metadata' => $metadata,
             'completedAt' => optional($contract->completed_at)?->toISOString(),
             'createdAt' => optional($contract->created_at)?->toISOString(),

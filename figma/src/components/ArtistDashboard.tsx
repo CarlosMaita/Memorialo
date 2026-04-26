@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Edit, Trash2, DollarSign, Calendar, CheckCircle, Clock, XCircle, FileText } from 'lucide-react';
+import { Plus, Edit, Trash2, DollarSign, Calendar, CheckCircle, Clock, XCircle, FileText, Send, CreditCard, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -10,6 +10,7 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { ContractView } from './ContractView';
+import { PaymentMethodsConfig } from './PaymentMethodsView';
 import { Contract } from '../types';
 import { toast } from 'sonner@2.0.3';
 
@@ -36,9 +37,19 @@ interface Booking {
 interface ArtistDashboardProps {
   contracts?: Contract[];
   onContractUpdate?: (contract: Contract) => void;
+  onSendContract?: (contractId: string, agreements: { description: string }[]) => Promise<void>;
+  paymentMethodsApi?: {
+    userId: string;
+    api: {
+      getPaymentMethods: (userId: string) => Promise<any[]>;
+      createPaymentMethod: (data: any) => Promise<any>;
+      updatePaymentMethod: (id: number, data: any) => Promise<any>;
+      deletePaymentMethod: (id: number) => Promise<void>;
+    };
+  };
 }
 
-export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDashboardProps) {
+export function ArtistDashboard({ contracts = [], onContractUpdate, onSendContract, paymentMethodsApi }: ArtistDashboardProps) {
   const [services, setServices] = useState<Service[]>([
     {
       id: '1',
@@ -100,6 +111,12 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [showContractDialog, setShowContractDialog] = useState(false);
 
+  // Send contract state
+  const [showSendContractForm, setShowSendContractForm] = useState(false);
+  const [sendingContractId, setSendingContractId] = useState<string | null>(null);
+  const [agreementItems, setAgreementItems] = useState<string[]>(['']);
+  const [sendingContract, setSendingContract] = useState(false);
+
   const handleAddService = () => {
     setEditingService(null);
     setServiceForm({
@@ -158,6 +175,46 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
       'cancelled': 'cancelada'
     };
     toast.success(`Reserva ${statusMap[status]}`);
+  };
+
+  const handleOpenSendContract = (contractId: string) => {
+    setSendingContractId(contractId);
+    setAgreementItems(['']);
+    setShowSendContractForm(true);
+  };
+
+  const handleAddAgreementItem = () => {
+    setAgreementItems((prev) => [...prev, '']);
+  };
+
+  const handleAgreementChange = (idx: number, value: string) => {
+    setAgreementItems((prev) => prev.map((item, i) => (i === idx ? value : item)));
+  };
+
+  const handleRemoveAgreementItem = (idx: number) => {
+    setAgreementItems((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSendContractSubmit = async () => {
+    if (!sendingContractId) return;
+    setSendingContract(true);
+    try {
+      const agreements = agreementItems
+        .map((d) => d.trim())
+        .filter(Boolean)
+        .map((description) => ({ description }));
+      if (onSendContract) {
+        await onSendContract(sendingContractId, agreements);
+      }
+      toast.success('¡Contrato enviado al cliente con tu firma!');
+      setShowSendContractForm(false);
+      setSendingContractId(null);
+      setAgreementItems(['']);
+    } catch (error) {
+      toast.error('Error al enviar el contrato');
+    } finally {
+      setSendingContract(false);
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -246,6 +303,12 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
           <TabsTrigger value="bookings">Reservas</TabsTrigger>
           <TabsTrigger value="contracts">Contratos</TabsTrigger>
           <TabsTrigger value="services">Mis Servicios</TabsTrigger>
+          {paymentMethodsApi && (
+            <TabsTrigger value="payments">
+              <CreditCard className="w-4 h-4 mr-1" />
+              Pagos
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="bookings" className="space-y-4">
@@ -348,14 +411,20 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
                           </p>
                         </div>
                         <Badge className={
-                          contract.status === 'signed' ? 'bg-green-600' :
+                          contract.status === 'signed' || contract.status === 'active' ? 'bg-green-600' :
                           contract.status === 'pending_artist' ? 'border-orange-500 text-orange-700' :
-                          contract.status === 'pending_client' ? 'bg-blue-600' : ''
+                          contract.status === 'pending_client' ? 'bg-blue-600' :
+                          contract.status === 'en_negociacion' ? 'bg-yellow-500 text-white' :
+                          contract.status === 'esperando_pago' ? 'bg-green-700' : ''
                         } variant={contract.status === 'pending_artist' ? 'outline' : 'default'}>
-                          {contract.status === 'signed' && 'Firmado'}
-                          {contract.status === 'pending_artist' && 'Pendiente de tu firma'}
-                          {contract.status === 'pending_client' && 'Pendiente del cliente'}
-                          {contract.status === 'draft' && 'Borrador'}
+                          {contract.status === 'signed' || contract.status === 'active' ? 'Firmado' : ''}
+                          {contract.status === 'pending_artist' ? 'Pendiente de tu firma' : ''}
+                          {contract.status === 'pending_client' ? 'Enviado al cliente' : ''}
+                          {contract.status === 'en_negociacion' ? 'En negociación' : ''}
+                          {contract.status === 'esperando_pago' ? 'Esperando pago' : ''}
+                          {contract.status === 'draft' ? 'Borrador' : ''}
+                          {contract.status === 'completed' ? 'Completado' : ''}
+                          {contract.status === 'cancelled' ? 'Cancelado' : ''}
                         </Badge>
                       </div>
 
@@ -389,7 +458,7 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
                         )}
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Button 
                           size="sm" 
                           variant="outline"
@@ -401,7 +470,17 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
                           <FileText className="w-4 h-4 mr-2" />
                           Ver Contrato
                         </Button>
-                        {!contract.artistSignature && contract.clientSignature && (
+                        {(contract.status === 'en_negociacion' || contract.status === 'pending') && onSendContract && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleOpenSendContract(contract.id)}
+                            className="bg-[#1B2A47] hover:bg-[#1B2A47]/90"
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            Firmar y Enviar
+                          </Button>
+                        )}
+                        {!contract.artistSignature && contract.clientSignature && contract.status === 'pending_artist' && (
                           <Button 
                             size="sm"
                             onClick={() => {
@@ -467,7 +546,86 @@ export function ArtistDashboard({ contracts = [], onContractUpdate }: ArtistDash
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Payments Tab */}
+        {paymentMethodsApi && (
+          <TabsContent value="payments" className="space-y-4">
+            <PaymentMethodsConfig userId={paymentMethodsApi.userId} api={paymentMethodsApi.api} />
+          </TabsContent>
+        )}
       </Tabs>
+
+      {/* Send Contract Form */}
+      {showSendContractForm && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Firmar y Enviar Contrato</CardTitle>
+                <Button variant="ghost" size="sm" onClick={() => setShowSendContractForm(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                Agrega los acuerdos negociados con el cliente. Al enviar, el contrato llevará tu firma.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-sm font-medium">Acuerdos negociados (opcional)</Label>
+                  <Button size="sm" variant="outline" onClick={handleAddAgreementItem}>
+                    <Plus className="w-3 h-3 mr-1" />
+                    Agregar
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {agreementItems.map((item, idx) => (
+                    <div key={idx} className="flex gap-2 items-start">
+                      <span className="text-xs text-gray-400 mt-2.5 w-4 shrink-0">{idx + 1}.</span>
+                      <Textarea
+                        placeholder="Ej: El cliente se compromete a pagar el 50% del total como adelanto..."
+                        value={item}
+                        onChange={(e) => handleAgreementChange(idx, e.target.value)}
+                        rows={2}
+                        className="flex-1 text-sm"
+                      />
+                      {agreementItems.length > 1 && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-500 mt-0.5 shrink-0"
+                          onClick={() => handleRemoveAgreementItem(idx)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                <strong>Al enviar:</strong> el contrato quedará firmado por ti y el cliente recibirá una notificación para revisarlo y firmarlo (o rechazarlo).
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  className="flex-1 bg-[#1B2A47] hover:bg-[#1B2A47]/90"
+                  onClick={() => void handleSendContractSubmit()}
+                  disabled={sendingContract}
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  {sendingContract ? 'Enviando...' : 'Firmar y Enviar'}
+                </Button>
+                <Button variant="outline" onClick={() => setShowSendContractForm(false)} disabled={sendingContract}>
+                  Cancelar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Service Dialog */}
       <Dialog open={showServiceDialog} onOpenChange={setShowServiceDialog}>

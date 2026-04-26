@@ -777,7 +777,105 @@ export function useSupabase() {
     }
   };
 
-  // Review functions
+  const sendContract = async (contractId: string, agreements: { description: string }[]) => {
+    try {
+      const data = await apiRequest(`/contracts/${contractId}/send`, 'POST', { agreements }, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Send contract error:', error);
+      throw error;
+    }
+  };
+
+  const rejectContract = async (contractId: string, reason?: string) => {
+    try {
+      const data = await apiRequest(`/contracts/${contractId}/reject`, 'POST', { reason }, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Reject contract error:', error);
+      throw error;
+    }
+  };
+
+  // Agreement functions
+  const getAgreements = async (contractId: string) => {
+    try {
+      const data = await apiRequest(`/agreements?contract_id=${contractId}`, 'GET', undefined, accessToken || undefined);
+      return Array.isArray(data) ? data : [];
+    } catch (error: any) {
+      if (error?.message === 'BACKEND_UNAVAILABLE' || error?.message?.includes('compute resources')) {
+        return [];
+      }
+      console.error('Get agreements error:', error);
+      throw error;
+    }
+  };
+
+  const createAgreement = async (contractId: string, description: string) => {
+    try {
+      const data = await apiRequest('/agreements', 'POST', { contractId, description }, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Create agreement error:', error);
+      throw error;
+    }
+  };
+
+  const deleteAgreement = async (agreementId: number) => {
+    try {
+      const data = await apiRequest(`/agreements/${agreementId}`, 'DELETE', undefined, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Delete agreement error:', error);
+      throw error;
+    }
+  };
+
+  // Payment method functions
+  const getPaymentMethods = async (userId?: string) => {
+    try {
+      const query = userId ? `?user_id=${userId}` : '';
+      const data = await apiRequest(`/payment-methods${query}`, 'GET', undefined, accessToken || undefined);
+      return Array.isArray(data) ? data : [];
+    } catch (error: any) {
+      if (error?.message === 'BACKEND_UNAVAILABLE' || error?.message?.includes('compute resources')) {
+        return [];
+      }
+      console.error('Get payment methods error:', error);
+      throw error;
+    }
+  };
+
+  const createPaymentMethod = async (methodData: { type: string; instructions: string; isActive: boolean }) => {
+    try {
+      const data = await apiRequest('/payment-methods', 'POST', methodData, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Create payment method error:', error);
+      throw error;
+    }
+  };
+
+  const updatePaymentMethod = async (id: number, updates: any) => {
+    try {
+      const data = await apiRequest(`/payment-methods/${id}`, 'PUT', updates, accessToken || undefined);
+      return data;
+    } catch (error) {
+      console.error('Update payment method error:', error);
+      throw error;
+    }
+  };
+
+  const deletePaymentMethod = async (id: number) => {
+    try {
+      await apiRequest(`/payment-methods/${id}`, 'DELETE', undefined, accessToken || undefined);
+    } catch (error) {
+      console.error('Delete payment method error:', error);
+      throw error;
+    }
+  };
+
+
   const createReview = async (reviewData: any) => {
     try {
       console.log('Creating review - accessToken present:', !!accessToken);
@@ -1429,6 +1527,15 @@ export function useSupabase() {
     createContract,
     getContracts,
     updateContract,
+    sendContract,
+    rejectContract,
+    getAgreements,
+    createAgreement,
+    deleteAgreement,
+    getPaymentMethods,
+    createPaymentMethod,
+    updatePaymentMethod,
+    deletePaymentMethod,
     createReview,
     getReviews,
     createBooking,

@@ -33,7 +33,9 @@ class Contract extends Model
         'status',
         'terms',
         'artist_signature',
+        'provider_signed_at',
         'client_signature',
+        'rejection_reason',
         'completed_at',
         'metadata',
     ];
@@ -45,6 +47,7 @@ class Contract extends Model
             'artist_signature' => 'array',
             'client_signature' => 'array',
             'metadata' => 'array',
+            'provider_signed_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
     }

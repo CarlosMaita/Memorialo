@@ -83,3 +83,19 @@ export interface ChatStreamPayload {
   type: string;
   message?: ChatMessage;
 }
+
+export interface Agreement {
+  id: number;
+  contractId: string;
+  description: string;
+  createdAt?: string;
+}
+
+export interface PaymentMethod {
+  id: number;
+  userId: string;
+  type: string;
+  instructions: string;
+  isActive: boolean;
+  createdAt?: string;
+}

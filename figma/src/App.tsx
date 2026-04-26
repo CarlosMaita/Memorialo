@@ -2688,8 +2688,15 @@ export default function App() {
 
   const handleContractUpdate = async (updatedContract: Contract) => {
     try {
-      // Update contract in Supabase
-      const updated = await supabase.updateContract(updatedContract.id, updatedContract);
+      let updated: Contract;
+
+      // Use dedicated reject endpoint when contract is being rejected (returns to negotiation)
+      if (updatedContract.status === 'en_negociacion' && (updatedContract as any).rejectionReason !== undefined) {
+        updated = await supabase.rejectContract(updatedContract.id, (updatedContract as any).rejectionReason);
+      } else {
+        // Update contract in Supabase
+        updated = await supabase.updateContract(updatedContract.id, updatedContract);
+      }
 
       // Update local state
       setContracts(prev => prev.map(c => c.id === updated.id ? updated : c));
@@ -2720,10 +2727,14 @@ export default function App() {
       }
 
       // Show appropriate message based on status
-      if (updatedContract.status === 'cancelled') {
+      if (updatedContract.status === 'en_negociacion') {
+        toast.info('Contrato rechazado - Se volvió a la mesa de negociación');
+      } else if (updatedContract.status === 'cancelled') {
         toast.error('Contrato rechazado - La reserva ha sido cancelada');
       } else if (updatedContract.status === 'active') {
         toast.success('Contrato firmado y activado - Reserva confirmada');
+      } else if (updatedContract.status === 'esperando_pago') {
+        toast.success('¡Contrato firmado! Selecciona tu método de pago');
       } else {
         toast.success('Contrato actualizado');
       }
@@ -4233,6 +4244,19 @@ export default function App() {
                   toast.error('Error al actualizar contrato');
                 }
               }}
+              onSendContract={async (contractId, agreements) => {
+                const updatedContract = await supabase.sendContract(contractId, agreements);
+                setContracts(prev => prev.map(c => c.id === updatedContract.id ? updatedContract : c));
+              }}
+              paymentMethodsApi={currentUser ? {
+                userId: currentUser.id,
+                api: {
+                  getPaymentMethods: supabase.getPaymentMethods,
+                  createPaymentMethod: supabase.createPaymentMethod,
+                  updatePaymentMethod: supabase.updatePaymentMethod,
+                  deletePaymentMethod: supabase.deletePaymentMethod,
+                },
+              } : undefined}
             />
           ) : (
             currentUser && (
@@ -4278,6 +4302,9 @@ export default function App() {
                 onContractUpdate={handleContractUpdate}
                 bookings={bookings}
                 onBookingUpdate={handleBookingUpdate}
+                paymentMethodsApi={{
+                  getPaymentMethods: supabase.getPaymentMethods,
+                }}
               />
             )
           )
