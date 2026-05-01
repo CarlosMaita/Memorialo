@@ -30,6 +30,8 @@ import { CodeOfConduct } from './components/legal/CodeOfConduct';
 import { ServiceDetailPage } from './components/ServiceDetailPage';
 import { BookingConfirmation } from './components/BookingConfirmation';
 import { ChatWidget } from './components/ChatWidget';
+import { NegotiationPage } from './components/NegotiationPage';
+import { ProviderNegotiationPage } from './components/ProviderNegotiationPage';
 import { SEOHead, buildMarketplaceStructuredData } from './components/SEOHead';
 import { Button } from './components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
@@ -235,6 +237,7 @@ export default function App() {
   const [clientDashboardSection, setClientDashboardSection] = useState<ClientDashboardSection | undefined>(undefined);
   const [clientFocusedBookingId, setClientFocusedBookingId] = useState<string | null>(null);
   const [clientFocusedContractId, setClientFocusedContractId] = useState<string | null>(null);
+  const [negotiationContractId, setNegotiationContractId] = useState<string | null>(null);
   const [favoriteServiceIds, setFavoriteServiceIds] = useState<string[]>([]);
   const [isCheckingProviderProfile, setIsCheckingProviderProfile] = useState(false);
   const [providerAccountCreated, setProviderAccountCreated] = useState(false);
@@ -2113,19 +2116,31 @@ export default function App() {
 
       if (normalizedPath === '/mi-negocio/create') {
         setProviderDashboardSection('dashboard');
+        setNegotiationContractId(null);
       } else if (normalizedPath === '/mi-negocio/configuracion') {
         setProviderDashboardSection('settings');
+        setNegotiationContractId(null);
       } else if (normalizedPath === '/mi-negocio/informacion') {
         // Legacy alias support
         setProviderDashboardSection('settings');
+        setNegotiationContractId(null);
       } else if (normalizedPath === '/mi-negocio/mis-servicios') {
         setProviderDashboardSection('services');
+        setNegotiationContractId(null);
       } else if (normalizedPath === '/mi-negocio/reservas') {
         setProviderDashboardSection('bookings');
+        setNegotiationContractId(null);
       } else if (normalizedPath === '/mi-negocio/facturacion') {
         setProviderDashboardSection('billing');
+        setNegotiationContractId(null);
+      } else if (normalizedPath === '/mi-negocio/negociaciones') {
+        setNegotiationContractId(null);
+      } else if (normalizedPath.startsWith('/mi-negocio/negociacion/')) {
+        const contractId = normalizedPath.slice('/mi-negocio/negociacion/'.length) || null;
+        setNegotiationContractId(contractId);
       } else {
         setProviderDashboardSection('dashboard');
+        setNegotiationContractId(null);
       }
 
       return;
@@ -2135,6 +2150,12 @@ export default function App() {
       setViewMode('business');
       setDashboardView('client');
       setClientDashboardSection('bookings');
+      setNegotiationContractId(null);
+    } else if (normalizedPath.startsWith('/me/negociacion/')) {
+      const contractId = normalizedPath.slice('/me/negociacion/'.length) || null;
+      setViewMode('business');
+      setDashboardView('client');
+      setNegotiationContractId(contractId);
     }
   }, [currentRoute]);
 
@@ -4022,7 +4043,50 @@ export default function App() {
         ) : viewMode === 'business' ? (
           <>
             <SEOHead noindex={isPrivateSystemRoute} />
-            {currentUser && currentUser.isProvider && dashboardView === 'provider' ? (
+            {currentUser && currentUser.isProvider && (
+              currentRoute.startsWith('/mi-negocio/negociacion') || currentRoute === '/mi-negocio/negociaciones'
+            ) ? (
+              <ProviderNegotiationPage
+                contracts={contracts}
+                bookings={bookings}
+                activeContractId={(() => {
+                  const normalized = (currentRoute.split('?')[0] || '/').replace(/\/+$/, '') || '/';
+                  return normalized.startsWith('/mi-negocio/negociacion/')
+                    ? normalized.slice('/mi-negocio/negociacion/'.length) || null
+                    : null;
+                })()}
+                user={currentUser}
+                onNavigateToContract={(contractId: string) => {
+                  if (!contractId) {
+                    navigateTo('/mi-negocio/negociaciones');
+                  } else {
+                    navigateTo(`/mi-negocio/negociacion/${contractId}`);
+                  }
+                }}
+                onBack={() => navigateTo('/mi-negocio/reservas')}
+                chatApi={supabase as any}
+              />
+            ) : currentUser && currentRoute.startsWith('/me/negociacion/') ? (
+              (() => {
+                const normalized = (currentRoute.split('?')[0] || '/').replace(/\/+$/, '') || '/';
+                const cId = normalized.startsWith('/me/negociacion/')
+                  ? normalized.slice('/me/negociacion/'.length) || null
+                  : null;
+                const contract = cId ? contracts.find((c: any) => c.id === cId) || null : null;
+                const booking = contract?.bookingId
+                  ? bookings.find((b: any) => String(b.id) === String(contract.bookingId)) || null
+                  : null;
+                return (
+                  <NegotiationPage
+                    contract={contract}
+                    booking={booking}
+                    user={currentUser}
+                    onBack={() => navigateTo('/me/reservas')}
+                    chatApi={supabase as any}
+                  />
+                );
+              })()
+            ) : currentUser && currentUser.isProvider && dashboardView === 'provider' ? (
               isCheckingProviderProfile && !currentProvider ? (
                 <div className="text-center py-12">
                   <p className="text-gray-600">Validando perfil de proveedor...</p>
@@ -4064,6 +4128,9 @@ export default function App() {
                 onProviderCreate={handleProviderCreate}
                 onProviderUpdate={handleProviderUpdate}
                 onSectionChange={handleProviderSectionChange}
+                onOpenNegotiation={(contractId: string) => {
+                  navigateTo(`/mi-negocio/negociacion/${contractId}`);
+                }}
                 reviews={reviews}
                 accessToken={supabase.accessToken}
               />
@@ -4111,6 +4178,9 @@ export default function App() {
                   onContractUpdate={handleContractUpdate}
                   bookings={bookings}
                   onBookingUpdate={handleBookingUpdate}
+                  onOpenNegotiation={(contractId: string) => {
+                    navigateTo(`/me/negociacion/${contractId}`);
+                  }}
                 />
               )
             )}

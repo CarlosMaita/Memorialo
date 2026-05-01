@@ -71,6 +71,7 @@ interface BusinessDashboardProps {
   onAssignContractToEvent?: (contractId: string, eventId: string | null) => void;
   onReviewCreate?: (contractId: string) => void;
   accessToken?: string | null;
+  onOpenNegotiation?: (contractId: string) => void;
 }
 
 const categories = [
@@ -118,7 +119,8 @@ export function BusinessDashboard({
   onDeleteEvent,
   onAssignContractToEvent,
   onReviewCreate,
-  accessToken = null
+  accessToken = null,
+  onOpenNegotiation
 }: BusinessDashboardProps) {
   const [showServiceEditor, setShowServiceEditor] = useState(false);
   const [editingService, setEditingService] = useState<Artist | null>(null);
@@ -479,6 +481,15 @@ export function BusinessDashboard({
   const handleStartChatFromBooking = (bookingId?: string | null) => {
     if (!bookingId) {
       return;
+    }
+
+    // Find the contract associated with this booking to navigate to negotiation page
+    if (onOpenNegotiation) {
+      const linkedContract = providerContracts.find((c) => String(c.bookingId) === String(bookingId));
+      if (linkedContract) {
+        onOpenNegotiation(linkedContract.id);
+        return;
+      }
     }
 
     window.dispatchEvent(new CustomEvent('memorialo:open-chat', {

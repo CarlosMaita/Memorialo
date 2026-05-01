@@ -40,6 +40,7 @@ interface ClientDashboardProps {
   onContractUpdate: (contract: Contract) => void;
   bookings?: any[];
   onBookingUpdate?: (booking: any) => void;
+  onOpenNegotiation?: (contractId: string) => void;
 }
 
 const navItems: { id: SidebarSection; label: string; icon: React.ReactNode }[] = [
@@ -63,7 +64,8 @@ export function ClientDashboard({
   onAssignContractToEvent,
   onContractUpdate,
   bookings = [],
-  onBookingUpdate
+  onBookingUpdate,
+  onOpenNegotiation
 }: ClientDashboardProps) {
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [showContractView, setShowContractView] = useState(false);
@@ -265,6 +267,11 @@ export function ClientDashboard({
     reviews.some(r => r.contractId === contractId);
 
   const handleStartChatFromContract = (contract: Contract) => {
+    if (onOpenNegotiation) {
+      onOpenNegotiation(contract.id);
+      return;
+    }
+
     if (!contract.bookingId) {
       return;
     }
@@ -277,6 +284,15 @@ export function ClientDashboard({
   const handleStartChatFromBooking = (bookingId?: string | null) => {
     if (!bookingId) {
       return;
+    }
+
+    // Find the contract associated with this booking to navigate to negotiation page
+    if (onOpenNegotiation) {
+      const linkedContract = userContracts.find((c) => String(c.bookingId) === String(bookingId));
+      if (linkedContract) {
+        onOpenNegotiation(linkedContract.id);
+        return;
+      }
     }
 
     window.dispatchEvent(new CustomEvent('memorialo:open-chat', {
