@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, type ChangeEvent } from 'react';
+import { useState, useMemo, useEffect, useRef, type ChangeEvent, useCallback } from 'react';
 import {
   ArrowLeft, AlertTriangle, Paperclip, Send, X, ShieldAlert,
   Calendar, Clock, MapPin, DollarSign, FileText, ChevronDown, ChevronUp
@@ -114,6 +114,7 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
   const [counterpartTyping, setCounterpartTyping] = useState(false);
   const [counterpartOnline, setCounterpartOnline] = useState(false);
   const [showInterventionConfirm, setShowInterventionConfirm] = useState(false);
+  const [serviceInfoOpen, setServiceInfoOpen] = useState(true);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [dismissedWarnings, setDismissedWarnings] = useState<Record<string, boolean>>(() => {
     try {
@@ -495,7 +496,7 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
   const contractId = contract?.id || booking?.contractId || '';
 
   // ── Provider info panel ────────────────────────────────────────────────
-  const ProviderInfoPanel = () => (
+  const ProviderInfoPanel = useCallback(() => (
     <div className="space-y-4">
       {/* Provider card */}
       <Card className="shadow-sm">
@@ -522,96 +523,97 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
         </CardContent>
       </Card>
 
-      {/* Service info card */}
+      {/* Service info card — collapsible */}
       <Card className="shadow-sm">
-        <CardContent className="p-4 space-y-2">
-          <h4 className="font-semibold text-[#1B2A47] text-sm mb-2">Información del servicio</h4>
-
-          {contractId && (
-            <div className="flex items-start gap-2 text-xs">
-              <FileText className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-gray-400 text-[10px] uppercase tracking-wide">Contrato</p>
-                <p className="text-gray-700 font-medium truncate">{contractId}</p>
+        <button
+          type="button"
+          className="w-full flex items-center justify-between px-4 pt-4 pb-2 text-left"
+          onClick={() => setServiceInfoOpen(prev => !prev)}
+          aria-expanded={serviceInfoOpen}
+        >
+          <h4 className="font-semibold text-[#1B2A47] text-sm">Información del servicio</h4>
+          {serviceInfoOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+        </button>
+        {serviceInfoOpen && (
+          <CardContent className="px-4 pb-4 pt-0 space-y-2">
+            {contractId && (
+              <div className="flex items-start gap-2 text-xs">
+                <FileText className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-gray-400 text-[10px] uppercase tracking-wide">Contrato</p>
+                  <p className="text-gray-700 font-medium truncate">{contractId}</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {contractStatus && (
-            <div className="flex items-start gap-2 text-xs">
-              <div className="w-3.5 shrink-0" />
-              <Badge variant="outline" className={`${getStatusBadgeClass(contractStatus)} text-xs`}>
-                {getStatusLabel(contractStatus)}
-              </Badge>
-            </div>
-          )}
-
-          {contractDate && (
-            <div className="flex items-start gap-2 text-xs">
-              <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-gray-400 text-[10px] uppercase tracking-wide">Fecha</p>
-                <p className="text-gray-700">
-                  {new Date(contractDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  {contractStartTime && ` · ${contractStartTime}`}
-                </p>
+            {contractStatus && (
+              <div className="flex items-start gap-2 text-xs">
+                <div className="w-3.5 shrink-0" />
+                <Badge variant="outline" className={`${getStatusBadgeClass(contractStatus)} text-xs`}>
+                  {getStatusLabel(contractStatus)}
+                </Badge>
               </div>
-            </div>
-          )}
+            )}
 
-          {contractLocation && (
-            <div className="flex items-start gap-2 text-xs">
-              <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-gray-400 text-[10px] uppercase tracking-wide">Ubicación</p>
-                <p className="text-gray-700">{contractLocation}</p>
+            {contractDate && (
+              <div className="flex items-start gap-2 text-xs">
+                <Calendar className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-gray-400 text-[10px] uppercase tracking-wide">Fecha</p>
+                  <p className="text-gray-700">
+                    {new Date(contractDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {contractStartTime && ` · ${contractStartTime}`}
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {contractPrice && (
-            <div className="flex items-start gap-2 text-xs">
-              <DollarSign className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-gray-400 text-[10px] uppercase tracking-wide">Total</p>
-                <p className="text-gray-700 font-semibold text-green-600">${contractPrice}</p>
+            {contractLocation && (
+              <div className="flex items-start gap-2 text-xs">
+                <MapPin className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-gray-400 text-[10px] uppercase tracking-wide">Ubicación</p>
+                  <p className="text-gray-700">{contractLocation}</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {contractDescription && (
-            <div className="text-xs mt-2 pt-2 border-t border-slate-100">
-              <p className="text-gray-400 text-[10px] uppercase tracking-wide mb-1">Descripción del servicio</p>
-              <p className="text-gray-700 line-clamp-4">{contractDescription}</p>
-            </div>
-          )}
-        </CardContent>
+            {contractPrice && (
+              <div className="flex items-start gap-2 text-xs">
+                <DollarSign className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-gray-400 text-[10px] uppercase tracking-wide">Total</p>
+                  <p className="text-gray-700 font-semibold text-green-600">${contractPrice}</p>
+                </div>
+              </div>
+            )}
+
+            {contractDescription && (
+              <div className="text-xs mt-2 pt-2 border-t border-slate-100">
+                <p className="text-gray-400 text-[10px] uppercase tracking-wide mb-1">Descripción del servicio</p>
+                <p className="text-gray-700 line-clamp-4">{contractDescription}</p>
+              </div>
+            )}
+          </CardContent>
+        )}
       </Card>
     </div>
-  );
+  ), [providerName, contract, contractId, contractStatus, contractDate, contractStartTime, contractLocation, contractPrice, contractDescription, serviceInfoOpen]);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-[#1B2A47] text-white px-4 py-3 flex items-center gap-3">
+      {/* Mobile: back button bar (hidden on desktop) */}
+      <div className="md:hidden flex items-center gap-2 px-3 py-2 bg-white border-b">
         <Button
           variant="ghost"
           size="icon"
           onClick={onBack}
-          className="h-9 w-9 text-white hover:text-white hover:bg-white/10"
+          className="h-9 w-9 text-[#1B2A47]"
           aria-label="Volver"
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-base font-semibold truncate">Negociación</h1>
-          <p className="text-xs text-white/70 truncate">{providerName}</p>
-        </div>
-        {conversationReference && (
-          <span className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-[10px] font-semibold text-white">
-            {conversationReference.label}: {String(conversationReference.code).slice(0, 16)}{String(conversationReference.code).length > 16 ? '…' : ''}
-          </span>
-        )}
+        <span className="text-sm font-semibold text-[#1B2A47] truncate">Negociación</span>
       </div>
 
       <ConfirmDialog
@@ -802,7 +804,18 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
           {/* Desktop: shown inline */}
           <div className="hidden md:block w-72 shrink-0">
             <div className="space-y-2">
-              <h2 className="text-lg font-semibold text-[#1B2A47] px-1">Proveedor</h2>
+              <div className="flex items-center gap-2 px-1 mb-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onBack}
+                  className="h-8 w-8 text-[#1B2A47]"
+                  aria-label="Volver"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+                <h2 className="text-lg font-semibold text-[#1B2A47]">Proveedor</h2>
+              </div>
               <ProviderInfoPanel />
             </div>
           </div>
