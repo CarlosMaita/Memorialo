@@ -821,6 +821,7 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
             </Accordion>
           </div>
 
+      </div>
     </div>
   );
 }
