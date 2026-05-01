@@ -137,7 +137,7 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
   const conversationId = conversation?.id || null;
 
   const counterpart = useMemo(
-    () => conversation?.participants.find(p => p.userId !== user.id) || null,
+    () => conversation?.participants.find(p => p.userId !== String(user.id)) || null,
     [conversation, user.id],
   );
 
