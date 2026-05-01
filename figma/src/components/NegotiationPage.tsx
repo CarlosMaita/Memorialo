@@ -530,9 +530,10 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
           className="w-full flex items-center justify-between px-4 pt-4 pb-2 text-left"
           onClick={() => setServiceInfoOpen(prev => !prev)}
           aria-expanded={serviceInfoOpen}
+          aria-label={serviceInfoOpen ? 'Ocultar información del servicio' : 'Mostrar información del servicio'}
         >
           <h4 className="font-semibold text-[#1B2A47] text-sm">Información del servicio</h4>
-          {serviceInfoOpen ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+          {serviceInfoOpen ? <ChevronUp className="w-4 h-4 text-gray-400" aria-hidden="true" /> : <ChevronDown className="w-4 h-4 text-gray-400" aria-hidden="true" />}
         </button>
         {serviceInfoOpen && (
           <CardContent className="px-4 pb-4 pt-0 space-y-2">
