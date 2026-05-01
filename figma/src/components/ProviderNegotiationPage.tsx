@@ -714,11 +714,9 @@ export function ProviderNegotiationPage({
             <p className="text-xs text-white/70">{activeContractsList.length} contrato{activeContractsList.length !== 1 ? 's' : ''} activo{activeContractsList.length !== 1 ? 's' : ''}</p>
           </div>
         </div>
-        <div className="max-w-lg mx-auto">
-          <div className="bg-white min-h-[calc(100vh-60px)]">
+        <div className="bg-white min-h-[calc(100vh-60px)]">
             <ContractsSidebar />
           </div>
-        </div>
       </div>
     );
   }
@@ -758,8 +756,7 @@ export function ProviderNegotiationPage({
         variant="warning"
       />
 
-      <div className="max-w-[1400px] mx-auto px-0 md:px-4 py-0 md:py-6">
-        <div className="flex flex-col md:flex-row md:gap-4 md:gap-6">
+      <div className="flex flex-col md:flex-row gap-0 md:gap-4 py-0 md:py-6 md:px-4">
 
           {/* Left: Contract list (hidden on mobile when viewing a contract) */}
           <div className="hidden md:flex md:w-64 lg:w-72 shrink-0 bg-white border-r border-gray-200 md:border md:rounded-xl md:shadow-sm flex-col" style={{ minHeight: 600 }}>
@@ -977,7 +974,6 @@ export function ProviderNegotiationPage({
           </div>
 
         </div>
-      </div>
     </div>
   );
 }
