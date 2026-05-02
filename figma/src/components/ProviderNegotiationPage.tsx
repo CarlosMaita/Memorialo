@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, type ChangeEvent } from 'react';
 import {
   ArrowLeft, AlertTriangle, Paperclip, Send, X, ShieldAlert,
-  Calendar, Clock, MapPin, DollarSign, FileText, Search, MessageCircle, ChevronRight
+  Calendar, Clock, MapPin, DollarSign, FileText, Search, ChevronRight
 } from 'lucide-react';
 import { ChatConversation, ChatMessage, ChatAttachment, User } from '../types';
 import { Button } from './ui/button';
@@ -13,7 +13,7 @@ import { Textarea } from './ui/textarea';
 import { Input } from './ui/input';
 import { Alert, AlertDescription } from './ui/alert';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { ConfirmDialog } from './ConfirmDialog';
 
 type ChatApi = {
@@ -125,8 +125,11 @@ export function ProviderNegotiationPage({
   const [counterpartTyping, setCounterpartTyping] = useState(false);
   const [counterpartOnline, setCounterpartOnline] = useState(false);
   const [showInterventionConfirm, setShowInterventionConfirm] = useState(false);
+  const [showMobileClientDetails, setShowMobileClientDetails] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [contractSearch, setContractSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [searching, setSearching] = useState(false);
   const [dismissedWarnings, setDismissedWarnings] = useState<Record<string, boolean>>(() => {
     try {
       const stored = window.localStorage.getItem(CHAT_WARNING_DISMISSED_STORAGE_KEY);
@@ -177,7 +180,7 @@ export function ProviderNegotiationPage({
   }, [contracts]);
 
   const filteredContractsList = useMemo(() => {
-    const q = contractSearch.trim().toLowerCase();
+    const q = debouncedSearch.trim().toLowerCase();
     if (!q) return activeContractsList;
     return activeContractsList.filter(c => {
       return [c.clientName, c.id, c.artistName, c.terms?.serviceDescription]
@@ -186,7 +189,17 @@ export function ProviderNegotiationPage({
         .toLowerCase()
         .includes(q);
     });
-  }, [activeContractsList, contractSearch]);
+  }, [activeContractsList, debouncedSearch]);
+  // Debounce para búsqueda
+  useEffect(() => {
+    if (contractSearch === debouncedSearch) return;
+    setSearching(true);
+    const handler = setTimeout(() => {
+      setDebouncedSearch(contractSearch);
+      setSearching(false);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [contractSearch, debouncedSearch]);
 
   // Load conversation when active contract changes
   useEffect(() => {
@@ -618,7 +631,7 @@ export function ProviderNegotiationPage({
               <DollarSign className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
               <div>
                 <p className="text-gray-400 text-[10px] uppercase tracking-wide">Total</p>
-                <p className="text-gray-700 font-semibold text-green-600">${contractPrice}</p>
+                <p className="font-semibold text-green-600">${contractPrice}</p>
               </div>
             </div>
           )}
@@ -635,27 +648,30 @@ export function ProviderNegotiationPage({
   );
 
   // ── Contracts sidebar ──────────────────────────────────────────────────
-  const ContractsSidebar = () => (
+  const renderContractsSidebar = () => (
     <div className="flex flex-col h-full max-h-[90vh]">
-      <div className="px-3 py-3 border-b border-[#1B2A47]/10">
-        <h2 className="text-sm font-semibold text-[#D4AF37] uppercase tracking-widest mb-0.5">Negociaciones</h2>
-        <p className="text-xs text-gray-500">{activeContractsList.length} contrato{activeContractsList.length !== 1 ? 's' : ''} activo{activeContractsList.length !== 1 ? 's' : ''}</p>
+      <div className="border-b border-[#1B2A47]/10 px-3 py-3 lg:px-4 lg:py-4">
+        <h2 className="mb-0.5 text-sm font-semibold uppercase tracking-widest text-[#D4AF37] lg:text-[15px]">Negociaciones</h2>
+        <p className="text-xs text-gray-500 lg:text-sm">{activeContractsList.length} contrato{activeContractsList.length !== 1 ? 's' : ''} activo{activeContractsList.length !== 1 ? 's' : ''}</p>
       </div>
 
-      <div className="px-2.5 py-2 border-b border-gray-100">
+      <div className="border-b border-gray-100 px-2.5 py-2 lg:px-4 lg:py-3">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <Input
             value={contractSearch}
             onChange={(e) => setContractSearch(e.target.value)}
             placeholder="Buscar por cliente..."
-            className="pl-8 h-8 text-xs"
+            className="h-8 pl-8 text-xs lg:h-10 lg:text-sm"
           />
         </div>
+        {searching && (
+          <div className="text-xs text-gray-400 mt-1 ml-1 animate-pulse">Buscando...</div>
+        )}
       </div>
 
-      <ScrollArea className="flex-none" style={{ height: negotiationsListHeight }}>
-        <div className="p-1 space-y-2">
+      <ScrollArea className="flex-none lg:flex-1" style={{ height: negotiationsListHeight }}>
+        <div className="space-y-2 p-1 lg:space-y-2.5 lg:p-3">
           {filteredContractsList.length === 0 && (
             <p className="text-xs text-gray-500 px-2 py-3">
               {activeContractsList.length === 0 ? 'No hay contratos activos.' : 'Sin resultados.'}
@@ -669,32 +685,32 @@ export function ProviderNegotiationPage({
               <button
                 key={contract.id}
                 onClick={() => onNavigateToContract(contract.id)}
-                className={`w-full min-h-[64px] rounded-xl px-2 py-1 text-left transition-all border ${
+                className={`w-full min-h-[64px] rounded-xl border px-2 py-1 text-left transition-all lg:min-h-[78px] lg:px-3 lg:py-2 ${
                   isActive
                     ? 'bg-[#1B2A47] text-white shadow-md border-[#D4AF37]'
                     : 'bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900 border-gray-100'
                 }`}
                 style={{ boxShadow: isActive ? '0 2px 8px 0 #1B2A4722' : undefined }}
               >
-                <div className="flex items-center gap-2">
-                  <Avatar className="size-6 shrink-0 border border-slate-200/60">
-                    <AvatarFallback className={`${isActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-700'} text-[11px] font-semibold`}>
+                <div className="flex items-center gap-2 lg:gap-3">
+                  <Avatar className="size-6 shrink-0 border border-slate-200/60 lg:size-8">
+                    <AvatarFallback className={`${isActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-700'} text-[11px] font-semibold lg:text-xs`}>
                       {getInitials(clientDisplayName)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold truncate leading-tight">{clientDisplayName}</p>
-                    <div className="flex items-center gap-1">
-                      <p className={`text-[10px] truncate ${isActive ? 'text-white/70' : 'text-gray-400'}`}>{contract.id?.slice(-12) || ''}</p>
+                    <p className="truncate text-[13px] font-semibold leading-tight lg:text-[15px]">{clientDisplayName}</p>
+                    <div className="flex items-center gap-1 lg:gap-1.5">
+                      <p className={`truncate text-[10px] lg:text-xs ${isActive ? 'text-white/70' : 'text-gray-400'}`}>{contract.id?.slice(-12) || ''}</p>
                       <Badge
                         variant="outline"
-                        className={`text-[9px] px-1 py-0.5 rounded ${isActive ? 'border-white/30 text-white/80' : getStatusBadgeClass(contract.status)}`}
+                        className={`rounded px-1 py-0.5 text-[9px] lg:px-1.5 lg:text-[10px] ${isActive ? 'border-white/30 text-white/80' : getStatusBadgeClass(contract.status)}`}
                       >
                         {getStatusLabel(contract.status)}
                       </Badge>
                     </div>
                   </div>
-                  <ChevronRight className={`w-3.5 h-3.5 shrink-0 ml-1 ${isActive ? 'text-white/60' : 'text-gray-300'}`} />
+                  <ChevronRight className={`ml-1 h-3.5 w-3.5 shrink-0 lg:h-4 lg:w-4 ${isActive ? 'text-white/60' : 'text-gray-300'}`} />
                 </div>
               </button>
             );
@@ -709,7 +725,7 @@ export function ProviderNegotiationPage({
     return (
       <div className="h-full min-h-0 overflow-hidden bg-transparent">
         <div className="h-full min-h-0 bg-transparent">
-          <ContractsSidebar />
+          {renderContractsSidebar()}
         </div>
       </div>
     );
@@ -727,38 +743,60 @@ export function ProviderNegotiationPage({
         cancelText="Volver al chat"
         variant="warning"
       />
+      <Dialog open={showMobileClientDetails} onOpenChange={setShowMobileClientDetails}>
+        <DialogContent className="max-w-[calc(100vw-24px)] rounded-2xl p-0 sm:max-w-md">
+          <DialogHeader className="border-b border-slate-100 px-4 py-3 text-left">
+            <DialogTitle className="text-sm font-semibold text-[#1B2A47]">
+              Detalle del cliente
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[70dvh] overflow-y-auto px-4 py-4">
+            <ClientInfoPanel />
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      <div className="h-full min-h-0 overflow-hidden flex flex-col md:flex-row gap-0 md:gap-4 py-0 md:py-8 md:px-4 md:h-[88vh] md:max-h-[88vh]">
+      <div className="flex h-[80vh] min-h-0 flex-col overflow-hidden gap-0 lg:mx-auto lg:h-[88vh] lg:max-h-[88vh] lg:w-full lg:max-w-[1380px] lg:flex-row lg:gap-5 lg:px-6 lg:py-6">
         {/* Left: Contract list (hidden on mobile when viewing a contract) */}
-        <div className="hidden md:flex md:w-64 lg:w-72 shrink-0 bg-white border-r border-gray-200 md:border md:rounded-xl md:shadow-sm flex-col h-full min-h-0 overflow-hidden md:max-h-[90vh]">
-          <ContractsSidebar />
+        <div className="hidden shrink-0 bg-white lg:flex lg:h-full lg:min-h-0 lg:w-[320px] lg:max-h-[88vh] lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:border-white/70 lg:bg-white/95 lg:shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+          {renderContractsSidebar()}
         </div>
 
         {/* Middle: Chat */}
-        <div className="flex-1 min-w-0 h-full min-h-0 overflow-hidden">
+        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:min-w-[420px]">
           {/* Mobile: back to list link */}
-          <div className="md:hidden flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-100">
+          <div className="lg:hidden flex items-center justify-between gap-3 px-3 py-1.5 bg-white border-b border-gray-100">
             <button
               onClick={() => onNavigateToContract('')}
-              className="flex items-center gap-1.5 text-xs text-[#1B2A47] font-medium"
+              className="flex items-center gap-1.5 text-[10px] text-[#1B2A47] font-medium"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              Ver todos los contratos
+              Volver a contratos
             </button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowMobileClientDetails(true)}
+              className="h-7 rounded-lg px-2 text-[10px] font-medium text-[#1B2A47]"
+            >
+              <FileText className="mr-1.5 h-3.5 w-3.5" />
+              Detalle
+            </Button>
           </div>
 
-          <Card className="shadow-sm flex h-full min-h-0 flex-col md:rounded-xl rounded-none overflow-hidden">
+          <Card className="flex flex-1 min-h-0 flex-col overflow-hidden rounded-none shadow-sm lg:h-full lg:rounded-2xl lg:border lg:border-white/70 lg:bg-white/95 lg:shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
             {/* Chat header */}
-            <div className="border-b px-4 py-3 space-y-1">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 flex flex-1 items-center gap-2.5">
-                  <Avatar className="size-8 border border-slate-200">
-                    <AvatarFallback className="bg-slate-100 text-slate-700 text-xs font-semibold">
+            <div className="border-b px-3 py-1.5 space-y-0.5 lg:px-5 lg:py-4">
+              <div className="flex items-center justify-between gap-2 lg:gap-3">
+                <div className="min-w-0 flex flex-1 items-center gap-2 lg:gap-3">
+                  <Avatar className="size-7 border border-slate-200 lg:size-10">
+                    <AvatarFallback className="bg-slate-100 text-slate-700 text-[11px] font-semibold lg:text-sm">
                       {getInitials(counterpart?.name || clientName)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-[#1B2A47] truncate">
+                    <p className="truncate text-[12px] font-semibold text-[#1B2A47] lg:text-[15px]">
                       {counterpart?.name || clientName}
                     </p>
                   </div>
@@ -770,9 +808,9 @@ export function ProviderNegotiationPage({
                         size="icon"
                         variant="outline"
                         onClick={() => setShowInterventionConfirm(true)}
-                        className="h-8 w-8 shrink-0"
+                        className="h-6 w-6 shrink-0 lg:h-8 lg:w-8"
                       >
-                        <AlertTriangle className="w-4 h-4" />
+                        <AlertTriangle className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" sideOffset={8} className="max-w-[220px] leading-relaxed">
@@ -781,19 +819,19 @@ export function ProviderNegotiationPage({
                   </Tooltip>
                 )}
               </div>
-              <div className="min-h-[16px] pl-[42px]">
+              <div className="min-h-[12px] pl-[36px] lg:min-h-[20px] lg:pl-[52px]">
                 {counterpartUserId && (
-                  <p className={`text-[11px] ${counterpartTyping ? 'text-[#1B2A47] font-medium' : 'text-gray-500'}`}>
+                  <p className={`text-[9px] leading-tight lg:text-xs ${counterpartTyping ? 'text-[#1B2A47] font-medium' : 'text-gray-500'}`}>
                     {counterpartTyping ? 'Escribiendo...' : counterpartOnline ? 'En linea' : 'Desconectado'}
                   </p>
                 )}
                 {conversation?.expiresAt && (
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-[9px] leading-tight text-gray-500 lg:text-xs">
                     Chat e imagenes disponibles hasta {new Date(conversation.expiresAt).toLocaleDateString('es-VE')}
                   </p>
                 )}
                 {conversation?.requiresAdminIntervention && (
-                  <p className="flex items-center gap-1 text-[11px] text-amber-700">
+                  <p className="flex items-center gap-1 text-[9px] text-amber-700 lg:text-xs">
                     <ShieldAlert className="w-3 h-3" /> Intervencion activa
                   </p>
                 )}
@@ -801,12 +839,12 @@ export function ProviderNegotiationPage({
             </div>
 
             {/* Messages */}
-            <div className="flex-1 flex flex-col min-h-0 p-0 overflow-hidden">
+            <div className="flex flex-1 flex-col min-h-0 p-0 overflow-hidden">
               {shouldShowWarning && (
-                <div className="px-3 pt-3">
+                <div className="px-2 pt-1.5 lg:px-3 lg:pt-3">
                   <Alert className="border-amber-300 bg-amber-50 pr-10 text-amber-950 [&>svg]:text-amber-700">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription className="text-amber-900">
+                    <AlertDescription className="text-[11px] text-amber-900 lg:text-sm">
                       <p className="font-medium">Usa este canal para establecer todos los acuerdos del servicio.</p>
                       <p>Este chat sera la fuente unica de garantia en caso de controversia.</p>
                     </AlertDescription>
@@ -822,8 +860,8 @@ export function ProviderNegotiationPage({
                 </div>
               )}
 
-              <ScrollArea className="flex-1 min-h-0 px-3 py-3">
-                <div className="space-y-2">
+              <ScrollArea className="min-h-[260px] flex-1 px-2 py-1.5 lg:min-h-0 lg:px-5 lg:py-4">
+                <div className="space-y-1.5 pb-1 lg:space-y-2 lg:pb-0">
                   {loading && (
                     <p className="text-sm text-gray-500 text-center py-4">Cargando conversación...</p>
                   )}
@@ -836,11 +874,11 @@ export function ProviderNegotiationPage({
                     const mine = message.authorUserId === String(user.id);
                     return (
                       <div key={message.id} className={`flex min-w-0 ${mine ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] overflow-hidden rounded-xl px-3 py-2 text-sm ${mine ? 'bg-[#1B2A47] text-white' : 'bg-gray-100 text-gray-800'}`}>
-                          {!mine && <p className="mb-1 truncate text-[11px] font-semibold">{message.authorName || 'Usuario'}</p>}
+                        <div className={`max-w-[88%] overflow-hidden rounded-xl px-2.5 py-1.5 text-[12px] lg:max-w-[78%] lg:rounded-2xl lg:px-4 lg:py-3 lg:text-[15px] ${mine ? 'bg-[#1B2A47] text-white' : 'bg-gray-100 text-gray-800'}`}>
+                          {!mine && <p className="mb-0.5 truncate text-[9px] font-semibold lg:mb-1 lg:text-xs">{message.authorName || 'Usuario'}</p>}
                           {message.body && <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.body}</p>}
                           {renderAttachments(message.attachments, mine)}
-                          <p className={`mt-1 text-[10px] ${mine ? 'text-white/70' : 'text-gray-500'}`}>
+                          <p className={`mt-0.5 text-[8px] lg:mt-1.5 lg:text-[11px] ${mine ? 'text-white/70' : 'text-gray-500'}`}>
                             {message.createdAt ? new Date(message.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : ''}
                           </p>
                         </div>
@@ -855,7 +893,7 @@ export function ProviderNegotiationPage({
               </ScrollArea>
 
               {/* Input */}
-              <div className="border-t p-3 space-y-3 bg-white">
+              <div className="shrink-0 border-t bg-white p-1.5 space-y-1.5 lg:p-4 lg:space-y-3">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -865,10 +903,10 @@ export function ProviderNegotiationPage({
                   onChange={(e) => { void handleFileSelection(e); }}
                 />
                 {pendingAttachments.length > 0 && (
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-1 lg:gap-2">
                     {pendingAttachments.map(att => (
                       <div key={att.id} className="relative overflow-hidden rounded-lg border border-gray-200">
-                        <img src={att.previewUrl} alt={att.fileName} className="h-20 w-full object-cover" />
+                        <img src={att.previewUrl} alt={att.fileName} className="h-14 w-full object-cover lg:h-20" />
                         <button
                           type="button"
                           onClick={() => handleRemovePendingAttachment(att.id)}
@@ -891,7 +929,7 @@ export function ProviderNegotiationPage({
                   }}
                   placeholder="Escribe tu mensaje..."
                   disabled={submitting || !conversationId}
-                  className="min-h-[80px] max-h-[160px] resize-none"
+                  className="min-h-[48px] max-h-[88px] resize-none text-[12px] leading-tight lg:min-h-[88px] lg:max-h-[180px] lg:text-sm"
                 />
                 <div className="flex items-center gap-2">
                   <Button
@@ -899,7 +937,7 @@ export function ProviderNegotiationPage({
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={submitting || pendingAttachments.length >= 5}
-                    className="h-11 w-11 shrink-0 rounded-xl px-0"
+                    className="h-8 w-8 shrink-0 rounded-xl px-0 lg:h-11 lg:w-11"
                     aria-label="Adjuntar imagen"
                   >
                     <Paperclip className="w-4 h-4" />
@@ -907,13 +945,13 @@ export function ProviderNegotiationPage({
                   <Button
                     onClick={handleSend}
                     disabled={submitting || (!draft.trim() && pendingAttachments.length === 0) || !conversationId}
-                    className="h-11 flex-1 rounded-xl bg-[#D4AF37] px-0 text-[#1B2A47] hover:bg-[#c59f2f]"
+                    className="h-8 flex-1 rounded-xl bg-[#D4AF37] px-0 text-[#1B2A47] hover:bg-[#c59f2f] lg:h-11"
                     aria-label="Enviar mensaje"
                   >
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>
-                <p className="text-[11px] text-gray-500">
+                <p className="hidden text-[11px] text-gray-500 lg:block">
                   Puedes compartir hasta 5 imagenes por mensaje. El chat y sus imagenes se eliminan 30 dias despues del evento.
                 </p>
               </div>
@@ -923,27 +961,12 @@ export function ProviderNegotiationPage({
 
         {/* Right: Client + Service info */}
         {/* Desktop: shown inline */}
-        <div className="hidden md:block w-64 lg:w-72 shrink-0 h-full min-h-0 overflow-y-auto">
-          <div className="space-y-2 pr-1">
-            <h2 className="text-lg font-semibold text-[#1B2A47] px-1">Cliente</h2>
+        <div className="hidden h-full min-h-0 shrink-0 overflow-y-auto lg:block lg:w-[320px] lg:max-h-[88vh]">
+          <div className="space-y-3 pr-1">
+            <h2 className="px-1 text-lg font-semibold text-[#1B2A47]">Cliente</h2>
             <ClientInfoPanel />
           </div>
         </div>
-
-        {/* Mobile: accordion */}
-        <div className="md:hidden px-4 py-3 bg-white border-t border-gray-100">
-          <Accordion type="single" collapsible>
-            <AccordionItem value="info" className="border rounded-xl bg-white shadow-sm">
-              <AccordionTrigger className="px-4 py-3 text-sm font-semibold text-[#1B2A47]">
-                Información del cliente
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4">
-                <ClientInfoPanel />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </div>
-
       </div>
     </div>
   );
