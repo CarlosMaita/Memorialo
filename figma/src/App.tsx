@@ -4009,7 +4009,7 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-[1400px] mx-auto px-3 md:px-6 py-4 md:py-8">
+      <main className="max-w-[1400px] mx-auto px-3 md:px-6 py-4 md:py-4">
         {viewMode === 'admin' ? (
           currentUser && currentUser.role === 'admin' ? (
             <AdminDashboard

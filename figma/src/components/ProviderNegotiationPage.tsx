@@ -535,6 +535,14 @@ export function ProviderNegotiationPage({
   const contractPrice = activeContract?.terms?.price || activeBooking?.totalPrice || '';
   const contractDescription = activeContract?.terms?.serviceDescription || '';
   const contractIdDisplay = activeContract?.id || '';
+  const negotiationItemHeightPx = 84;
+  const negotiationItemGapPx = 4;
+  const negotiationListPaddingPx = 8;
+  const negotiationVisibleItems = 5;
+  const negotiationsListHeight =
+    negotiationItemHeightPx * negotiationVisibleItems +
+    negotiationItemGapPx * (negotiationVisibleItems - 1) +
+    negotiationListPaddingPx * 2;
 
   const ClientInfoPanel = () => (
     <div className="space-y-4">
@@ -628,13 +636,13 @@ export function ProviderNegotiationPage({
 
   // ── Contracts sidebar ──────────────────────────────────────────────────
   const ContractsSidebar = () => (
-    <div className="flex flex-col h-full">
-      <div className="px-4 py-4 border-b border-[#1B2A47]/10">
+    <div className="flex flex-col h-full max-h-[90vh]">
+      <div className="px-3 py-3 border-b border-[#1B2A47]/10">
         <h2 className="text-sm font-semibold text-[#D4AF37] uppercase tracking-widest mb-0.5">Negociaciones</h2>
         <p className="text-xs text-gray-500">{activeContractsList.length} contrato{activeContractsList.length !== 1 ? 's' : ''} activo{activeContractsList.length !== 1 ? 's' : ''}</p>
       </div>
 
-      <div className="px-3 py-2 border-b border-gray-100">
+      <div className="px-2.5 py-2 border-b border-gray-100">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <Input
@@ -646,8 +654,8 @@ export function ProviderNegotiationPage({
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
+      <ScrollArea className="flex-none" style={{ height: negotiationsListHeight }}>
+        <div className="p-1 space-y-2">
           {filteredContractsList.length === 0 && (
             <p className="text-xs text-gray-500 px-2 py-3">
               {activeContractsList.length === 0 ? 'No hay contratos activos.' : 'Sin resultados.'}
@@ -661,31 +669,32 @@ export function ProviderNegotiationPage({
               <button
                 key={contract.id}
                 onClick={() => onNavigateToContract(contract.id)}
-                className={`w-full rounded-xl px-3 py-3 text-left transition-all ${
+                className={`w-full min-h-[64px] rounded-xl px-2 py-1 text-left transition-all border ${
                   isActive
-                    ? 'bg-[#1B2A47] text-white shadow-md'
-                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                    ? 'bg-[#1B2A47] text-white shadow-md border-[#D4AF37]'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900 border-gray-100'
                 }`}
+                style={{ boxShadow: isActive ? '0 2px 8px 0 #1B2A4722' : undefined }}
               >
-                <div className="flex items-start gap-2.5">
-                  <Avatar className="size-8 shrink-0 border border-slate-200/60">
-                    <AvatarFallback className={`${isActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-700'} text-xs font-semibold`}>
+                <div className="flex items-center gap-2">
+                  <Avatar className="size-6 shrink-0 border border-slate-200/60">
+                    <AvatarFallback className={`${isActive ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-700'} text-[11px] font-semibold`}>
                       {getInitials(clientDisplayName)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold truncate">{clientDisplayName}</p>
-                    <p className={`text-xs truncate mt-0.5 ${isActive ? 'text-white/70' : 'text-gray-500'}`}>
-                      {contract.id?.slice(-12) || ''}
-                    </p>
-                    <Badge
-                      variant="outline"
-                      className={`mt-1 text-[10px] px-1.5 py-0 ${isActive ? 'border-white/30 text-white/80' : getStatusBadgeClass(contract.status)}`}
-                    >
-                      {getStatusLabel(contract.status)}
-                    </Badge>
+                    <p className="text-[13px] font-semibold truncate leading-tight">{clientDisplayName}</p>
+                    <div className="flex items-center gap-1">
+                      <p className={`text-[10px] truncate ${isActive ? 'text-white/70' : 'text-gray-400'}`}>{contract.id?.slice(-12) || ''}</p>
+                      <Badge
+                        variant="outline"
+                        className={`text-[9px] px-1 py-0.5 rounded ${isActive ? 'border-white/30 text-white/80' : getStatusBadgeClass(contract.status)}`}
+                      >
+                        {getStatusLabel(contract.status)}
+                      </Badge>
+                    </div>
                   </div>
-                  <ChevronRight className={`w-4 h-4 shrink-0 mt-1 ${isActive ? 'text-white/60' : 'text-gray-400'}`} />
+                  <ChevronRight className={`w-3.5 h-3.5 shrink-0 ml-1 ${isActive ? 'text-white/60' : 'text-gray-300'}`} />
                 </div>
               </button>
             );
@@ -698,53 +707,16 @@ export function ProviderNegotiationPage({
   // ── Mobile: list-only view (no active contract) ────────────────────────
   if (!activeContractId) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="bg-[#1B2A47] text-white px-4 py-3 flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onBack}
-            className="h-9 w-9 text-white hover:text-white hover:bg-white/10"
-            aria-label="Volver"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-base font-semibold">Negociaciones</h1>
-            <p className="text-xs text-white/70">{activeContractsList.length} contrato{activeContractsList.length !== 1 ? 's' : ''} activo{activeContractsList.length !== 1 ? 's' : ''}</p>
-          </div>
+      <div className="h-full min-h-0 overflow-hidden bg-transparent">
+        <div className="h-full min-h-0 bg-transparent">
+          <ContractsSidebar />
         </div>
-        <div className="bg-white min-h-[calc(100vh-60px)]">
-            <ContractsSidebar />
-          </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-[#1B2A47] text-white px-4 py-3 flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onBack}
-          className="h-9 w-9 text-white hover:text-white hover:bg-white/10"
-          aria-label="Volver"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-base font-semibold truncate">Negociación</h1>
-          <p className="text-xs text-white/70 truncate">{clientName}</p>
-        </div>
-        {contractIdDisplay && (
-          <span className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-[10px] font-semibold text-white">
-            {String(contractIdDisplay).slice(0, 16)}{String(contractIdDisplay).length > 16 ? '…' : ''}
-          </span>
-        )}
-      </div>
-
+    <div className="h-full min-h-0 overflow-hidden bg-transparent">
       <ConfirmDialog
         open={showInterventionConfirm}
         onOpenChange={setShowInterventionConfirm}
@@ -756,224 +728,223 @@ export function ProviderNegotiationPage({
         variant="warning"
       />
 
-      <div className="flex flex-col md:flex-row gap-0 md:gap-4 py-0 md:py-6 md:px-4">
+      <div className="h-full min-h-0 overflow-hidden flex flex-col md:flex-row gap-0 md:gap-4 py-0 md:py-8 md:px-4 md:h-[88vh] md:max-h-[88vh]">
+        {/* Left: Contract list (hidden on mobile when viewing a contract) */}
+        <div className="hidden md:flex md:w-64 lg:w-72 shrink-0 bg-white border-r border-gray-200 md:border md:rounded-xl md:shadow-sm flex-col h-full min-h-0 overflow-hidden md:max-h-[90vh]">
+          <ContractsSidebar />
+        </div>
 
-          {/* Left: Contract list (hidden on mobile when viewing a contract) */}
-          <div className="hidden md:flex md:w-64 lg:w-72 shrink-0 bg-white border-r border-gray-200 md:border md:rounded-xl md:shadow-sm flex-col" style={{ minHeight: 600 }}>
-            <ContractsSidebar />
+        {/* Middle: Chat */}
+        <div className="flex-1 min-w-0 h-full min-h-0 overflow-hidden">
+          {/* Mobile: back to list link */}
+          <div className="md:hidden flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-100">
+            <button
+              onClick={() => onNavigateToContract('')}
+              className="flex items-center gap-1.5 text-xs text-[#1B2A47] font-medium"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Ver todos los contratos
+            </button>
           </div>
 
-          {/* Middle: Chat */}
-          <div className="flex-1 min-w-0">
-            {/* Mobile: back to list link */}
-            <div className="md:hidden flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-100">
-              <button
-                onClick={() => onNavigateToContract('')}
-                className="flex items-center gap-1.5 text-xs text-[#1B2A47] font-medium"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                Ver todos los contratos
-              </button>
+          <Card className="shadow-sm flex h-full min-h-0 flex-col md:rounded-xl rounded-none overflow-hidden">
+            {/* Chat header */}
+            <div className="border-b px-4 py-3 space-y-1">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex flex-1 items-center gap-2.5">
+                  <Avatar className="size-8 border border-slate-200">
+                    <AvatarFallback className="bg-slate-100 text-slate-700 text-xs font-semibold">
+                      {getInitials(counterpart?.name || clientName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-[#1B2A47] truncate">
+                      {counterpart?.name || clientName}
+                    </p>
+                  </div>
+                </div>
+                {conversation && !conversation.requiresAdminIntervention && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => setShowInterventionConfirm(true)}
+                        className="h-8 w-8 shrink-0"
+                      >
+                        <AlertTriangle className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={8} className="max-w-[220px] leading-relaxed">
+                      Escalar. Usa esta opcion cuando exista conflicto, incumplimiento o necesites intervencion del administrador.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+              <div className="min-h-[16px] pl-[42px]">
+                {counterpartUserId && (
+                  <p className={`text-[11px] ${counterpartTyping ? 'text-[#1B2A47] font-medium' : 'text-gray-500'}`}>
+                    {counterpartTyping ? 'Escribiendo...' : counterpartOnline ? 'En linea' : 'Desconectado'}
+                  </p>
+                )}
+                {conversation?.expiresAt && (
+                  <p className="text-[11px] text-gray-500">
+                    Chat e imagenes disponibles hasta {new Date(conversation.expiresAt).toLocaleDateString('es-VE')}
+                  </p>
+                )}
+                {conversation?.requiresAdminIntervention && (
+                  <p className="flex items-center gap-1 text-[11px] text-amber-700">
+                    <ShieldAlert className="w-3 h-3" /> Intervencion activa
+                  </p>
+                )}
+              </div>
             </div>
 
-            <Card className="shadow-sm flex flex-col md:rounded-xl rounded-none" style={{ minHeight: 560 }}>
-              {/* Chat header */}
-              <div className="border-b px-4 py-3 space-y-1">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0 flex flex-1 items-center gap-2.5">
-                    <Avatar className="size-8 border border-slate-200">
-                      <AvatarFallback className="bg-slate-100 text-slate-700 text-xs font-semibold">
-                        {getInitials(counterpart?.name || clientName)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-[#1B2A47] truncate">
-                        {counterpart?.name || clientName}
-                      </p>
-                    </div>
-                  </div>
-                  {conversation && !conversation.requiresAdminIntervention && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => setShowInterventionConfirm(true)}
-                          className="h-8 w-8 shrink-0"
-                        >
-                          <AlertTriangle className="w-4 h-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" sideOffset={8} className="max-w-[220px] leading-relaxed">
-                        Escalar. Usa esta opcion cuando exista conflicto, incumplimiento o necesites intervencion del administrador.
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
+            {/* Messages */}
+            <div className="flex-1 flex flex-col min-h-0 p-0 overflow-hidden">
+              {shouldShowWarning && (
+                <div className="px-3 pt-3">
+                  <Alert className="border-amber-300 bg-amber-50 pr-10 text-amber-950 [&>svg]:text-amber-700">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription className="text-amber-900">
+                      <p className="font-medium">Usa este canal para establecer todos los acuerdos del servicio.</p>
+                      <p>Este chat sera la fuente unica de garantia en caso de controversia.</p>
+                    </AlertDescription>
+                    <button
+                      type="button"
+                      onClick={handleDismissWarning}
+                      aria-label="Cerrar advertencia del chat"
+                      className="absolute right-2 top-2 rounded-full p-1 text-amber-700 transition hover:bg-amber-100"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </Alert>
                 </div>
-                <div className="min-h-[16px] pl-[42px]">
-                  {counterpartUserId && (
-                    <p className={`text-[11px] ${counterpartTyping ? 'text-[#1B2A47] font-medium' : 'text-gray-500'}`}>
-                      {counterpartTyping ? 'Escribiendo...' : counterpartOnline ? 'En linea' : 'Desconectado'}
-                    </p>
-                  )}
-                  {conversation?.expiresAt && (
-                    <p className="text-[11px] text-gray-500">
-                      Chat e imagenes disponibles hasta {new Date(conversation.expiresAt).toLocaleDateString('es-VE')}
-                    </p>
-                  )}
-                  {conversation?.requiresAdminIntervention && (
-                    <p className="flex items-center gap-1 text-[11px] text-amber-700">
-                      <ShieldAlert className="w-3 h-3" /> Intervencion activa
-                    </p>
-                  )}
-                </div>
-              </div>
+              )}
 
-              {/* Messages */}
-              <div className="flex-1 flex flex-col min-h-0 p-0">
-                {shouldShowWarning && (
-                  <div className="px-3 pt-3">
-                    <Alert className="border-amber-300 bg-amber-50 pr-10 text-amber-950 [&>svg]:text-amber-700">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription className="text-amber-900">
-                        <p className="font-medium">Usa este canal para establecer todos los acuerdos del servicio.</p>
-                        <p>Este chat sera la fuente unica de garantia en caso de controversia.</p>
-                      </AlertDescription>
-                      <button
-                        type="button"
-                        onClick={handleDismissWarning}
-                        aria-label="Cerrar advertencia del chat"
-                        className="absolute right-2 top-2 rounded-full p-1 text-amber-700 transition hover:bg-amber-100"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </Alert>
+              <ScrollArea className="flex-1 min-h-0 px-3 py-3">
+                <div className="space-y-2">
+                  {loading && (
+                    <p className="text-sm text-gray-500 text-center py-4">Cargando conversación...</p>
+                  )}
+                  {!loading && !activeBooking && (
+                    <p className="text-sm text-gray-500 text-center py-8">
+                      Este contrato no tiene una reserva asociada.
+                    </p>
+                  )}
+                  {!loading && activeBooking && messages.map(message => {
+                    const mine = message.authorUserId === String(user.id);
+                    return (
+                      <div key={message.id} className={`flex min-w-0 ${mine ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] overflow-hidden rounded-xl px-3 py-2 text-sm ${mine ? 'bg-[#1B2A47] text-white' : 'bg-gray-100 text-gray-800'}`}>
+                          {!mine && <p className="mb-1 truncate text-[11px] font-semibold">{message.authorName || 'Usuario'}</p>}
+                          {message.body && <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.body}</p>}
+                          {renderAttachments(message.attachments, mine)}
+                          <p className={`mt-1 text-[10px] ${mine ? 'text-white/70' : 'text-gray-500'}`}>
+                            {message.createdAt ? new Date(message.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : ''}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {!loading && activeBooking && messages.length === 0 && (
+                    <p className="text-sm text-gray-500 text-center py-8">Aun no hay mensajes en esta conversacion.</p>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              </ScrollArea>
+
+              {/* Input */}
+              <div className="border-t p-3 space-y-3 bg-white">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => { void handleFileSelection(e); }}
+                />
+                {pendingAttachments.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {pendingAttachments.map(att => (
+                      <div key={att.id} className="relative overflow-hidden rounded-lg border border-gray-200">
+                        <img src={att.previewUrl} alt={att.fileName} className="h-20 w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePendingAttachment(att.id)}
+                          className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-gray-700 shadow"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
-
-                <ScrollArea className="flex-1 px-3 py-3" style={{ height: 340 }}>
-                  <div className="space-y-2">
-                    {loading && (
-                      <p className="text-sm text-gray-500 text-center py-4">Cargando conversación...</p>
-                    )}
-                    {!loading && !activeBooking && (
-                      <p className="text-sm text-gray-500 text-center py-8">
-                        Este contrato no tiene una reserva asociada.
-                      </p>
-                    )}
-                    {!loading && activeBooking && messages.map(message => {
-                      const mine = message.authorUserId === String(user.id);
-                      return (
-                        <div key={message.id} className={`flex min-w-0 ${mine ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[85%] overflow-hidden rounded-xl px-3 py-2 text-sm ${mine ? 'bg-[#1B2A47] text-white' : 'bg-gray-100 text-gray-800'}`}>
-                            {!mine && <p className="mb-1 truncate text-[11px] font-semibold">{message.authorName || 'Usuario'}</p>}
-                            {message.body && <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.body}</p>}
-                            {renderAttachments(message.attachments, mine)}
-                            <p className={`mt-1 text-[10px] ${mine ? 'text-white/70' : 'text-gray-500'}`}>
-                              {message.createdAt ? new Date(message.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : ''}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {!loading && activeBooking && messages.length === 0 && (
-                      <p className="text-sm text-gray-500 text-center py-8">Aun no hay mensajes en esta conversacion.</p>
-                    )}
-                    <div ref={messagesEndRef} />
-                  </div>
-                </ScrollArea>
-
-                {/* Input */}
-                <div className="border-t p-3 space-y-3 bg-white">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => { void handleFileSelection(e); }}
-                  />
-                  {pendingAttachments.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2">
-                      {pendingAttachments.map(att => (
-                        <div key={att.id} className="relative overflow-hidden rounded-lg border border-gray-200">
-                          <img src={att.previewUrl} alt={att.fileName} className="h-20 w-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => handleRemovePendingAttachment(att.id)}
-                            className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-gray-700 shadow"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <Textarea
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        void handleSend();
-                      }
-                    }}
-                    placeholder="Escribe tu mensaje..."
-                    disabled={submitting || !conversationId}
-                    className="min-h-[80px] max-h-[160px] resize-none"
-                  />
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={submitting || pendingAttachments.length >= 5}
-                      className="h-11 w-11 shrink-0 rounded-xl px-0"
-                      aria-label="Adjuntar imagen"
-                    >
-                      <Paperclip className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      onClick={handleSend}
-                      disabled={submitting || (!draft.trim() && pendingAttachments.length === 0) || !conversationId}
-                      className="h-11 flex-1 rounded-xl bg-[#D4AF37] px-0 text-[#1B2A47] hover:bg-[#c59f2f]"
-                      aria-label="Enviar mensaje"
-                    >
-                      <Send className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <p className="text-[11px] text-gray-500">
-                    Puedes compartir hasta 5 imagenes por mensaje. El chat y sus imagenes se eliminan 30 dias despues del evento.
-                  </p>
+                <Textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      void handleSend();
+                    }
+                  }}
+                  placeholder="Escribe tu mensaje..."
+                  disabled={submitting || !conversationId}
+                  className="min-h-[80px] max-h-[160px] resize-none"
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={submitting || pendingAttachments.length >= 5}
+                    className="h-11 w-11 shrink-0 rounded-xl px-0"
+                    aria-label="Adjuntar imagen"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    onClick={handleSend}
+                    disabled={submitting || (!draft.trim() && pendingAttachments.length === 0) || !conversationId}
+                    className="h-11 flex-1 rounded-xl bg-[#D4AF37] px-0 text-[#1B2A47] hover:bg-[#c59f2f]"
+                    aria-label="Enviar mensaje"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
                 </div>
+                <p className="text-[11px] text-gray-500">
+                  Puedes compartir hasta 5 imagenes por mensaje. El chat y sus imagenes se eliminan 30 dias despues del evento.
+                </p>
               </div>
-            </Card>
-          </div>
-
-          {/* Right: Client + Service info */}
-          {/* Desktop: shown inline */}
-          <div className="hidden md:block w-64 lg:w-72 shrink-0">
-            <div className="space-y-2">
-              <h2 className="text-lg font-semibold text-[#1B2A47] px-1">Cliente</h2>
-              <ClientInfoPanel />
             </div>
-          </div>
-
-          {/* Mobile: accordion */}
-          <div className="md:hidden px-4 py-3 bg-white border-t border-gray-100">
-            <Accordion type="single" collapsible>
-              <AccordionItem value="info" className="border rounded-xl bg-white shadow-sm">
-                <AccordionTrigger className="px-4 py-3 text-sm font-semibold text-[#1B2A47]">
-                  Información del cliente
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4">
-                  <ClientInfoPanel />
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
-
+          </Card>
         </div>
+
+        {/* Right: Client + Service info */}
+        {/* Desktop: shown inline */}
+        <div className="hidden md:block w-64 lg:w-72 shrink-0 h-full min-h-0 overflow-y-auto">
+          <div className="space-y-2 pr-1">
+            <h2 className="text-lg font-semibold text-[#1B2A47] px-1">Cliente</h2>
+            <ClientInfoPanel />
+          </div>
+        </div>
+
+        {/* Mobile: accordion */}
+        <div className="md:hidden px-4 py-3 bg-white border-t border-gray-100">
+          <Accordion type="single" collapsible>
+            <AccordionItem value="info" className="border rounded-xl bg-white shadow-sm">
+              <AccordionTrigger className="px-4 py-3 text-sm font-semibold text-[#1B2A47]">
+                Información del cliente
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <ClientInfoPanel />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+
+      </div>
     </div>
   );
 }

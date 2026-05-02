@@ -499,7 +499,7 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
   const ProviderInfoPanel = useCallback(() => (
     <div className="space-y-4">
       {/* Provider card */}
-      <Card className="shadow-sm">
+      <Card className="border-white/40  shadow-sm">
         <CardContent className="p-4">
           <div className="flex items-center gap-3 mb-3">
             <Avatar className="h-12 w-12 border border-slate-200">
@@ -524,7 +524,7 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
       </Card>
 
       {/* Service info card — collapsible */}
-      <Card className="shadow-sm">
+      <Card className="border-white/40 shadow-sm">
         <button
           type="button"
           className="w-full flex items-center justify-between px-4 pt-4 pb-2 text-left"
@@ -584,7 +584,7 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
                 <DollarSign className="w-3.5 h-3.5 text-gray-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-gray-400 text-[10px] uppercase tracking-wide">Total</p>
-                  <p className="text-gray-700 font-semibold text-green-600">${contractPrice}</p>
+                  <p className="font-semibold text-green-600">${contractPrice}</p>
                 </div>
               </div>
             )}
@@ -602,9 +602,9 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
   ), [providerName, contract, contractId, contractStatus, contractDate, contractStartTime, contractLocation, contractPrice, contractDescription, serviceInfoOpen]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {/* Mobile: back button bar (hidden on desktop) */}
-      <div className="md:hidden flex items-center gap-2 px-3 py-2 bg-white border-b">
+      <div className="md:hidden flex items-center gap-2 px-3 py-1.5 border-b border-white/40">
         <Button
           variant="ghost"
           size="icon"
@@ -628,11 +628,11 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
         variant="warning"
       />
 
-      <div className="flex flex-col md:flex-row gap-4 md:gap-6 px-4 py-4 md:py-6">
+      <div className="flex flex-col md:flex-row-reverse gap-4 md:gap-6 px-4 py-2 md:py-3">
 
           {/* Left: Chat */}
           <div className="flex-1 min-w-0">
-            <Card className="shadow-sm flex flex-col" style={{ minHeight: 560 }}>
+            <Card className="border-white/40 shadow-sm flex flex-col" style={{ minHeight: 560 }}>
               {/* Chat header */}
               <div className="border-b px-4 py-3 space-y-1">
                 <div className="flex items-center justify-between gap-3">
@@ -735,7 +735,7 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
                 </ScrollArea>
 
                 {/* Input */}
-                <div className="border-t p-3 space-y-3 bg-white">
+                <div className="border-t border-white/40 p-3 space-y-3 bg-transparent">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -805,7 +805,7 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
           {/* Desktop: shown inline */}
           <div className="hidden md:block w-72 shrink-0">
             <div className="space-y-2">
-              <div className="flex items-center gap-2 px-1 mb-1">
+              <div className="flex items-center gap-2 px-1 mb-1 md:pt-1">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -824,7 +824,7 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
           {/* Mobile: accordion */}
           <div className="md:hidden">
             <Accordion type="single" collapsible>
-              <AccordionItem value="info" className="border rounded-xl bg-white shadow-sm">
+              <AccordionItem value="info" className="rounded-xl border border-white/40 bg-transparent shadow-sm">
                 <AccordionTrigger className="px-4 py-3 text-sm font-semibold text-[#1B2A47]">
                   Información del proveedor
                 </AccordionTrigger>
