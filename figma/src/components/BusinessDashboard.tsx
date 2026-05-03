@@ -135,7 +135,6 @@ export function BusinessDashboard({
   const [showEditBookingDialog, setShowEditBookingDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [isCreatingProvider, setIsCreatingProvider] = useState(false);
   const [isUpdatingProvider, setIsUpdatingProvider] = useState(false);
   
@@ -733,7 +732,6 @@ export function BusinessDashboard({
 
   const handleNavClick = (section: SidebarSection) => {
     setActiveSection(section);
-    setSidebarOpen(false);
     onSectionChange?.(section);
   };
 
