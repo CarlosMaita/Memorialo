@@ -4443,7 +4443,11 @@ export default function App() {
       <ChatWidget
         user={currentUser}
         bookings={bookings}
-        hideLauncher={currentRoute.startsWith('/mi-negocio/negociacion') || currentRoute === '/mi-negocio/negociaciones'}
+        hideLauncher={
+          currentRoute.startsWith('/mi-negocio/negociacion') ||
+          currentRoute === '/mi-negocio/negociaciones' ||
+          currentRoute.startsWith('/me/negociacion/')
+        }
         api={{
           getChatConversations: supabase.getChatConversations,
           ensureChatConversation: supabase.ensureChatConversation,
