@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, type MouseEvent } from 'react';
-import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase, Shield, Search, Bell, CheckCheck, Heart } from 'lucide-react';
+import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase, Shield, Search, Bell, CheckCheck, Heart, Calendar, MessageCircle, Receipt, Settings } from 'lucide-react';
 import { Artist, ServicePlan, Contract, User, Review, Booking, Provider, Event } from './types';
 import { mockArtists, mockEvents, mockUsers, mockProviders } from './data/mockData';
 import { mockReviews } from './data/mockReviews';
@@ -3813,7 +3813,16 @@ export default function App() {
                         </Avatar>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="w-52">
+                      {/* User info */}
+                      <div className="px-3 py-2 border-b border-gray-100">
+                        <p className="text-sm font-semibold truncate">{currentUser.name}</p>
+                      </div>
+
+                      {/* ── Cliente ────────────────────────────────── */}
+                      <div className="px-3 pt-2 pb-0.5">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Cliente</p>
+                      </div>
                       <DropdownMenuItem onClick={() => setShowUserProfile(true)}>
                         <UserCircle className="w-4 h-4 mr-2" />
                         Mi Perfil
@@ -3823,7 +3832,7 @@ export default function App() {
                         setDashboardView('client');
                         navigateTo('/me/reservas');
                       }}>
-                        <LayoutDashboard className="w-4 h-4 mr-2" />
+                        <Calendar className="w-4 h-4 mr-2" />
                         Mis Reservas
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => {
@@ -3833,18 +3842,66 @@ export default function App() {
                         <Heart className="w-4 h-4 mr-2" />
                         Favoritos
                       </DropdownMenuItem>
+
+                      {/* ── Mi Negocio (providers only) ─────────────── */}
                       {currentUser.isProvider && (
                         <>
+                          <DropdownMenuSeparator />
+                          <div className="px-3 pt-2 pb-0.5">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Mi Negocio</p>
+                          </div>
                           <DropdownMenuItem onClick={() => {
                             setViewMode('business');
                             setDashboardView('provider');
-                            navigateTo(getProviderBusinessPath());
+                            navigateTo('/mi-negocio');
+                          }}>
+                            <LayoutDashboard className="w-4 h-4 mr-2" />
+                            Resumen
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setViewMode('business');
+                            setDashboardView('provider');
+                            navigateTo('/mi-negocio/reservas');
+                          }}>
+                            <Calendar className="w-4 h-4 mr-2" />
+                            Reservas
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setViewMode('business');
+                            setDashboardView('provider');
+                            navigateTo('/mi-negocio/negociaciones');
+                          }}>
+                            <MessageCircle className="w-4 h-4 mr-2" />
+                            Negociaciones
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setViewMode('business');
+                            setDashboardView('provider');
+                            navigateTo('/mi-negocio/mis-servicios');
                           }}>
                             <Briefcase className="w-4 h-4 mr-2" />
-                            Mi Negocio
+                            Servicios
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setViewMode('business');
+                            setDashboardView('provider');
+                            navigateTo('/mi-negocio/facturacion');
+                          }}>
+                            <Receipt className="w-4 h-4 mr-2" />
+                            Facturación
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setViewMode('business');
+                            setDashboardView('provider');
+                            navigateTo('/mi-negocio/configuracion');
+                          }}>
+                            <Settings className="w-4 h-4 mr-2" />
+                            Configuración
                           </DropdownMenuItem>
                         </>
                       )}
+
+                      {/* ── Admin ──────────────────────────────────── */}
                       {currentUser.role === 'admin' && (
                         <>
                           <DropdownMenuSeparator />
@@ -3854,6 +3911,7 @@ export default function App() {
                           </DropdownMenuItem>
                         </>
                       )}
+
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={handleLogout}>
                         <LogOut className="w-4 h-4 mr-2" />
@@ -3883,112 +3941,123 @@ export default function App() {
 
           {/* Mobile Navigation */}
           {mobileMenuOpen && (
-            <div className="md:hidden mt-4 pt-4 border-t border-white/20 space-y-2">
+            <div className="md:hidden mt-4 pt-4 border-t border-white/20 space-y-1">
+              {/* Search Servicios */}
               <Button
                 variant={viewMode === 'client' ? 'secondary' : 'ghost'}
-                onClick={handleHeaderHomeRefresh}
-                className={`w-full ${viewMode === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
+                onClick={() => { handleHeaderHomeRefresh(); setMobileMenuOpen(false); }}
+                className={`w-full justify-start ${viewMode === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
               >
                 <Users className="w-4 h-4 mr-2" />
                 Buscar Servicios
               </Button>
-              {currentUser?.isProvider && (
-                <>
-                  <Button
-                    variant={viewMode === 'business' && dashboardView === 'provider' ? 'secondary' : 'ghost'}
-                    onClick={() => {
-                      setViewMode('business');
-                      setDashboardView('provider');
-                      navigateTo(getProviderBusinessPath());
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`w-full ${viewMode === 'business' && dashboardView === 'provider' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
-                  >
-                    <Briefcase className="w-4 h-4 mr-2" />
-                    Mi Negocio
-                  </Button>
-                  <Button
-                    variant={viewMode === 'business' && dashboardView === 'client' ? 'secondary' : 'ghost'}
-                    onClick={() => {
-                      setViewMode('business');
-                      setDashboardView('client');
-                      navigateTo('/me/reservas');
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`w-full ${viewMode === 'business' && dashboardView === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
-                  >
-                    <LayoutDashboard className="w-4 h-4 mr-2" />
-                    Mis Reservas
-                  </Button>
-                </>
-              )}
-              {currentUser && !currentUser.isProvider && (
-                <Button
-                  variant={viewMode === 'business' ? 'secondary' : 'ghost'}
-                  onClick={() => {
-                    setViewMode('business');
-                    setDashboardView('client');
-                    navigateTo('/me/reservas');
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full ${viewMode === 'business' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
-                >
-                  <LayoutDashboard className="w-4 h-4 mr-2" />
-                  Mis Reservas
-                </Button>
-              )}
-
-              {/* Admin Panel Button - Mobile */}
-              {currentUser?.role === 'admin' && (
-                <Button
-                  variant={viewMode === 'admin' ? 'secondary' : 'ghost'}
-                  onClick={() => {
-                    setViewMode('admin');
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full ${viewMode === 'admin' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
-                >
-                  <Shield className="w-4 h-4 mr-2" />
-                  Panel de Admin
-                </Button>
-              )}
 
               {currentUser ? (
                 <>
+                  {/* ── Cliente section ────────────────────── */}
+                  <p className="px-3 pt-3 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-white/50">Cliente</p>
                   <Button
                     variant="ghost"
-                    onClick={() => {
-                      setViewMode('client');
-                      navigateTo('/favoritos');
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full text-white hover:text-white hover:bg-white/10"
-                  >
-                    <Heart className="w-4 h-4 mr-2" />
-                    Favoritos
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setShowUserProfile(true);
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full text-white hover:text-white hover:bg-white/10"
+                    onClick={() => { setShowUserProfile(true); setMobileMenuOpen(false); }}
+                    className="w-full justify-start text-white hover:text-white hover:bg-white/10"
                   >
                     <UserCircle className="w-4 h-4 mr-2" />
                     Mi Perfil
                   </Button>
                   <Button
                     variant="ghost"
-                    onClick={() => {
-                      handleLogout();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full text-white hover:text-white hover:bg-white/10"
+                    onClick={() => { setViewMode('business'); setDashboardView('client'); navigateTo('/me/reservas'); setMobileMenuOpen(false); }}
+                    className="w-full justify-start text-white hover:text-white hover:bg-white/10"
                   >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Cerrar Sesión
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Mis Reservas
                   </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => { setViewMode('client'); navigateTo('/favoritos'); setMobileMenuOpen(false); }}
+                    className="w-full justify-start text-white hover:text-white hover:bg-white/10"
+                  >
+                    <Heart className="w-4 h-4 mr-2" />
+                    Favoritos
+                  </Button>
+
+                  {/* ── Mi Negocio section (providers only) ─── */}
+                  {currentUser.isProvider && (
+                    <>
+                      <p className="px-3 pt-3 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-white/50">Mi Negocio</p>
+                      <Button
+                        variant="ghost"
+                        onClick={() => { setViewMode('business'); setDashboardView('provider'); navigateTo('/mi-negocio'); setMobileMenuOpen(false); }}
+                        className="w-full justify-start text-white hover:text-white hover:bg-white/10"
+                      >
+                        <LayoutDashboard className="w-4 h-4 mr-2" />
+                        Resumen
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => { setViewMode('business'); setDashboardView('provider'); navigateTo('/mi-negocio/reservas'); setMobileMenuOpen(false); }}
+                        className="w-full justify-start text-white hover:text-white hover:bg-white/10"
+                      >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Reservas
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => { setViewMode('business'); setDashboardView('provider'); navigateTo('/mi-negocio/negociaciones'); setMobileMenuOpen(false); }}
+                        className="w-full justify-start text-white hover:text-white hover:bg-white/10"
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Negociaciones
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => { setViewMode('business'); setDashboardView('provider'); navigateTo('/mi-negocio/mis-servicios'); setMobileMenuOpen(false); }}
+                        className="w-full justify-start text-white hover:text-white hover:bg-white/10"
+                      >
+                        <Briefcase className="w-4 h-4 mr-2" />
+                        Servicios
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => { setViewMode('business'); setDashboardView('provider'); navigateTo('/mi-negocio/facturacion'); setMobileMenuOpen(false); }}
+                        className="w-full justify-start text-white hover:text-white hover:bg-white/10"
+                      >
+                        <Receipt className="w-4 h-4 mr-2" />
+                        Facturación
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => { setViewMode('business'); setDashboardView('provider'); navigateTo('/mi-negocio/configuracion'); setMobileMenuOpen(false); }}
+                        className="w-full justify-start text-white hover:text-white hover:bg-white/10"
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Configuración
+                      </Button>
+                    </>
+                  )}
+
+                  {/* ── Admin ──────────────────────────────── */}
+                  {currentUser.role === 'admin' && (
+                    <Button
+                      variant={viewMode === 'admin' ? 'secondary' : 'ghost'}
+                      onClick={() => { setViewMode('admin'); setMobileMenuOpen(false); }}
+                      className={`w-full justify-start ${viewMode === 'admin' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
+                    >
+                      <Shield className="w-4 h-4 mr-2" />
+                      Panel de Admin
+                    </Button>
+                  )}
+
+                  <div className="border-t border-white/20 pt-2 mt-2">
+                    <Button
+                      variant="ghost"
+                      onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                      className="w-full justify-start text-white hover:text-white hover:bg-white/10"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Cerrar Sesión
+                    </Button>
+                  </div>
                 </>
               ) : (
                 <Button

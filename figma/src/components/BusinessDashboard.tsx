@@ -33,8 +33,7 @@ import {
   Search,
   LayoutDashboard,
   Briefcase,
-  Menu,
-  X,
+  // Menu and X removed (mobile sidebar removed)
   TrendingUp,
   Award,
   Activity,
@@ -136,7 +135,7 @@ export function BusinessDashboard({
   const [showEditBookingDialog, setShowEditBookingDialog] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [isCreatingProvider, setIsCreatingProvider] = useState(false);
   const [isUpdatingProvider, setIsUpdatingProvider] = useState(false);
   
@@ -985,27 +984,6 @@ export function BusinessDashboard({
   return (
     <div className="flex min-h-[calc(100vh-64px)] bg-gray-50">
 
-      {/* ── Mobile overlay sidebar ──────────────────────────────────────── */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setSidebarOpen(false)}
-          />
-          {/* Drawer */}
-          <div className="relative w-72 bg-white h-full shadow-2xl z-10">
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-900 p-1"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <SidebarContent />
-          </div>
-        </div>
-      )}
-
       {/* ── Desktop sidebar ─────────────────────────────────────────────── */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 shrink-0 sticky top-0 h-screen">
         <SidebarContent />
@@ -1015,12 +993,6 @@ export function BusinessDashboard({
       <main className="flex-1 min-w-0">
         {/* Mobile top bar */}
         <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 sticky top-0 z-40">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-lg bg-[#1B2A47] text-white"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
           <div>
             <p className="text-sm font-semibold text-[#1B2A47]">
               {navItems.find(n => n.id === activeSection)?.label}
