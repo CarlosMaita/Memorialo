@@ -103,6 +103,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
   const [generatedBooking, setGeneratedBooking] = useState<Booking | null>(null);
   const [currentStep, setCurrentStep] = useState<BookingStep>('plan');
   const [savingContactData, setSavingContactData] = useState(false);
+  const [showSpecialRequests, setShowSpecialRequests] = useState(false);
 
   useEffect(() => {
     if (!open || !artist) {
@@ -161,6 +162,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
       setShowContract(false);
       setGeneratedContract(null);
       setGeneratedBooking(null);
+      setShowSpecialRequests(false);
       return;
     }
 
@@ -891,14 +893,26 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
                 </div>
 
                 <div>
-                  <Label htmlFor="requests" className="mb-1 block">Solicitudes Especiales (Opcional)</Label>
-                  <Textarea
-                    id="requests"
-                    value={formData.specialRequests}
-                    onChange={(e) => setFormData({ ...formData, specialRequests: e.target.value })}
-                    placeholder="Detalles especiales, requisitos o información que el proveedor deba saber..."
-                    rows={3}
-                  />
+                  {!showSpecialRequests ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowSpecialRequests(true)}
+                      className="text-sm text-blue-600 hover:text-blue-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 rounded"
+                    >
+                      + Agregar solicitud especial
+                    </button>
+                  ) : (
+                    <>
+                      <Label htmlFor="requests" className="mb-1 block">Solicitudes Especiales (Opcional)</Label>
+                      <Textarea
+                        id="requests"
+                        value={formData.specialRequests}
+                        onChange={(e) => setFormData({ ...formData, specialRequests: e.target.value })}
+                        placeholder="Detalles especiales, requisitos o información que el proveedor deba saber..."
+                        rows={3}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             </div>
