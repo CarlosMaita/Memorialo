@@ -48,6 +48,7 @@ interface ChatWidgetProps {
   user: User | null;
   bookings: any[];
   api: ChatApi;
+  hideLauncher?: boolean;
 }
 
 type PendingAttachment = {
@@ -64,7 +65,7 @@ type OpenChatEventDetail = {
 
 const CHAT_WARNING_DISMISSED_STORAGE_KEY = 'memorialo-chat-warning-dismissed';
 
-export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
+export function ChatWidget({ user, bookings, api, hideLauncher = false }: ChatWidgetProps) {
   const [conversationListOpen, setConversationListOpen] = useState(false);
   const [chatWindowOpen, setChatWindowOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -1016,7 +1017,7 @@ export function ChatWidget({ user, bookings, api }: ChatWidgetProps) {
           </Card>
         )}
 
-        {!chatWindowOpen && (
+        {!chatWindowOpen && !hideLauncher && (
           <Button
             onClick={handleToggleConversationList}
             aria-label="Abrir chat"
