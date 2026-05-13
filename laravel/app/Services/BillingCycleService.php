@@ -85,6 +85,15 @@ class BillingCycleService
     {
         $referenceTime = ($asOf ? Carbon::instance($asOf) : now())->copy();
         $settings = $this->getSettings();
+
+        if (! ($settings->module_enabled ?? true)) {
+            return [
+                'month' => null,
+                'created' => 0,
+                'skipped' => true,
+            ];
+        }
+
         $targetMonth = $this->resolveLatestClosableMonth($settings, $referenceTime);
 
         if (! $targetMonth || $settings->last_closed_month === $targetMonth) {
@@ -115,6 +124,16 @@ class BillingCycleService
 
     public function markOverdueInvoicesAndSuspendProviders(?CarbonInterface $asOf = null): array
     {
+        $settings = $this->getSettings();
+
+        if (! ($settings->module_enabled ?? true)) {
+            return [
+                'overdueInvoices' => 0,
+                'suspendedUsers' => 0,
+                'skipped' => true,
+            ];
+        }
+
         $referenceTime = ($asOf ? Carbon::instance($asOf) : now())->copy();
         $overdueInvoices = BillingInvoice::query()
             ->whereIn('status', ['pending', 'rejected'])

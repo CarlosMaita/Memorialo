@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Switch } from './ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Textarea } from './ui/textarea';
 import { backendMode, laravelApiBaseUrl } from '../utils/supabase/client';
@@ -24,6 +25,7 @@ interface BillingSettings {
   paymentGraceDays: number;
   nextClosureDate?: string;
   lastClosedMonth?: string | null;
+  moduleEnabled?: boolean;
 }
 
 interface BillingInvoice {
@@ -113,7 +115,9 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [closureDay, setClosureDay] = useState('1');
+  const [billingModuleEnabled, setBillingModuleEnabled] = useState(true);
   const [savingConfig, setSavingConfig] = useState(false);
+  const [savingModuleToggle, setSavingModuleToggle] = useState(false);
   const [processingInvoiceId, setProcessingInvoiceId] = useState<string | null>(null);
   const [rejectingInvoice, setRejectingInvoice] = useState<BillingInvoice | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -147,6 +151,7 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
       const data = await response.json() as BillingOverviewResponse;
       setOverview(data);
       setClosureDay(String(data.settings?.closureDay || 1));
+      setBillingModuleEnabled(data.settings?.moduleEnabled !== false);
     } catch (err: any) {
       setError(err.message || 'No se pudo cargar la facturación administrativa');
     } finally {
@@ -205,6 +210,42 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
       toast.error(err.message || 'No se pudo actualizar la configuración');
     } finally {
       setSavingConfig(false);
+    }
+  };
+
+  const handleToggleModule = async (enabled: boolean) => {
+    if (!accessToken) return;
+
+    setBillingModuleEnabled(enabled);
+    setSavingModuleToggle(true);
+    try {
+      const numericClosureDay = Number(closureDay);
+      const validClosureDay = Number.isInteger(numericClosureDay) && numericClosureDay >= 1 && numericClosureDay <= 28
+        ? numericClosureDay
+        : overview?.settings?.closureDay || 1;
+
+      const response = await fetch(`${API_BASE}/billing/admin/config`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ closureDay: validClosureDay, moduleEnabled: enabled }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || `Error ${response.status}`);
+      }
+
+      toast.success(enabled ? 'Módulo de facturación habilitado' : 'Módulo de facturación deshabilitado');
+      await fetchOverview(selectedMonth === 'all' ? undefined : selectedMonth);
+    } catch (err: any) {
+      setBillingModuleEnabled(!enabled);
+      toast.error(err.message || 'No se pudo actualizar el módulo de facturación');
+    } finally {
+      setSavingModuleToggle(false);
     }
   };
 
@@ -367,6 +408,36 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
             Guardar fecha de corte
           </Button>
         </CardContent>
+      </Card>
+
+      <Card className={billingModuleEnabled ? '' : 'border-amber-300 bg-amber-50/40'}>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-[#D4AF37]" />
+                Módulo de facturación
+              </CardTitle>
+              <CardDescription className="mt-1">
+                {billingModuleEnabled
+                  ? 'El módulo de facturación está habilitado. Los proveedores verán la sección de facturación y se generarán facturas mensuales.'
+                  : 'El módulo de facturación está deshabilitado. No se generarán facturas ni notificaciones de facturación para los proveedores.'}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              {savingModuleToggle && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
+              <Label htmlFor="billingModuleSwitch" className="text-sm font-medium cursor-pointer select-none">
+                {billingModuleEnabled ? 'Habilitado' : 'Deshabilitado'}
+              </Label>
+              <Switch
+                id="billingModuleSwitch"
+                checked={billingModuleEnabled}
+                onCheckedChange={handleToggleModule}
+                disabled={savingModuleToggle || loading}
+              />
+            </div>
+          </div>
+        </CardHeader>
       </Card>
 
       <Card>

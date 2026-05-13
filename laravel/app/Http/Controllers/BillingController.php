@@ -171,10 +171,14 @@ class BillingController extends Controller
 
         $validated = $request->validate([
             'closureDay' => ['required', 'integer', 'min:1', 'max:28'],
+            'moduleEnabled' => ['sometimes', 'boolean'],
         ]);
 
         $settings = $this->billingCycles->getSettings();
         $settings->closure_day = (int) $validated['closureDay'];
+        if (array_key_exists('moduleEnabled', $validated)) {
+            $settings->module_enabled = (bool) $validated['moduleEnabled'];
+        }
         $settings->save();
 
         return response()->json([
@@ -254,6 +258,7 @@ class BillingController extends Controller
             'paymentGraceDays' => (int) $settings->payment_grace_days,
             'nextClosureDate' => $this->billingCycles->resolveNextClosureDate()->toISOString(),
             'lastClosedMonth' => $settings->last_closed_month,
+            'moduleEnabled' => (bool) ($settings->module_enabled ?? true),
         ];
     }
 }
