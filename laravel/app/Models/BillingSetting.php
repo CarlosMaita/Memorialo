@@ -14,6 +14,7 @@ class BillingSetting extends Model
         'payment_grace_days',
         'commission_rate',
         'last_closed_month',
+        'module_enabled',
     ];
 
     protected function casts(): array
@@ -22,6 +23,7 @@ class BillingSetting extends Model
             'closure_day' => 'integer',
             'payment_grace_days' => 'integer',
             'commission_rate' => 'decimal:4',
+            'module_enabled' => 'boolean',
         ];
     }
 }
