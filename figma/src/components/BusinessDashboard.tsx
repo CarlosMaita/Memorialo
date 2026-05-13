@@ -43,6 +43,12 @@ import { toast } from 'sonner@2.0.3';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { ConfirmDialog } from './ConfirmDialog';
 import { downloadContractPdf } from '../utils/contractPdf';
+import { backendMode, laravelApiBaseUrl } from '../utils/supabase/client';
+import { projectId } from '../utils/supabase/info';
+
+const API_BASE = backendMode === 'laravel'
+  ? laravelApiBaseUrl
+  : `https://${projectId}.supabase.co/functions/v1/make-server-5d78aefb`;
 
 interface BusinessDashboardProps {
   user: User;
@@ -137,6 +143,7 @@ export function BusinessDashboard({
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
   const [isCreatingProvider, setIsCreatingProvider] = useState(false);
   const [isUpdatingProvider, setIsUpdatingProvider] = useState(false);
+  const [billingModuleEnabled, setBillingModuleEnabled] = useState(true);
   
   // Search states
   const [searchService, setSearchService] = useState('');
@@ -409,6 +416,27 @@ export function BusinessDashboard({
       setVisibleBookingsCount((prev) => Math.max(prev, bookingIndex + 1));
     }
   }, [focusBookingId, filteredBookings]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_BASE}/billing/config`, { headers: { Accept: 'application/json' } })
+      .then((res) => res.ok ? res.json() : Promise.reject())
+      .then((data) => {
+        if (!cancelled) {
+          setBillingModuleEnabled(data?.moduleEnabled !== false);
+        }
+      })
+      .catch(() => {
+        // If the request fails, default to enabled
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!billingModuleEnabled && activeSection === 'billing') {
+      setActiveSection('dashboard');
+    }
+  }, [billingModuleEnabled, activeSection]);
 
   const handleEditService = (service: Artist) => {
     setEditingService(service);
@@ -926,7 +954,7 @@ export function BusinessDashboard({
 
       {/* Nav items */}
       <nav className="flex-1 py-4 px-3 space-y-1">
-        {navItems.map((item) => {
+        {navItems.filter((item) => item.id !== 'billing' || billingModuleEnabled).map((item) => {
           const isActive = activeSection === item.id;
           const badge =
             item.id === 'bookings' && pendingBookings > 0
@@ -968,13 +996,15 @@ export function BusinessDashboard({
             {services.filter(s => !s.isArchived).length} servicio{services.filter(s => !s.isArchived).length !== 1 ? 's' : ''} activo{services.filter(s => !s.isArchived).length !== 1 ? 's' : ''}
           </p>
         </div>
-        <button
-          onClick={() => handleNavClick('billing')}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors font-medium"
-        >
-          <Receipt className="w-3.5 h-3.5 text-amber-500" />
-          Ver Facturación
-        </button>
+        {billingModuleEnabled && (
+          <button
+            onClick={() => handleNavClick('billing')}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors font-medium"
+          >
+            <Receipt className="w-3.5 h-3.5 text-amber-500" />
+            Ver Facturación
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1122,6 +1152,7 @@ export function BusinessDashboard({
                 </Card>
 
                 {/* Billing summary widget */}
+                {billingModuleEnabled && (
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
@@ -1178,6 +1209,7 @@ export function BusinessDashboard({
                     })()}
                   </CardContent>
                 </Card>
+                )}
               </div>
             </div>
           )}
@@ -1744,7 +1776,7 @@ export function BusinessDashboard({
           )}
 
           {/* ── FACTURACIÓN ────────────────────────────────────────────── */}
-          {activeSection === 'billing' && (
+          {activeSection === 'billing' && billingModuleEnabled && (
             <BillingSection
               provider={provider}
               services={services}

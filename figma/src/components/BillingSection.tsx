@@ -31,6 +31,7 @@ interface BillingSettings {
   paymentGraceDays: number;
   nextClosureDate?: string;
   lastClosedMonth?: string | null;
+  moduleEnabled?: boolean;
 }
 
 interface BillingInvoice {
