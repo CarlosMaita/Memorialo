@@ -426,7 +426,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     };
   };
 
-  const handleRequestBooking = () => {
+  const handleCreateBookingRequest = () => {
     if (!validatePlanStep() || !validateContactStep() || !validateEventStep()) {
       return;
     }
@@ -956,7 +956,7 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
                 <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
-              <Button type="button" className="flex-1" onClick={handleRequestBooking}>
+              <Button type="button" className="flex-1" onClick={handleCreateBookingRequest}>
                 <FileText className="w-4 h-4 mr-2" />
                 Solicitar reserva
               </Button>
