@@ -658,8 +658,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="h-[100dvh] w-screen max-h-[100dvh] max-w-none overflow-hidden rounded-none border-none bg-slate-50 p-0 shadow-2xl sm:h-auto sm:w-[95vw] sm:max-h-[95vh] sm:max-w-5xl sm:rounded-[28px] [&_[data-slot='dialog-close']]:rounded-full [&_[data-slot='dialog-close']]:bg-white [&_[data-slot='dialog-close']]:p-2 [&_[data-slot='dialog-close']]:text-slate-700 [&_[data-slot='dialog-close']]:opacity-100 [&_[data-slot='dialog-close']]:shadow-md">
-        <DialogHeader className="border-b border-slate-200 bg-white px-5 pb-4 pt-14 sm:px-6 sm:py-4">
+      <DialogContent className="!flex !flex-col h-[100dvh] w-screen max-h-[100dvh] max-w-none overflow-hidden rounded-none border-none bg-slate-50 p-0 shadow-2xl sm:h-[95vh] sm:w-[95vw] sm:max-h-[95vh] sm:max-w-5xl sm:rounded-[28px] [&_[data-slot='dialog-close']]:rounded-full [&_[data-slot='dialog-close']]:bg-white [&_[data-slot='dialog-close']]:p-2 [&_[data-slot='dialog-close']]:text-slate-700 [&_[data-slot='dialog-close']]:opacity-100 [&_[data-slot='dialog-close']]:shadow-md">
+        <DialogHeader className="flex-shrink-0 border-b border-slate-200 bg-white px-5 pb-4 pt-14 sm:px-6 sm:py-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1 text-left">
               <DialogTitle className="text-2xl font-semibold text-slate-900">
@@ -682,8 +682,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
           <Progress value={((currentStep + 1) / steps.length) * 100} className="mt-4 h-2" />
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex max-h-[calc(92vh-88px)] flex-col">
-          <div className="overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+        <form onSubmit={handleSubmit} className="flex flex-1 min-h-0 flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
             <div className="grid gap-2 sm:grid-cols-4">
               {steps.map((step, index) => {
                 const StepIcon = step.icon;
@@ -1516,7 +1516,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
             </div>
           </div>
 
-          <div className="border-t border-slate-200 bg-white px-4 py-4 sm:px-6">
+          <div className="flex-shrink-0 border-t border-slate-200 bg-white px-4 py-4 sm:px-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-slate-500">
                 {currentStep === 0 && 'Completa lo esencial de tu servicio para seguir.'}
