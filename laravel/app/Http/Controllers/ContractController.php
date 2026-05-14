@@ -165,7 +165,7 @@ class ContractController extends Controller
                     'body' => 'El proveedor '.$freshContract->artist_name.' aprobo tu contrato y el servicio ya esta activo.',
                     'mailSubject' => 'Tu contrato fue aprobado',
                     'mailBody' => "Tu contrato para {$freshContract->artist_name} ya fue aprobado y se encuentra activo.\n\nContrato: {$freshContract->id}\n",
-                    'ctaUrl' => '/',
+                    'ctaUrl' => '/me/reservas',
                     'entity' => ['type' => 'contract', 'id' => (string) $freshContract->id],
                     'dedupeKey' => NotificationTypes::CONTRACT_APPROVED.':'.$freshContract->id,
                 ]);

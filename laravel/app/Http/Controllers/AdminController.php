@@ -289,7 +289,7 @@ class AdminController extends Controller
             'body' => 'Un administrador aprobó tu solicitud. Ahora debes crear tu cuenta de proveedor para ingresar a Mi Negocio y publicar tus servicios.',
             'mailSubject' => 'Cuenta de proveedor aprobada en Memorialo',
             'mailBody' => "Hola {$freshUser->name},\n\nTe confirmamos que tu solicitud fue aprobada y tu cuenta ya tiene acceso como proveedor en Memorialo.\n\nAntes de gestionar tu panel, debes crear tu cuenta de proveedor completando tu perfil en Mi Negocio.\n",
-            'ctaUrl' => '/',
+            'ctaUrl' => '/mi-negocio',
             'entity' => ['type' => 'user', 'id' => (string) $freshUser->id],
             'dedupeKey' => NotificationTypes::PROVIDER_ROLE_ACTIVATED.':approved:'.$freshUser->id,
         ]);

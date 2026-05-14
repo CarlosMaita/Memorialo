@@ -91,7 +91,7 @@ class NotificationDispatchService
         try {
             $subject = (string) ($payload['mailSubject'] ?? $payload['title'] ?? 'Nueva notificacion');
             $bodyText = (string) ($payload['mailBody'] ?? $payload['body'] ?? 'Tienes una nueva notificacion en Memorialo.');
-            $frontendUrl = rtrim((string) config('frontend.url', config('app.url', 'http://127.0.0.1:8000')), '/');
+            $frontendUrl = rtrim((string) config('app.frontend_url', 'http://127.0.0.1:5173'), '/');
             $trimmedBody = ltrim($bodyText);
             $bodyHasGreeting = (bool) preg_match('/^hola\b/i', $trimmedBody);
 
@@ -99,7 +99,7 @@ class NotificationDispatchService
                 'appName' => (string) config('app.name', 'Memorialo'),
                 'title' => (string) ($payload['title'] ?? $subject),
                 'bodyText' => $bodyText,
-                'ctaUrl' => (string) ($payload['ctaUrl'] ?? $frontendUrl),
+                'ctaUrl' => $this->resolveMailCtaUrl($payload['ctaUrl'] ?? null, $frontendUrl),
                 'recipientName' => $bodyHasGreeting ? '' : (string) ($recipient->name ?? ''),
             ], function ($message) use ($recipient, $subject): void {
                 $message
@@ -168,5 +168,24 @@ class NotificationDispatchService
             'provider' => (string) config('mail.default', 'smtp'),
             'error_message' => $reason,
         ]);
+    }
+
+    private function resolveMailCtaUrl(mixed $ctaUrl, string $frontendUrl): string
+    {
+        $value = trim((string) $ctaUrl);
+
+        if ($value === '' || $value === '/') {
+            return $frontendUrl;
+        }
+
+        if (Str::startsWith($value, ['http://', 'https://'])) {
+            return $value;
+        }
+
+        if (Str::startsWith($value, '/')) {
+            return $frontendUrl.$value;
+        }
+
+        return $frontendUrl.'/'.$value;
     }
 }

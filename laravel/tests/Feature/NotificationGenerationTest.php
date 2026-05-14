@@ -6,7 +6,9 @@ use App\Models\Contract;
 use App\Models\Provider;
 use App\Models\Service;
 use App\Models\User;
+use App\Services\NotificationDispatchService;
 use App\Support\NotificationTypes;
+use Closure;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
@@ -76,6 +78,12 @@ class NotificationGenerationTest extends TestCase
             'channel' => 'mail',
             'status' => 'sent',
         ]);
+
+        $providerNotification = $providerUser->notifications()
+            ->where('type', NotificationTypes::SERVICE_REQUEST_CREATED)
+            ->first();
+
+        $this->assertSame('/mi-negocio/negociaciones', $providerNotification?->data['ctaUrl'] ?? null);
     }
 
     public function test_contract_active_and_completed_generate_client_notifications(): void
@@ -112,6 +120,12 @@ class NotificationGenerationTest extends TestCase
             'channel' => 'database',
             'status' => 'sent',
         ]);
+
+        $clientContractApprovedNotification = $client->notifications()
+            ->where('type', NotificationTypes::CONTRACT_APPROVED)
+            ->first();
+
+        $this->assertSame('/me/reservas', $clientContractApprovedNotification?->data['ctaUrl'] ?? null);
 
         $this->putJson('/api/contracts/'.$contract->id, [
             'status' => 'completed',
@@ -168,5 +182,29 @@ class NotificationGenerationTest extends TestCase
             'channel' => 'database',
             'status' => 'sent',
         ]);
+    }
+
+    public function test_mail_without_cta_uses_frontend_url(): void
+    {
+        Mail::spy();
+        config(['app.frontend_url' => 'https://frontend.test']);
+
+        $user = User::factory()->create([
+            'name' => 'Usuario Front',
+            'email' => 'front@example.com',
+        ]);
+
+        app(NotificationDispatchService::class)->dispatchToUser($user, NotificationTypes::WELCOME, [
+            'channels' => ['mail'],
+            'title' => 'Bienvenido a Memorialo',
+            'body' => 'Tu cuenta fue creada correctamente.',
+            'dedupeKey' => NotificationTypes::WELCOME.':mail-front:'.$user->id,
+        ]);
+
+        Mail::shouldHaveReceived('send')->once()->with(
+            'emails.notification',
+            \Mockery::on(fn (array $data): bool => ($data['ctaUrl'] ?? null) === 'https://frontend.test'),
+            \Mockery::type(Closure::class)
+        );
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\NotificationTypes;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -59,6 +60,12 @@ class ProviderAccessWorkflowTest extends TestCase
             'role' => 'provider',
             'provider_request_status' => 'approved',
         ]);
+
+        $providerApprovedNotification = $user->fresh()->notifications()
+            ->where('type', NotificationTypes::PROVIDER_ROLE_ACTIVATED)
+            ->first();
+
+        $this->assertSame('/mi-negocio', $providerApprovedNotification?->data['ctaUrl'] ?? null);
 
         $this->postJson('/api/admin/users/'.$user->id.'/provider-access/revoke')
             ->assertOk()

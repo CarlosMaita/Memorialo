@@ -79,7 +79,7 @@ class BookingController extends Controller
                 'body' => $clientName.' solicito '.$serviceName.' para el '.$booking->date.'.',
                 'mailSubject' => 'Nueva solicitud de servicio',
                 'mailBody' => "Has recibido una nueva solicitud de servicio.\n\nCliente: {$clientName}\nServicio: {$serviceName}\nFecha: {$booking->date}\nUbicacion: ".($booking->location ?? 'No definida')."\n",
-                'ctaUrl' => '/',
+                'ctaUrl' => '/mi-negocio/negociaciones',
                 'entity' => ['type' => 'booking', 'id' => (string) $booking->id],
                 'dedupeKey' => NotificationTypes::SERVICE_REQUEST_CREATED.':'.$booking->id,
             ]);
