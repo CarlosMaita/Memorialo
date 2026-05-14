@@ -684,43 +684,6 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
 
         <form onSubmit={handleSubmit} className="flex flex-1 min-h-0 flex-col overflow-hidden">
           <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-            <div className="grid gap-2 sm:grid-cols-4">
-              {steps.map((step, index) => {
-                const StepIcon = step.icon;
-                const isActive = index === currentStep;
-                const isComplete =
-                  index < currentStep ||
-                  (index === 0 && isBasicStepComplete) ||
-                  (index === 1 && hasMediaOrDetails) ||
-                  (index === 2 && isPricingStepComplete);
-
-                return (
-                  <button
-                    key={step.title}
-                    type="button"
-                    onClick={() => handleStepChange(index)}
-                    className={`rounded-2xl border px-3 py-3 text-left transition-all ${
-                      isActive
-                        ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
-                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                        isActive ? 'bg-white/15 text-white' : isComplete ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        <StepIcon className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{step.title}</p>
-                        <p className={`text-xs ${isActive ? 'text-slate-200' : 'text-slate-500'}`}>{step.description}</p>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
             <div className="mb-4 mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-sm font-semibold text-slate-900">{steps[currentStep].title}</p>
               <p className="mt-1 text-sm text-slate-600">{steps[currentStep].description}</p>
