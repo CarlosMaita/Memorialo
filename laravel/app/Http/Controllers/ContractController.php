@@ -149,6 +149,7 @@ class ContractController extends Controller
         ]);
 
         $previousStatus = $contract->status;
+        $hadClientSignature = ! empty($contract->client_signature);
         $payload = $this->normalizePayload($validated);
 
         $contract->update($payload);
@@ -168,6 +169,26 @@ class ContractController extends Controller
                     'ctaUrl' => '/me/reservas',
                     'entity' => ['type' => 'contract', 'id' => (string) $freshContract->id],
                     'dedupeKey' => NotificationTypes::CONTRACT_APPROVED.':'.$freshContract->id,
+                ]);
+            }
+        }
+
+        $clientJustSigned = ! $hadClientSignature
+            && ! empty($freshContract->client_signature)
+            && $previousStatus === 'pending_client'
+            && in_array($freshContract->status, ['active', 'pending_artist'], true);
+
+        if ($clientJustSigned) {
+            $artistUser = $this->resolveUserById($freshContract->artist_user_id);
+
+            if ($artistUser) {
+                $this->notifications->dispatchToUser($artistUser, NotificationTypes::CONTRACT_CLIENT_SIGNED, [
+                    'channels' => ['database'],
+                    'title' => 'El cliente ha firmado el contrato',
+                    'body' => "El cliente {$freshContract->client_name} ha firmado el contrato {$freshContract->id}.",
+                    'entity' => ['type' => 'contract', 'id' => (string) $freshContract->id],
+                    'ctaUrl' => '/mi-negocio/negociaciones',
+                    'dedupeKey' => NotificationTypes::CONTRACT_CLIENT_SIGNED.':'.$freshContract->id,
                 ]);
             }
         }

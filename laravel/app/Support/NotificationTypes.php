@@ -10,6 +10,8 @@ class NotificationTypes
 
     public const CONTRACT_APPROVED = 'contract_approved';
 
+    public const CONTRACT_CLIENT_SIGNED = 'contract_client_signed';
+
     public const REVIEW_REQUESTED = 'review_requested';
 
     public const REVIEW_RECEIVED = 'review_received';
@@ -34,6 +36,7 @@ class NotificationTypes
         self::WELCOME,
         self::SERVICE_REQUEST_CREATED,
         self::CONTRACT_APPROVED,
+        self::CONTRACT_CLIENT_SIGNED,
         self::REVIEW_REQUESTED,
         self::REVIEW_RECEIVED,
         self::PROVIDER_ROLE_ACTIVATED,
