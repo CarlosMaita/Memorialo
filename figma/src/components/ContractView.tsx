@@ -128,18 +128,17 @@ const getMeasureTitle = (contract: ContractRecord) => {
 
 
 export function ContractView({ contract, open, onClose, userType, onSign, onReject }: ContractViewProps) {
-  const initialExtracted = contract ? extractSpecialRequest(contract) : null;
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [signing, setSigning] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
-  const [editableTerms, setEditableTerms] = useState(() => ({
-    paymentTerms: contract?.terms.paymentTerms || '',
-    cancellationPolicy: contract?.terms.cancellationPolicy || '',
-    additionalTerms: initialExtracted?.additionalTermsWithoutSpecialRequest || [],
-  }));
-  const [specialRequestTerm, setSpecialRequestTerm] = useState(initialExtracted?.specialRequest || '');
+  const [editableTerms, setEditableTerms] = useState({
+    paymentTerms: '',
+    cancellationPolicy: '',
+    additionalTerms: [] as string[],
+  });
+  const [specialRequestTerm, setSpecialRequestTerm] = useState('');
 
   useEffect(() => {
     if (!open || !contract) {
@@ -157,7 +156,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
   }, [contract, open]);
 
   if (!contract) return null;
-  const canEditBeforeSend = userType === 'artist' && contract.status === 'en_negociacion' && !contract.artistSignature && !contract.clientSignature;
+  const canEditTerms = userType === 'artist' && contract.status === 'en_negociacion' && !contract.artistSignature && !contract.clientSignature;
 
   const handleDownloadPDF = () => {
     try {
@@ -195,7 +194,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     : providerRepresentativeName;
 
   const handleSign = () => {
-    if (canEditBeforeSend) {
+    if (canEditTerms) {
       if (!editableTerms.paymentTerms.trim()) {
         toast.error('Completa los términos de pago antes de enviar');
         return;
@@ -473,7 +472,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
             <CardContent className="space-y-4">
               <div>
                 <h4 className="text-sm mb-2">1. Términos de Pago</h4>
-                {canEditBeforeSend ? (
+                {canEditTerms ? (
                   <Textarea
                     value={editableTerms.paymentTerms}
                     onChange={(e) => setEditableTerms({ ...editableTerms, paymentTerms: e.target.value })}
@@ -490,7 +489,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
 
               <div>
                 <h4 className="text-sm mb-2">2. Política de Cancelación</h4>
-                {canEditBeforeSend ? (
+                {canEditTerms ? (
                   <Textarea
                     value={editableTerms.cancellationPolicy}
                     onChange={(e) => setEditableTerms({ ...editableTerms, cancellationPolicy: e.target.value })}
@@ -503,12 +502,12 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                 )}
               </div>
 
-              {(canEditBeforeSend || additionalTermsWithoutSpecialRequest.length > 0) && (
+              {(canEditTerms || additionalTermsWithoutSpecialRequest.length > 0) && (
                 <>
                   <Separator />
                   <div>
                     <h4 className="text-sm mb-2">3. Términos Adicionales</h4>
-                    {canEditBeforeSend ? (
+                    {canEditTerms ? (
                       <div className="space-y-2">
                         {editableTerms.additionalTerms.length === 0 && (
                           <p className="text-xs text-gray-500">No hay términos adicionales. Puedes agregar uno si lo necesitas.</p>
