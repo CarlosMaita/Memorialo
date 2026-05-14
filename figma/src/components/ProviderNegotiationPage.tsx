@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from './ui/alert';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { ConfirmDialog } from './ConfirmDialog';
+import { ContractView } from './ContractView';
 
 type ChatApi = {
   getChatConversations: () => Promise<ChatConversation[]>;
@@ -65,6 +66,7 @@ interface ProviderNegotiationPageProps {
   activeContractId: string | null;
   user: User;
   onNavigateToContract: (contractId: string) => void;
+  onContractUpdate: (contract: any) => void;
   onBack: () => void;
   chatApi: ChatApi;
 }
@@ -114,6 +116,7 @@ export function ProviderNegotiationPage({
   activeContractId,
   user,
   onNavigateToContract,
+  onContractUpdate,
   onBack,
   chatApi,
 }: ProviderNegotiationPageProps) {
@@ -126,6 +129,7 @@ export function ProviderNegotiationPage({
   const [counterpartOnline, setCounterpartOnline] = useState(false);
   const [showInterventionConfirm, setShowInterventionConfirm] = useState(false);
   const [showMobileClientDetails, setShowMobileClientDetails] = useState(false);
+  const [showSendContractDialog, setShowSendContractDialog] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [contractSearch, setContractSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -548,6 +552,7 @@ export function ProviderNegotiationPage({
   const contractPrice = activeContract?.terms?.price || activeBooking?.totalPrice || '';
   const contractDescription = activeContract?.terms?.serviceDescription || '';
   const contractIdDisplay = activeContract?.id || '';
+  const canSendContract = activeContract?.status === 'en_negociacion';
   const negotiationItemHeightPx = 84;
   const negotiationItemGapPx = 4;
   const negotiationListPaddingPx = 8;
@@ -801,6 +806,16 @@ export function ProviderNegotiationPage({
                     </p>
                   </div>
                 </div>
+                {canSendContract && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-7 rounded-lg px-2 text-[10px] lg:h-8 lg:px-3 lg:text-xs"
+                    onClick={() => setShowSendContractDialog(true)}
+                  >
+                    Enviar contrato
+                  </Button>
+                )}
                 {conversation && !conversation.requiresAdminIntervention && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -968,6 +983,22 @@ export function ProviderNegotiationPage({
           </div>
         </div>
       </div>
+      {activeContract && (
+        <ContractView
+          contract={activeContract}
+          open={showSendContractDialog}
+          onClose={() => setShowSendContractDialog(false)}
+          userType="artist"
+          onSign={(signedContract) => {
+            onContractUpdate(signedContract);
+            setShowSendContractDialog(false);
+          }}
+          onReject={(rejectedContract) => {
+            onContractUpdate(rejectedContract);
+            setShowSendContractDialog(false);
+          }}
+        />
+      )}
     </div>
   );
 }

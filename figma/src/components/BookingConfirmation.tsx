@@ -83,7 +83,7 @@ export function BookingConfirmation({
             <ul className="space-y-2 text-sm text-gray-700">
               <li className="flex items-start gap-2">
                 <span className="text-[#D4AF37] font-bold">1.</span>
-                <span>El proveedor revisará tu solicitud y el contrato firmado.</span>
+                <span>El proveedor revisará tu solicitud y enviará el contrato con los acuerdos.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-[#D4AF37] font-bold">2.</span>
