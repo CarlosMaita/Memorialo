@@ -891,17 +891,6 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="bio">Descripción del Servicio</Label>
-                <Textarea
-                  id="bio"
-                  value={formData.bio}
-                  onChange={(e) => setFormData({ ...formData, bio: e.target.value, description: e.target.value })}
-                  placeholder="Cuéntale al cliente qué haces, cómo trabajas y qué hace especial tu propuesta..."
-                  rows={4}
-                />
-              </div>
-
               {/* Publication Status */}
               <div className="flex items-center justify-between p-4 border rounded-lg" style={{ borderColor: formData.isPublished ? '#10b981' : '#f59e0b', backgroundColor: formData.isPublished ? '#f0fdf4' : '#fef3c7' }}>
                 <div className="flex-1">
@@ -931,6 +920,22 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
 
               {currentStep === 1 && (
                 <>
+                  {/* Description */}
+                  <Card className="rounded-2xl border-slate-200 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg">Descripción del Servicio</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                id="bio"
+                value={formData.bio}
+                onChange={(e) => setFormData({ ...formData, bio: e.target.value, description: e.target.value })}
+                placeholder="Cuéntale al cliente qué haces, cómo trabajas y qué hace especial tu propuesta..."
+                rows={4}
+              />
+            </CardContent>
+          </Card>
+
                   {/* Specialties */}
                   <Card className="rounded-2xl border-slate-200 shadow-sm">
             <CardHeader>
