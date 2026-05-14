@@ -2714,6 +2714,9 @@ export default function App() {
 
   const handleContractUpdate = async (updatedContract: Contract) => {
     try {
+      const previousContract = contracts.find(c => c.id === updatedContract.id);
+      const previousStatus = previousContract?.status;
+
       // Update contract in Supabase
       const updated = await supabase.updateContract(updatedContract.id, updatedContract);
 
@@ -2742,6 +2745,34 @@ export default function App() {
             status: newBookingStatus
           };
           await handleBookingUpdate(updatedBooking);
+        }
+      }
+
+      const contractArtistUserId = updated.artistUserId ? String(updated.artistUserId) : null;
+      const actorUserId = currentUser?.id ? String(currentUser.id) : null;
+      const isContractSentToClient =
+        updated.status === 'pending_client' &&
+        previousStatus !== 'pending_client' &&
+        // Only emit this chat message when the acting user is the provider owner of the contract.
+        (!contractArtistUserId || contractArtistUserId === actorUserId);
+
+      if (isContractSentToClient) {
+        const bookingIdForChat = updated.bookingId || associatedBooking?.id;
+        if (bookingIdForChat) {
+          try {
+            const rawContractId = String(updated.id || '').trim();
+            if (!rawContractId) {
+              throw new Error('Missing contract id for chat token');
+            }
+            const encodedContractId = encodeURIComponent(rawContractId);
+            const conversation = await supabase.ensureChatConversation({ bookingId: String(bookingIdForChat) });
+            await supabase.sendChatMessage(
+              conversation.id,
+              `Se ha enviado el contrato [CONTRACT:${encodedContractId}] al cliente.`,
+            );
+          } catch (chatError) {
+            console.error('Error sending contract chat message:', chatError);
+          }
         }
       }
 

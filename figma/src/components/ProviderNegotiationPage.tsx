@@ -110,6 +110,8 @@ function messageHasAttachments(message?: Pick<ChatMessage, 'attachments' | 'hasA
   return !!message.hasAttachments;
 }
 
+const CONTRACT_CHAT_LINK_TOKEN_REGEX = /\[CONTRACT:([^[\]]+)\]/i;
+
 export function ProviderNegotiationPage({
   contracts,
   bookings,
@@ -527,6 +529,42 @@ export function ProviderNegotiationPage({
     );
   };
 
+  const renderMessageBody = (body: string, mine: boolean) => {
+    const baseClassName = 'whitespace-pre-wrap [overflow-wrap:anywhere]';
+    const tokenMatch = body.match(CONTRACT_CHAT_LINK_TOKEN_REGEX);
+
+    if (!tokenMatch) {
+      return <p className={baseClassName}>{body}</p>;
+    }
+
+    const token = tokenMatch[0];
+    const encodedContractId = String(tokenMatch[1] || '').trim();
+    let contractId = encodedContractId;
+    try {
+      contractId = decodeURIComponent(encodedContractId);
+    } catch {
+      contractId = encodedContractId;
+    }
+    const [before = '', after = ''] = body.split(token, 2);
+
+    if (!contractId) {
+      return <p className={baseClassName}>{body}</p>;
+    }
+
+    const contractUrl = `/mi-negocio/negociacion/${encodeURIComponent(contractId)}`;
+    const linkClassName = mine ? 'font-semibold underline text-[#D4AF37]' : 'font-semibold underline text-[#1B2A47]';
+
+    return (
+      <p className={baseClassName}>
+        {before}
+        <a href={contractUrl} className={linkClassName}>
+          {`Contrato ${contractId}`}
+        </a>
+        {after}
+      </p>
+    );
+  };
+
   const hasHistory = Boolean(
     conversation?.lastMessageAt ||
     conversation?.lastMessage?.body ||
@@ -891,7 +929,7 @@ export function ProviderNegotiationPage({
                       <div key={message.id} className={`flex min-w-0 ${mine ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[88%] overflow-hidden rounded-xl px-2.5 py-1.5 text-[12px] lg:max-w-[78%] lg:rounded-2xl lg:px-4 lg:py-3 lg:text-[15px] ${mine ? 'bg-[#1B2A47] text-white' : 'bg-gray-100 text-gray-800'}`}>
                           {!mine && <p className="mb-0.5 truncate text-[9px] font-semibold lg:mb-1 lg:text-xs">{message.authorName || 'Usuario'}</p>}
-                          {message.body && <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.body}</p>}
+                          {message.body && renderMessageBody(message.body, mine)}
                           {renderAttachments(message.attachments, mine)}
                           <p className={`mt-0.5 text-[8px] lg:mt-1.5 lg:text-[11px] ${mine ? 'text-white/70' : 'text-gray-500'}`}>
                             {message.createdAt ? new Date(message.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : ''}
