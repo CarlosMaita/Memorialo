@@ -19,7 +19,7 @@ interface ContractSignature {
 interface ContractRecord {
   id: string;
   createdAt: string;
-  status: 'active' | 'completed' | 'pending_client' | 'pending_artist' | 'draft' | 'cancelled';
+  status: 'active' | 'completed' | 'pending_client' | 'pending_artist' | 'en_negociacion' | 'draft' | 'cancelled';
   artistName: string;
   clientName: string;
   artistWhatsapp?: string;
@@ -245,6 +245,8 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
         return <Badge variant="outline" className="border-orange-500 text-orange-700">Pendiente de firma del cliente</Badge>;
       case 'pending_artist':
         return <Badge variant="outline" className="border-orange-500 text-orange-700">Pendiente de firma del proveedor</Badge>;
+      case 'en_negociacion':
+        return <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-700">En negociación</Badge>;
       case 'draft':
         return <Badge variant="secondary">Borrador</Badge>;
       case 'cancelled':

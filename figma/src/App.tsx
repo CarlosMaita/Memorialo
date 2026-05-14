@@ -1146,6 +1146,10 @@ export default function App() {
   };
 
   const handleBookingConfirmed = (payload: { booking: Booking; contract: Contract; artist: Artist; planName?: string }) => {
+    if (payload.booking.id) {
+      void supabase.ensureChatConversation({ bookingId: payload.booking.id });
+    }
+
     const isUnitBooking = payload.booking.metadata?.saleType === 'unit';
     const unitLabel = String((payload.booking.metadata as any)?.unitLabel || 'unidad(es)');
     const durationLabel = isUnitBooking
@@ -4132,6 +4136,7 @@ export default function App() {
                     navigateTo(`/mi-negocio/negociacion/${contractId}`);
                   }
                 }}
+                onContractUpdate={handleContractUpdate}
                 onBack={() => navigateTo('/mi-negocio/reservas')}
                 chatApi={supabase as any}
               />

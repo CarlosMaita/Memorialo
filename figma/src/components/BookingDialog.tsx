@@ -8,9 +8,7 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
-import { ContractView } from './ContractView';
 import { toast } from 'sonner@2.0.3';
-import { projectId, publicAnonKey } from '../utils/supabase/info';
 
 interface BookingDialogProps {
   artist: Artist | null;
@@ -98,9 +96,6 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     planId: selectedPlan?.id ? String(selectedPlan.id) : ''
   });
 
-  const [showContract, setShowContract] = useState(false);
-  const [generatedContract, setGeneratedContract] = useState<Contract | null>(null);
-  const [generatedBooking, setGeneratedBooking] = useState<Booking | null>(null);
   const [currentStep, setCurrentStep] = useState<BookingStep>('plan');
   const [savingContactData, setSavingContactData] = useState(false);
   const [showSpecialRequests, setShowSpecialRequests] = useState(false);
@@ -159,9 +154,6 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
   useEffect(() => {
     if (!open) {
       setCurrentStep('plan');
-      setShowContract(false);
-      setGeneratedContract(null);
-      setGeneratedBooking(null);
       setShowSpecialRequests(false);
       return;
     }
@@ -430,11 +422,11 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
         providerLegalEntityType: ((artist as any).providerRepresentative?.type || (artist as any).representative?.type || (artist as any).providerLegalEntityType || (artist as any).legalEntityType || 'person') as 'person' | 'company',
         providerIdentificationNumber: String((artist as any).providerRepresentative?.documentNumber || (artist as any).representative?.documentNumber || (artist as any).providerIdentificationNumber || (artist as any).identificationNumber || ''),
       },
-      status: 'pending_client'
+      status: 'en_negociacion'
     };
   };
 
-  const handleReviewContract = () => {
+  const handleCreateBookingRequest = () => {
     if (!validatePlanStep() || !validateContactStep() || !validateEventStep()) {
       return;
     }
@@ -457,8 +449,6 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     
     // Generate contract
     const contract = generateContract();
-    setGeneratedContract(contract);
-    
     // Generate booking
     const booking: Booking = {
       id: contract.bookingId,
@@ -485,61 +475,24 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
       },
       contractId: contract.id
     };
-    setGeneratedBooking(booking);
-    
-    // Create booking immediately
+    // Create booking and contract immediately
     if (onBookingCreated) {
       onBookingCreated(booking);
     }
-    
-    setShowContract(true);
-  };
-
-  const handleContractSigned = async (signedContract: Contract) => {
-    setGeneratedContract(signedContract);
-
     if (onContractCreated) {
-      onContractCreated(signedContract);
+      onContractCreated(contract);
     }
-    
-    // Send notification to provider when client signs
-    if (signedContract.clientSignature && signedContract.artistEmail) {
-      try {
-        await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-5d78aefb/notifications/contract-signed`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`
-          },
-          body: JSON.stringify({
-            recipientEmail: signedContract.artistEmail,
-            recipientName: signedContract.artistName,
-            signerName: signedContract.clientName,
-            serviceName: artist.name,
-            eventDate: new Date(signedContract.terms.date).toLocaleDateString('es-ES'),
-            contractId: signedContract.id,
-            bothPartiesSigned: false
-          })
-        });
-      } catch (error) {
-        console.error('Error sending notification:', error);
-      }
-    }
-    
-    // Booking stays in 'pending' status when client signs
-    // It will be confirmed only when provider signs the contract
-    toast.success('¡Reserva realizada! Redirigiendo a la confirmación.');
+    toast.success('¡Solicitud de reserva enviada! Revisa la mesa de negociación para continuar.');
 
-    if (generatedBooking && onBookingConfirmed) {
+    if (onBookingConfirmed) {
       onBookingConfirmed({
-        booking: generatedBooking,
-        contract: signedContract,
+        booking,
+        contract,
         artist,
         planName: selectedServicePlan?.name,
       });
     }
 
-    setShowContract(false);
     onClose();
   };
 
@@ -1003,23 +956,14 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
                 <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
-              <Button type="button" className="flex-1" onClick={handleReviewContract}>
+              <Button type="button" className="flex-1" onClick={handleCreateBookingRequest}>
                 <FileText className="w-4 h-4 mr-2" />
-                Revisar contrato y firmar
+                Solicitar reserva
               </Button>
             )}
           </div>
         </form>
       </DialogContent>
-
-      {/* Contract Review Dialog */}
-      <ContractView
-        contract={generatedContract}
-        open={showContract}
-        onClose={() => setShowContract(false)}
-        userType="client"
-        onSign={handleContractSigned}
-      />
     </Dialog>
   );
 }

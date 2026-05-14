@@ -314,7 +314,7 @@ export function BusinessDashboard({
   );
 
   const pendingContracts = providerContracts.filter(c => 
-    c.status === 'pending_artist' || c.status === 'pending_client'
+    c.status === 'pending_artist' || c.status === 'pending_client' || c.status === 'en_negociacion'
   );
 
   // Calculate stats
@@ -718,11 +718,17 @@ export function BusinessDashboard({
     return contract?.status === 'pending_artist';
   };
 
+  const getBookingContract = (booking: Booking) => {
+    if (!booking.contractId) return null;
+    return providerContracts.find(c => c.id === booking.contractId) || null;
+  };
+
   const getStatusBadge = (status: string) => {
     const statusColors: { [key: string]: string } = {
       'pending': 'bg-yellow-100 text-yellow-800',
       'confirmed': 'bg-blue-100 text-blue-800',
       'active': 'bg-green-600',
+      'en_negociacion': 'bg-blue-50 text-blue-700 border-blue-300',
       'pending_client': 'border-orange-500 text-orange-700',
       'pending_artist': 'border-orange-500 text-orange-700',
       'cancelled': 'bg-red-100 text-red-800',
@@ -736,6 +742,7 @@ export function BusinessDashboard({
       'pending': 'Pendiente',
       'confirmed': 'Confirmada',
       'active': 'Firmado',
+      'en_negociacion': 'En negociación',
       'pending_client': 'Pendiente del cliente',
       'pending_artist': 'Pendiente de tu firma',
       'cancelled': 'Cancelado',
@@ -747,6 +754,7 @@ export function BusinessDashboard({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending': return <Clock className="w-4 h-4" />;
+      case 'en_negociacion': return <Clock className="w-4 h-4" />;
       case 'confirmed': return <CheckCircle2 className="w-4 h-4" />;
       case 'completed': return <CheckCircle2 className="w-4 h-4" />;
       case 'cancelled': return <XCircle className="w-4 h-4" />;
@@ -1742,6 +1750,14 @@ export function BusinessDashboard({
                                 <div><p className="text-gray-400">Contrato</p><p className="truncate">{contractCode || 'Sin contrato'}</p></div>
                               </div>
                               <div className="flex flex-wrap gap-2">
+                                {booking.contractId && getBookingContract(booking)?.status === 'en_negociacion' && (
+                                  <Button size="sm" onClick={() => {
+                                    const contract = getBookingContract(booking);
+                                    if (contract) handleViewContract(contract);
+                                  }} className="flex-1">
+                                    <FileText className="w-4 h-4 mr-1" />Enviar contrato
+                                  </Button>
+                                )}
                                 {displayStatus === 'pending' && (
                                   <Button size="sm" variant="outline" onClick={() => handleEditBooking(booking)} className="flex-1">
                                     <Calendar className="w-4 h-4 mr-1" />Editar Fecha/Hora

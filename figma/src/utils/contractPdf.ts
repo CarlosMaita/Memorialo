@@ -8,7 +8,7 @@ export interface ContractPdfSignature {
 export interface ContractPdfData {
   id: string;
   createdAt: string;
-  status: 'active' | 'completed' | 'pending_client' | 'pending_artist' | 'draft' | 'cancelled';
+  status: 'active' | 'completed' | 'pending_client' | 'pending_artist' | 'en_negociacion' | 'draft' | 'cancelled';
   artistName: string;
   artistEmail?: string;
   clientName: string;

@@ -225,6 +225,8 @@ export function ClientDashboard({
 
   const getStatusBadge = (status: Contract['status']) => {
     switch (status) {
+      case 'en_negociacion':
+        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">En negociación</Badge>;
       case 'pending_client':
         return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">Pendiente tu firma</Badge>;
       case 'pending_artist':
@@ -732,6 +734,14 @@ export function ClientDashboard({
               </div>
             </div>
           )}
+          {contract.status === 'en_negociacion' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+              <div className="flex items-start gap-2">
+                <Clock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                <p className="text-blue-800">Tu solicitud fue enviada. Usa la mesa de negociación para acordar detalles.</p>
+              </div>
+            </div>
+          )}
           {contract.status === 'pending_artist' && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
               <div className="flex items-start gap-2">
@@ -761,6 +771,7 @@ export function ClientDashboard({
 
     const getStatusIcon = (status: Contract['status']) => {
       switch (status) {
+        case 'en_negociacion': return <Clock className="w-4 h-4 text-blue-600" />;
         case 'active':    return <CheckCircle className="w-4 h-4 text-green-600" />;
         case 'pending_client': return <AlertCircle className="w-4 h-4 text-yellow-600" />;
         case 'pending_artist': return <Clock className="w-4 h-4 text-blue-600" />;
