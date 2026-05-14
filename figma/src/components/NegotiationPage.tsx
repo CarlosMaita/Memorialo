@@ -894,20 +894,22 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
           </div>
 
       </div>
-      <ContractView
-        contract={contract}
-        open={showContractDialog}
-        onClose={() => setShowContractDialog(false)}
-        userType="client"
-        onSign={(signedContract) => {
-          onContractUpdate(signedContract);
-          setShowContractDialog(false);
-        }}
-        onReject={(rejectedContract) => {
-          onContractUpdate(rejectedContract);
-          setShowContractDialog(false);
-        }}
-      />
+      {contract && (
+        <ContractView
+          contract={contract}
+          open={showContractDialog}
+          onClose={() => setShowContractDialog(false)}
+          userType="client"
+          onSign={(signedContract) => {
+            onContractUpdate(signedContract);
+            setShowContractDialog(false);
+          }}
+          onReject={(rejectedContract) => {
+            onContractUpdate(rejectedContract);
+            setShowContractDialog(false);
+          }}
+        />
+      )}
     </div>
   );
 }
