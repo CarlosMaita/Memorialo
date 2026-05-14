@@ -1193,14 +1193,15 @@ export default function App() {
   };
 
   const handleContactConfirmedProvider = () => {
-    if (!bookingConfirmationData?.bookingId) {
-      toast.error('No encontramos la reserva para abrir el chat');
+    const contractId = bookingConfirmationData?.contractId || bookingConfirmationData?.contract?.id;
+    if (!contractId) {
+      toast.error('No encontramos la negociación para abrir la mesa');
       return;
     }
-
-    window.dispatchEvent(new CustomEvent('memorialo:open-chat', {
-      detail: { bookingId: bookingConfirmationData.bookingId },
-    }));
+    setViewMode('business');
+    setDashboardView('client');
+    setNegotiationContractId(contractId);
+    navigateTo(`/me/negociacion/${contractId}`);
   };
 
   useEffect(() => {
@@ -3539,22 +3540,7 @@ export default function App() {
         <BookingConfirmation
           bookingDetails={confirmationDetails}
           onContactProvider={handleContactConfirmedProvider}
-          canContactProvider={Boolean(bookingConfirmationData?.bookingId)}
-        />
-
-        <ChatWidget
-          user={currentUser}
-          bookings={bookings}
-          api={{
-            getChatConversations: supabase.getChatConversations,
-            ensureChatConversation: supabase.ensureChatConversation,
-            getChatMessages: supabase.getChatMessages,
-            sendChatMessage: supabase.sendChatMessage,
-            markChatConversationRead: supabase.markChatConversationRead,
-            requestChatIntervention: supabase.requestChatIntervention,
-            subscribeChatStream: supabase.subscribeChatStream,
-            subscribeChatConversationSignals: supabase.subscribeChatConversationSignals,
-          }}
+          canContactProvider={Boolean(bookingConfirmationData?.contractId || bookingConfirmationData?.contract?.id)}
         />
       </>
     );
