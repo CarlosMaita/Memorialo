@@ -148,7 +148,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
       setSpecialties(['']);
       setAvailability([]);
       setMainImage('');
-      setPortfolioImages(['']);
+      setPortfolioImages([]);
       setCustomTerms({
         paymentTerms: DEFAULT_TERMS.paymentTerms,
         cancellationPolicy: DEFAULT_TERMS.cancellationPolicy,
@@ -304,10 +304,17 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     setPortfolioImages(updated);
   };
 
+  const isImageFile = (file: File) => file.type.startsWith('image/');
+
   // Handle main image file upload
   const handleMainImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!isImageFile(file)) {
+      toast.error('Solo puedes subir archivos de imagen');
+      e.target.value = '';
+      return;
+    }
 
     try {
       setUploadingMain(true);
@@ -346,12 +353,23 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
   const handlePortfolioMultiUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+    const imageFiles = files.filter(isImageFile);
+
+    if (imageFiles.length === 0) {
+      toast.error('Solo puedes subir archivos de imagen');
+      e.target.value = '';
+      return;
+    }
+
+    if (imageFiles.length !== files.length) {
+      toast.warning('Se omitieron archivos que no eran imágenes');
+    }
 
     const currentCount = portfolioImages.length;
     const availableSlots = 5 - currentCount;
-    const filesToUpload = files.slice(0, availableSlots);
+    const filesToUpload = imageFiles.slice(0, availableSlots);
 
-    if (files.length > availableSlots) {
+    if (imageFiles.length > availableSlots) {
       toast.warning(`Solo se pueden agregar ${availableSlots} imagen(es) más. Se subirán las primeras ${availableSlots}.`);
     }
 
@@ -552,7 +570,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
   const steps = [
     {
       title: 'Base del servicio',
-      description: 'Nombre, categoría y datos de contacto',
+      description: 'Nombre, categoría y descripción principal',
       icon: Check
     },
     {
@@ -576,9 +594,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     formData.name &&
     formData.category &&
     formData.subcategory &&
-    formData.location &&
-    formData.whatsappNumber &&
-    formData.email
+    formData.location
   );
   const hasMediaOrDetails = Boolean(
     specialties.some((specialty) => specialty.trim() !== '') ||
@@ -590,16 +606,22 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     !formData.allowCustomHourly ||
     (Boolean(formData.pricePerHour) && parseFloat(formData.pricePerHour) > 0)
   );
+  const isReviewStepComplete = Boolean(
+    formData.whatsappNumber &&
+    formData.email &&
+    customTerms.paymentTerms.trim() &&
+    customTerms.cancellationPolicy.trim()
+  );
   const setupProgress = [
     isBasicStepComplete,
     hasMediaOrDetails,
     isPricingStepComplete,
-    Boolean(customTerms.paymentTerms.trim() && customTerms.cancellationPolicy.trim())
+    isReviewStepComplete
   ].filter(Boolean).length;
 
   const validateStep = (stepIndex: number = currentStep) => {
     if (stepIndex === 0 && !isBasicStepComplete) {
-      toast.error('Completa nombre, ubicación, categoría, subcategoría y contacto para continuar');
+      toast.error('Completa nombre, ubicación, categoría y subcategoría para continuar');
       return false;
     }
 
@@ -710,9 +732,9 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="!flex !flex-col h-[100dvh] w-screen max-h-[100dvh] max-w-none overflow-hidden rounded-none border-none bg-slate-50 p-0 shadow-2xl sm:h-[95vh] sm:w-[95vw] sm:max-h-[95vh] sm:max-w-5xl sm:rounded-[28px] [&_[data-slot='dialog-close']]:rounded-full [&_[data-slot='dialog-close']]:bg-white [&_[data-slot='dialog-close']]:p-2 [&_[data-slot='dialog-close']]:text-slate-700 [&_[data-slot='dialog-close']]:opacity-100 [&_[data-slot='dialog-close']]:shadow-md">
+      <DialogContent className="!flex !flex-col w-[96vw] max-h-[80dvh] max-w-6xl overflow-hidden border-none bg-slate-50 p-0 shadow-2xl sm:rounded-[28px] [&_[data-slot='dialog-close']]:rounded-full [&_[data-slot='dialog-close']]:bg-white [&_[data-slot='dialog-close']]:p-2 [&_[data-slot='dialog-close']]:text-slate-700 [&_[data-slot='dialog-close']]:opacity-100 [&_[data-slot='dialog-close']]:shadow-md">
         <DialogHeader className="flex-shrink-0 border-b border-slate-200 bg-white px-5 pb-4 pt-14 sm:px-6 sm:py-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-4">
             <div className="space-y-1 text-left">
               <DialogTitle className="text-2xl font-semibold text-slate-900">
                 {existingService ? 'Editar Servicio' : 'Crear Nuevo Servicio'}
@@ -721,17 +743,35 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                 Completa tu servicio paso a paso con un flujo más claro, minimalista y fácil de terminar.
               </DialogDescription>
             </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left sm:min-w-[190px]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Paso {currentStep + 1} de {steps.length}
-              </p>
-              <p className="mt-1 text-sm font-medium text-slate-900">{steps[currentStep].title}</p>
-              <p className="text-xs text-slate-500">{setupProgress}/{steps.length} bloques listos</p>
-            </div>
           </div>
 
           <Progress value={((currentStep + 1) / steps.length) * 100} className="mt-4 h-2" />
+          <div className="mt-4 flex items-center justify-center gap-3 md:gap-4">
+            {steps.map((step, index) => {
+              const isActive = index === currentStep;
+              const isCompleted = index < currentStep;
+              return (
+                <button
+                  key={step.title}
+                  type="button"
+                  onClick={() => handleStepChange(index)}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
+                    isActive
+                      ? 'bg-[#D4AF37] text-[#1B2A47]'
+                      : isCompleted
+                        ? 'bg-[#1B2A47] text-white'
+                        : 'bg-gray-200 text-gray-600'
+                  }`}
+                  aria-label={`Ir al paso ${index + 1}: ${step.title}`}
+                >
+                  {index + 1}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-2 flex items-center justify-center text-xs text-slate-500">
+            Paso {currentStep + 1} de {steps.length} · {setupProgress}/{steps.length} bloques listos
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex flex-1 min-h-0 flex-col overflow-hidden">
@@ -782,36 +822,6 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                       </SelectContent>
                     </Select>
                   )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="whatsappNumber">WhatsApp Business *</Label>
-                  <Input
-                    id="whatsappNumber"
-                    required
-                    value={formData.whatsappNumber}
-                    onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
-                    placeholder="Ej: +58 412 1234567"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Los clientes te contactarán después de firmar el contrato
-                  </p>
-                </div>
-                <div>
-                  <Label htmlFor="email">Correo Electrónico *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="tu@email.com"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Para notificaciones de reservas y contratos
-                  </p>
                 </div>
               </div>
 
@@ -899,28 +909,6 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                   onChange={(e) => setFormData({ ...formData, bio: e.target.value, description: e.target.value })}
                   placeholder="Cuéntale al cliente qué haces, cómo trabajas y qué hace especial tu propuesta..."
                   rows={4}
-                />
-              </div>
-
-              {/* Publication Status */}
-              <div className="flex items-center justify-between p-4 border rounded-lg" style={{ borderColor: formData.isPublished ? '#10b981' : '#f59e0b', backgroundColor: formData.isPublished ? '#f0fdf4' : '#fef3c7' }}>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    {formData.isPublished ? <Eye className="w-5 h-5 text-green-600" /> : <EyeOff className="w-5 h-5 text-yellow-600" />}
-                    <Label htmlFor="isPublished" className="text-base cursor-pointer mb-0">
-                      {formData.isPublished ? 'Servicio Publicado' : 'Servicio Oculto'}
-                    </Label>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    {formData.isPublished 
-                      ? 'Tu servicio es visible para todos los clientes en la búsqueda pública' 
-                      : 'Tu servicio está oculto y solo tú puedes verlo. Ideal para editar sin mostrarlo aún'}
-                  </p>
-                </div>
-                <Switch
-                  id="isPublished"
-                  checked={formData.isPublished}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isPublished: checked })}
                 />
               </div>
             </CardContent>
@@ -1373,6 +1361,64 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
               {currentStep === 3 && (
                 <>
                   <Card className="rounded-2xl border-slate-200 shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Contacto y publicación</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="whatsappNumber">WhatsApp Business *</Label>
+                          <Input
+                            id="whatsappNumber"
+                            required
+                            value={formData.whatsappNumber}
+                            onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
+                            placeholder="Ej: +58 412 1234567"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Los clientes te contactarán después de firmar el contrato
+                          </p>
+                        </div>
+                        <div>
+                          <Label htmlFor="email">Correo Electrónico *</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            required
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            placeholder="tu@email.com"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Para notificaciones de reservas y contratos
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 border rounded-lg" style={{ borderColor: formData.isPublished ? '#10b981' : '#f59e0b', backgroundColor: formData.isPublished ? '#f0fdf4' : '#fef3c7' }}>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            {formData.isPublished ? <Eye className="w-5 h-5 text-green-600" /> : <EyeOff className="w-5 h-5 text-yellow-600" />}
+                            <Label htmlFor="isPublished" className="text-base cursor-pointer mb-0">
+                              {formData.isPublished ? 'Servicio Publicado' : 'Servicio Oculto'}
+                            </Label>
+                          </div>
+                          <p className="text-sm text-gray-600">
+                            {formData.isPublished
+                              ? 'Tu servicio es visible para todos los clientes en la búsqueda pública'
+                              : 'Tu servicio está oculto y solo tú puedes verlo. Ideal para editar sin mostrarlo aún'}
+                          </p>
+                        </div>
+                        <Switch
+                          id="isPublished"
+                          checked={formData.isPublished}
+                          onCheckedChange={(checked) => setFormData({ ...formData, isPublished: checked })}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="rounded-2xl border-slate-200 shadow-sm">
                     <CardContent className="grid gap-3 pt-6 sm:grid-cols-4">
                       <div className="rounded-xl bg-slate-50 p-3">
                         <p className="text-xs uppercase tracking-wide text-slate-500">Servicio</p>
@@ -1505,7 +1551,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                 {currentStep === 0 && 'Completa lo esencial de tu servicio para seguir.'}
                 {currentStep === 1 && 'Agrega detalles visuales para que tu propuesta genere más confianza.'}
                 {currentStep === 2 && 'Define al menos un plan para comenzar a recibir reservas.'}
-                {currentStep === 3 && 'Revisa el resumen final y guarda cuando todo esté listo.'}
+                {currentStep === 3 && 'Configura contacto, publicación y revisa todo antes de guardar.'}
               </p>
 
               <div className="flex flex-col gap-2 sm:flex-row">
