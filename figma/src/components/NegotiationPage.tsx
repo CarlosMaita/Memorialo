@@ -499,7 +499,7 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
     }
 
     const linkClassName = mine ? 'font-semibold underline text-[#D4AF37]' : 'font-semibold underline text-[#1B2A47]';
-    const currentContractId = String(contract?.id || '').trim();
+    const currentContractId = contract?.id === undefined || contract?.id === null ? '' : String(contract.id).trim();
     const shouldOpenCurrentContract = currentContractId && currentContractId === contractId;
 
     return (
