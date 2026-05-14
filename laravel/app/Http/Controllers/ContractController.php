@@ -175,7 +175,8 @@ class ContractController extends Controller
 
         $clientJustSigned = ! $hadClientSignature
             && ! empty($freshContract->client_signature)
-            && $previousStatus === 'pending_client';
+            && $previousStatus === 'pending_client'
+            && in_array($freshContract->status, ['active', 'pending_artist'], true);
 
         if ($clientJustSigned) {
             $artistUser = $this->resolveUserById($freshContract->artist_user_id);
