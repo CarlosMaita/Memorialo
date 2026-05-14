@@ -128,17 +128,18 @@ const getMeasureTitle = (contract: ContractRecord) => {
 
 
 export function ContractView({ contract, open, onClose, userType, onSign, onReject }: ContractViewProps) {
+  const initialExtracted = contract ? extractSpecialRequest(contract) : null;
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [signing, setSigning] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
-  const [editableTerms, setEditableTerms] = useState({
-    paymentTerms: '',
-    cancellationPolicy: '',
-    additionalTerms: [''],
-  });
-  const [specialRequestTerm, setSpecialRequestTerm] = useState('');
+  const [editableTerms, setEditableTerms] = useState(() => ({
+    paymentTerms: contract?.terms.paymentTerms || '',
+    cancellationPolicy: contract?.terms.cancellationPolicy || '',
+    additionalTerms: initialExtracted?.additionalTermsWithoutSpecialRequest || [],
+  }));
+  const [specialRequestTerm, setSpecialRequestTerm] = useState(initialExtracted?.specialRequest || '');
 
   useEffect(() => {
     if (!open || !contract) {
@@ -149,7 +150,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     setEditableTerms({
       paymentTerms: contract.terms.paymentTerms || '',
       cancellationPolicy: contract.terms.cancellationPolicy || '',
-      additionalTerms: extracted.additionalTermsWithoutSpecialRequest.length > 0 ? extracted.additionalTermsWithoutSpecialRequest : [''],
+      additionalTerms: extracted.additionalTermsWithoutSpecialRequest,
     });
     setSpecialRequestTerm(extracted.specialRequest);
     setAgreedToTerms(false);
@@ -194,9 +195,15 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     : providerRepresentativeName;
 
   const handleSign = () => {
-    if (canEditBeforeSend && (!editableTerms.paymentTerms.trim() || !editableTerms.cancellationPolicy.trim())) {
-      toast.error('Completa los términos de pago y la política de cancelación antes de enviar');
-      return;
+    if (canEditBeforeSend) {
+      if (!editableTerms.paymentTerms.trim()) {
+        toast.error('Completa los términos de pago antes de enviar');
+        return;
+      }
+      if (!editableTerms.cancellationPolicy.trim()) {
+        toast.error('Completa la política de cancelación antes de enviar');
+        return;
+      }
     }
 
     if (!agreedToTerms) {
@@ -208,7 +215,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
 
     setTimeout(() => {
       const additionalTerms = editableTerms.additionalTerms
-        .map(term => String(term || '').trim())
+        .map(term => term.trim())
         .filter(Boolean);
       const finalAdditionalTerms = specialRequestTerm
         ? [...additionalTerms, `Solicitudes especiales del cliente: ${specialRequestTerm}`]
@@ -503,6 +510,9 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                     <h4 className="text-sm mb-2">3. Términos Adicionales</h4>
                     {canEditBeforeSend ? (
                       <div className="space-y-2">
+                        {editableTerms.additionalTerms.length === 0 && (
+                          <p className="text-xs text-gray-500">No hay términos adicionales. Puedes agregar uno si lo necesitas.</p>
+                        )}
                         {editableTerms.additionalTerms.map((term, idx) => (
                           <div key={idx} className="flex gap-2">
                             <Input
@@ -510,16 +520,14 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                               onChange={(e) => handleUpdateAdditionalTerm(idx, e.target.value)}
                               placeholder={`Término adicional ${idx + 1}`}
                             />
-                            {editableTerms.additionalTerms.length > 1 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleRemoveAdditionalTerm(idx)}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            )}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveAdditionalTerm(idx)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
                         ))}
                         <Button
