@@ -139,6 +139,54 @@ class NotificationGenerationTest extends TestCase
         ]);
     }
 
+    public function test_client_signing_contract_generates_provider_notification(): void
+    {
+        Mail::fake();
+
+        $providerUser = User::factory()->create([
+            'role' => 'provider',
+            'is_provider' => true,
+        ]);
+        $client = User::factory()->create();
+
+        $contract = Contract::create([
+            'id' => 'contract-client-signed-1',
+            'artist_id' => '1',
+            'artist_user_id' => (string) $providerUser->id,
+            'artist_name' => 'Proveedor Test',
+            'client_id' => (string) $client->id,
+            'client_name' => $client->name,
+            'client_email' => $client->email,
+            'status' => 'pending_client',
+            'terms' => ['price' => 5000],
+        ]);
+
+        Sanctum::actingAs($client);
+
+        $this->putJson('/api/contracts/'.$contract->id, [
+            'status' => 'active',
+            'clientSignature' => [
+                'signedBy' => $client->name,
+                'signedAt' => now()->toISOString(),
+            ],
+        ])->assertOk();
+
+        $this->assertDatabaseHas('notification_deliveries', [
+            'recipient_user_id' => $providerUser->id,
+            'notification_type' => NotificationTypes::CONTRACT_CLIENT_SIGNED,
+            'channel' => 'database',
+            'status' => 'sent',
+        ]);
+
+        $providerNotification = $providerUser->notifications()
+            ->where('type', NotificationTypes::CONTRACT_CLIENT_SIGNED)
+            ->first();
+
+        $this->assertNotNull($providerNotification);
+        $this->assertStringContainsString($contract->id, $providerNotification->data['body'] ?? '');
+        $this->assertSame('/mi-negocio/negociaciones', $providerNotification->data['ctaUrl'] ?? null);
+    }
+
     public function test_review_creation_generates_provider_in_app_notification(): void
     {
         $providerUser = User::factory()->create([

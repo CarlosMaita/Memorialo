@@ -2776,6 +2776,33 @@ export default function App() {
         }
       }
 
+      const contractClientId = updated.clientId ? String(updated.clientId) : null;
+      const isContractSignedByClient =
+        previousStatus === 'pending_client' &&
+        (updated.status === 'active' || updated.status === 'pending_artist') &&
+        // Only emit this chat message when the acting user is the client.
+        contractClientId !== null && contractClientId === actorUserId;
+
+      if (isContractSignedByClient) {
+        const bookingIdForChat = updated.bookingId || associatedBooking?.id;
+        if (bookingIdForChat) {
+          try {
+            const rawContractId = String(updated.id || '').trim();
+            if (!rawContractId) {
+              throw new Error('Missing contract id for chat token');
+            }
+            const encodedContractId = encodeURIComponent(rawContractId);
+            const conversation = await supabase.ensureChatConversation({ bookingId: String(bookingIdForChat) });
+            await supabase.sendChatMessage(
+              conversation.id,
+              `El cliente ha firmado el contrato [CONTRACT:${encodedContractId}].`,
+            );
+          } catch (chatError) {
+            console.error('Error sending client signed contract chat message:', chatError);
+          }
+        }
+      }
+
       // Show appropriate message based on status
       if (updatedContract.status === 'cancelled') {
         toast.error('Contrato rechazado - La reserva ha sido cancelada');
