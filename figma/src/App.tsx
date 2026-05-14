@@ -2751,6 +2751,7 @@ export default function App() {
       const isContractSentToClient =
         updated.status === 'pending_client' &&
         previousStatus !== 'pending_client' &&
+        // Only emit this chat message when the acting user is the provider owner of the contract.
         (!updated.artistUserId || String(updated.artistUserId) === String(currentUser?.id || ''));
 
       if (isContractSentToClient) {
