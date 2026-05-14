@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { FileText, CheckCircle, AlertCircle, Calendar, DollarSign, Clock, MapPin, User, MessageCircle, Mail } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { FileText, CheckCircle, AlertCircle, Calendar, DollarSign, Clock, MapPin, User, MessageCircle, Mail, Plus, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -7,6 +7,8 @@ import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { Input } from './ui/input';
 import { toast } from 'sonner@2.0.3';
 import { ConfirmDialog } from './ConfirmDialog';
 import { downloadContractPdf } from '../utils/contractPdf';
@@ -131,8 +133,30 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
   const [rejecting, setRejecting] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [editableTerms, setEditableTerms] = useState({
+    paymentTerms: '',
+    cancellationPolicy: '',
+    additionalTerms: [] as string[],
+  });
+  const [specialRequestTerm, setSpecialRequestTerm] = useState('');
+
+  useEffect(() => {
+    if (!open || !contract) {
+      return;
+    }
+
+    const extracted = extractSpecialRequest(contract);
+    setEditableTerms({
+      paymentTerms: contract.terms.paymentTerms || '',
+      cancellationPolicy: contract.terms.cancellationPolicy || '',
+      additionalTerms: extracted.additionalTermsWithoutSpecialRequest,
+    });
+    setSpecialRequestTerm(extracted.specialRequest);
+    setAgreedToTerms(false);
+  }, [contract, open]);
 
   if (!contract) return null;
+  const canEditTerms = userType === 'artist' && contract.status === 'en_negociacion' && !contract.artistSignature && !contract.clientSignature;
 
   const handleDownloadPDF = () => {
     try {
@@ -170,6 +194,17 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     : providerRepresentativeName;
 
   const handleSign = () => {
+    if (canEditTerms) {
+      if (!editableTerms.paymentTerms.trim()) {
+        toast.error('Completa los términos de pago antes de enviar');
+        return;
+      }
+      if (!editableTerms.cancellationPolicy.trim()) {
+        toast.error('Completa la política de cancelación antes de enviar');
+        return;
+      }
+    }
+
     if (!agreedToTerms) {
       toast.error('Debes aceptar los términos y condiciones para firmar');
       return;
@@ -178,6 +213,12 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     setSigning(true);
 
     setTimeout(() => {
+      const additionalTerms = editableTerms.additionalTerms
+        .map(term => term.trim())
+        .filter(Boolean);
+      const finalAdditionalTerms = specialRequestTerm
+        ? [...additionalTerms, `Solicitudes especiales del cliente: ${specialRequestTerm}`]
+        : additionalTerms;
       const signature: ContractSignature = {
         signedBy: userType === 'client' ? clientLegalName : providerRepresentativeDetail,
         signedAt: new Date().toISOString()
@@ -189,6 +230,12 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
           ? { clientSignature: signature }
           : { artistSignature: signature }
         ),
+        terms: {
+          ...contract.terms,
+          paymentTerms: editableTerms.paymentTerms.trim(),
+          cancellationPolicy: editableTerms.cancellationPolicy.trim(),
+          additionalTerms: finalAdditionalTerms,
+        },
         status: (userType === 'client' && contract.artistSignature) || (userType === 'artist' && contract.clientSignature)
           ? 'active'
           : (userType === 'client' ? 'pending_artist' : 'pending_client')
@@ -214,6 +261,31 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
 
   const handleRejectClick = () => {
     setShowRejectConfirm(true);
+  };
+
+  const handleAddAdditionalTerm = () => {
+    setEditableTerms((current) => ({
+      ...current,
+      additionalTerms: [...current.additionalTerms, ''],
+    }));
+  };
+
+  const handleRemoveAdditionalTerm = (index: number) => {
+    setEditableTerms((current) => ({
+      ...current,
+      additionalTerms: current.additionalTerms.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleUpdateAdditionalTerm = (index: number, value: string) => {
+    setEditableTerms((current) => {
+      const nextTerms = [...current.additionalTerms];
+      nextTerms[index] = value;
+      return {
+        ...current,
+        additionalTerms: nextTerms,
+      };
+    });
   };
 
   const handleRejectConfirmed = () => {
@@ -400,29 +472,84 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
             <CardContent className="space-y-4">
               <div>
                 <h4 className="text-sm mb-2">1. Términos de Pago</h4>
-                <p className="text-sm text-gray-700">{contract.terms.paymentTerms}</p>
+                {canEditTerms ? (
+                  <Textarea
+                    value={editableTerms.paymentTerms}
+                    onChange={(e) => setEditableTerms({ ...editableTerms, paymentTerms: e.target.value })}
+                    placeholder="Describe los términos de pago acordados con el cliente"
+                    rows={4}
+                    className="resize-y text-sm"
+                  />
+                ) : (
+                  <p className="text-sm text-gray-700">{contract.terms.paymentTerms}</p>
+                )}
               </div>
 
               <Separator />
 
               <div>
                 <h4 className="text-sm mb-2">2. Política de Cancelación</h4>
-                <p className="text-sm text-gray-700">{contract.terms.cancellationPolicy}</p>
+                {canEditTerms ? (
+                  <Textarea
+                    value={editableTerms.cancellationPolicy}
+                    onChange={(e) => setEditableTerms({ ...editableTerms, cancellationPolicy: e.target.value })}
+                    placeholder="Describe la política de cancelación acordada"
+                    rows={4}
+                    className="resize-y text-sm"
+                  />
+                ) : (
+                  <p className="text-sm text-gray-700">{contract.terms.cancellationPolicy}</p>
+                )}
               </div>
 
-              {additionalTermsWithoutSpecialRequest.length > 0 && (
+              {(canEditTerms || additionalTermsWithoutSpecialRequest.length > 0) && (
                 <>
                   <Separator />
                   <div>
                     <h4 className="text-sm mb-2">3. Términos Adicionales</h4>
-                    <ul className="space-y-2">
-                      {additionalTermsWithoutSpecialRequest.map((term, idx) => (
-                        <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
-                          <span className="text-gray-400">•</span>
-                          <span>{term}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    {canEditTerms ? (
+                      <div className="space-y-2">
+                        {editableTerms.additionalTerms.length === 0 && (
+                          <p className="text-xs text-gray-500">No hay términos adicionales. Puedes agregar uno si lo necesitas.</p>
+                        )}
+                        {editableTerms.additionalTerms.map((term, idx) => (
+                          <div key={idx} className="flex gap-2">
+                            <Input
+                              value={term}
+                              onChange={(e) => handleUpdateAdditionalTerm(idx, e.target.value)}
+                              placeholder={`Término adicional ${idx + 1}`}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveAdditionalTerm(idx)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleAddAdditionalTerm}
+                          className="w-full"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Agregar término adicional
+                        </Button>
+                      </div>
+                    ) : (
+                      <ul className="space-y-2">
+                        {additionalTermsWithoutSpecialRequest.map((term, idx) => (
+                          <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                            <span className="text-gray-400">•</span>
+                            <span>{term}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </>
               )}
