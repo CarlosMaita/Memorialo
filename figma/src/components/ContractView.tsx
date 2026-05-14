@@ -256,7 +256,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-full max-w-[calc(100vw-2rem)] sm:max-w-[96vw] lg:max-w-[75vw] max-h-[94vh] overflow-y-auto">
+      <DialogContent className="h-[100dvh] w-screen max-h-[100dvh] max-w-none overflow-y-auto rounded-none px-4 pb-4 pt-14 sm:h-auto sm:w-full sm:max-h-[94vh] sm:max-w-[96vw] sm:rounded-lg sm:px-6 sm:pb-6 sm:pt-6 lg:max-w-[75vw] [&_[data-slot='dialog-close']]:rounded-full [&_[data-slot='dialog-close']]:bg-white [&_[data-slot='dialog-close']]:p-2 [&_[data-slot='dialog-close']]:text-slate-700 [&_[data-slot='dialog-close']]:opacity-100 [&_[data-slot='dialog-close']]:shadow-md">
         <DialogHeader>
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
