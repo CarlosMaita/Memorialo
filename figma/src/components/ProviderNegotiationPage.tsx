@@ -131,7 +131,7 @@ export function ProviderNegotiationPage({
   const [counterpartOnline, setCounterpartOnline] = useState(false);
   const [showInterventionConfirm, setShowInterventionConfirm] = useState(false);
   const [showMobileClientDetails, setShowMobileClientDetails] = useState(false);
-  const [showSendContractDialog, setShowSendContractDialog] = useState(false);
+  const [showContractDialog, setShowContractDialog] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [contractSearch, setContractSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -551,15 +551,26 @@ export function ProviderNegotiationPage({
       return <p className={baseClassName}>{body}</p>;
     }
 
-    const contractUrl = `/mi-negocio/negociacion/${encodeURIComponent(contractId)}`;
     const linkClassName = mine ? 'font-semibold underline text-[#D4AF37]' : 'font-semibold underline text-[#1B2A47]';
+    const currentContractId = String(activeContract?.id ?? '').trim();
+    const shouldOpenCurrentContract = currentContractId && currentContractId === contractId;
 
     return (
       <p className={baseClassName}>
         {before}
-        <a href={contractUrl} className={linkClassName}>
-          {`Contrato ${contractId}`}
-        </a>
+        {shouldOpenCurrentContract ? (
+          <button
+            type="button"
+            onClick={() => setShowContractDialog(true)}
+            className={linkClassName}
+          >
+            {`Contrato ${contractId}`}
+          </button>
+        ) : (
+          <a href={`/mi-negocio/negociacion/${encodeURIComponent(contractId)}`} className={linkClassName}>
+            {`Contrato ${contractId}`}
+          </a>
+        )}
         {after}
       </p>
     );
@@ -849,7 +860,7 @@ export function ProviderNegotiationPage({
                     type="button"
                     size="sm"
                     className="h-7 rounded-lg px-2 text-[10px] lg:h-8 lg:px-3 lg:text-xs"
-                    onClick={() => setShowSendContractDialog(true)}
+                    onClick={() => setShowContractDialog(true)}
                   >
                     Enviar contrato
                   </Button>
@@ -1024,16 +1035,16 @@ export function ProviderNegotiationPage({
       {activeContract && (
         <ContractView
           contract={activeContract}
-          open={showSendContractDialog}
-          onClose={() => setShowSendContractDialog(false)}
+          open={showContractDialog}
+          onClose={() => setShowContractDialog(false)}
           userType="artist"
           onSign={(signedContract) => {
             onContractUpdate(signedContract);
-            setShowSendContractDialog(false);
+            setShowContractDialog(false);
           }}
           onReject={(rejectedContract) => {
             onContractUpdate(rejectedContract);
-            setShowSendContractDialog(false);
+            setShowContractDialog(false);
           }}
         />
       )}

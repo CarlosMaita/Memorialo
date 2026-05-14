@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from './ui/alert';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { ConfirmDialog } from './ConfirmDialog';
+import { ContractView } from './ContractView';
 
 type ChatApi = {
   getChatConversations: () => Promise<ChatConversation[]>;
@@ -62,6 +63,7 @@ interface NegotiationPageProps {
   contract: any | null;
   booking: any | null;
   user: User;
+  onContractUpdate: (contract: any) => void | Promise<void>;
   onBack: () => void;
   chatApi: ChatApi;
 }
@@ -107,7 +109,7 @@ function messageHasAttachments(message?: Pick<ChatMessage, 'attachments' | 'hasA
 
 const CONTRACT_CHAT_LINK_TOKEN_REGEX = /\[CONTRACT:([^[\]]+)\]/i;
 
-export function NegotiationPage({ contract, booking, user, onBack, chatApi }: NegotiationPageProps) {
+export function NegotiationPage({ contract, booking, user, onContractUpdate, onBack, chatApi }: NegotiationPageProps) {
   const [conversation, setConversation] = useState<ChatConversation | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
@@ -117,6 +119,7 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
   const [counterpartOnline, setCounterpartOnline] = useState(false);
   const [showInterventionConfirm, setShowInterventionConfirm] = useState(false);
   const [showMobileProviderDetails, setShowMobileProviderDetails] = useState(false);
+  const [showContractDialog, setShowContractDialog] = useState(false);
   const [serviceInfoOpen, setServiceInfoOpen] = useState(true);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [dismissedWarnings, setDismissedWarnings] = useState<Record<string, boolean>>(() => {
@@ -495,15 +498,26 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
       return <p className={baseClassName}>{body}</p>;
     }
 
-    const contractUrl = `/me/negociacion/${encodeURIComponent(contractId)}`;
     const linkClassName = mine ? 'font-semibold underline text-[#D4AF37]' : 'font-semibold underline text-[#1B2A47]';
+    const currentContractId = String(contract?.id ?? '').trim();
+    const shouldOpenCurrentContract = currentContractId && currentContractId === contractId;
 
     return (
       <p className={baseClassName}>
         {before}
-        <a href={contractUrl} className={linkClassName}>
-          {`Contrato ${contractId}`}
-        </a>
+        {shouldOpenCurrentContract ? (
+          <button
+            type="button"
+            onClick={() => setShowContractDialog(true)}
+            className={linkClassName}
+          >
+            {`Contrato ${contractId}`}
+          </button>
+        ) : (
+          <a href={`/me/negociacion/${encodeURIComponent(contractId)}`} className={linkClassName}>
+            {`Contrato ${contractId}`}
+          </a>
+        )}
         {after}
       </p>
     );
@@ -880,6 +894,22 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
           </div>
 
       </div>
+      {contract && (
+        <ContractView
+          contract={contract}
+          open={showContractDialog}
+          onClose={() => setShowContractDialog(false)}
+          userType="client"
+          onSign={(signedContract) => {
+            onContractUpdate(signedContract);
+            setShowContractDialog(false);
+          }}
+          onReject={(rejectedContract) => {
+            onContractUpdate(rejectedContract);
+            setShowContractDialog(false);
+          }}
+        />
+      )}
     </div>
   );
 }
