@@ -61,7 +61,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
   const [specialties, setSpecialties] = useState<string[]>(['']);
   const [availability, setAvailability] = useState<string[]>([]);
   const [mainImage, setMainImage] = useState('');
-  const [portfolioImages, setPortfolioImages] = useState<string[]>(['']);
+  const [portfolioImages, setPortfolioImages] = useState<string[]>([]);
   
   // Terms and Conditions
   const [customTerms, setCustomTerms] = useState({
@@ -239,7 +239,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
         setSpecialties(existingService.specialties && existingService.specialties.length > 0 ? existingService.specialties : ['']);
         setAvailability(existingService.availability || []);
         setMainImage(existingService.image || '');
-        setPortfolioImages(existingService.portfolio && existingService.portfolio.length > 0 ? existingService.portfolio : ['']);
+        setPortfolioImages(existingService.portfolio && existingService.portfolio.length > 0 ? existingService.portfolio : []);
         setCustomTerms(existingService.customTerms || {
           paymentTerms: DEFAULT_TERMS.paymentTerms,
           cancellationPolicy: DEFAULT_TERMS.cancellationPolicy,
@@ -295,9 +295,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
   };
 
   const handleRemovePortfolioImage = (index: number) => {
-    if (portfolioImages.length > 1) {
-      setPortfolioImages(portfolioImages.filter((_, i) => i !== index));
-    }
+    setPortfolioImages(portfolioImages.filter((_, i) => i !== index));
   };
 
   const handlePortfolioImageChange = (index: number, value: string) => {
@@ -342,6 +340,54 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     } finally {
       setUploadingPortfolio({ ...uploadingPortfolio, [index]: false });
     }
+  };
+
+  // Handle multiple portfolio image file uploads
+  const handlePortfolioMultiUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const currentCount = portfolioImages.length;
+    const availableSlots = 5 - currentCount;
+    const filesToUpload = files.slice(0, availableSlots);
+
+    if (files.length > availableSlots) {
+      toast.warning(`Solo se pueden agregar ${availableSlots} imagen(es) más. Se subirán las primeras ${availableSlots}.`);
+    }
+
+    const startIndex = currentCount;
+    const uploadingState: { [key: number]: boolean } = {};
+    filesToUpload.forEach((_, i) => { uploadingState[startIndex + i] = true; });
+    setUploadingPortfolio(prev => ({ ...prev, ...uploadingState }));
+
+    const uploadPromises = filesToUpload.map(async (file, i) => {
+      const idx = startIndex + i;
+      try {
+        const url = await uploadImage(file);
+        return url;
+      } catch (error: any) {
+        console.error('Error uploading portfolio image:', error);
+        toast.error(error.message || 'Error al subir imagen');
+        return null;
+      } finally {
+        setUploadingPortfolio(prev => {
+          const next = { ...prev };
+          delete next[idx];
+          return next;
+        });
+      }
+    });
+
+    const results = await Promise.all(uploadPromises);
+    const validUrls = results.filter((url): url is string => url !== null);
+
+    if (validUrls.length > 0) {
+      setPortfolioImages(prev => [...prev, ...validUrls]);
+      toast.success(`${validUrls.length} imagen(es) subida(s) exitosamente`);
+    }
+
+    // Reset the input so the same files can be selected again if needed
+    e.target.value = '';
   };
 
   const handleAddInclude = () => {
@@ -954,14 +1000,33 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
               <div>
                 <Label htmlFor="mainImage">Imagen Principal *</Label>
                 <p className="text-xs text-gray-500 mb-2">Esta imagen se mostrará en la tarjeta de tu servicio</p>
-                
-                <div className="space-y-3">
-                  {/* Upload Button */}
-                  <div className="flex gap-2">
-                    <label htmlFor="mainImageFile" className="flex-1">
-                      <div className={`flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${uploadingMain ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
-                        <Upload className="w-4 h-4" />
-                        <span className="text-sm">
+
+                {mainImage ? (
+                  <div className="relative w-full h-48 rounded-lg overflow-hidden border">
+                    <ImageWithFallback
+                      src={mainImage}
+                      alt="Vista previa imagen principal"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setMainImage('')}
+                      className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <label
+                      htmlFor="mainImageFile"
+                      tabIndex={uploadingMain ? -1 : 0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('mainImageFile')?.click(); } }}
+                      className="block"
+                    >
+                      <div className={`flex items-center justify-center gap-2 px-4 py-8 border-2 border-dashed rounded-lg transition-colors ${uploadingMain ? 'bg-gray-50 opacity-70 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'}`}>
+                        <Upload className="w-5 h-5 text-gray-400" />
+                        <span className="text-sm text-gray-500">
                           {uploadingMain ? 'Subiendo...' : 'Subir imagen desde tu computadora'}
                         </span>
                       </div>
@@ -974,38 +1039,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                         disabled={uploadingMain}
                       />
                     </label>
-                  </div>
-                  
-                  {uploadingMain && (
-                    <Progress value={50} className="w-full" />
-                  )}
-
-                  {/* URL Input - Alternative method */}
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-white px-2 text-gray-500">O pega una URL</span>
-                    </div>
-                  </div>
-
-                  <Input
-                    id="mainImage"
-                    value={mainImage}
-                    onChange={(e) => setMainImage(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    disabled={uploadingMain}
-                  />
-                </div>
-
-                {mainImage && (
-                  <div className="mt-3 relative w-full h-48 rounded-lg overflow-hidden border">
-                    <ImageWithFallback
-                      src={mainImage}
-                      alt="Vista previa imagen principal"
-                      className="w-full h-full object-cover"
-                    />
+                    {uploadingMain && <Progress value={50} className="w-full mt-2" />}
                   </div>
                 )}
               </div>
@@ -1014,74 +1048,54 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
               <div>
                 <Label>Galería de Imágenes (Máximo 5)</Label>
                 <p className="text-xs text-gray-500 mb-3">Muestra ejemplos de tu trabajo o eventos anteriores</p>
-                <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
                   {portfolioImages.map((img, index) => (
-                    <div key={index} className="space-y-2">
-                      {/* Upload Button */}
-                      <div className="flex gap-2">
-                        <label htmlFor={`portfolioFile${index}`} className="flex-1">
-                          <div className={`flex items-center justify-center gap-2 px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${uploadingPortfolio[index] ? 'bg-gray-50' : 'hover:bg-gray-50'}`}>
-                            <Upload className="w-4 h-4" />
-                            <span className="text-sm">
-                              {uploadingPortfolio[index] ? 'Subiendo...' : `Subir imagen ${index + 1}`}
-                            </span>
-                          </div>
-                          <input
-                            id={`portfolioFile${index}`}
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => handlePortfolioImageUpload(index, e)}
-                            disabled={uploadingPortfolio[index]}
-                          />
-                        </label>
-                        {portfolioImages.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleRemovePortfolioImage(index)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-
-                      {uploadingPortfolio[index] && (
-                        <Progress value={50} className="w-full" />
-                      )}
-
-                      {/* URL Input */}
-                      <Input
-                        value={img}
-                        onChange={(e) => handlePortfolioImageChange(index, e.target.value)}
-                        placeholder={`O pega URL de imagen ${index + 1}`}
-                        disabled={uploadingPortfolio[index]}
+                    <div key={index} className="relative w-24 h-24 rounded-lg overflow-hidden border flex-shrink-0">
+                      <ImageWithFallback
+                        src={img}
+                        alt={`Imagen galería ${index + 1}`}
+                        className="w-full h-full object-cover"
                       />
-
-                      {img && (
-                        <div className="relative w-full h-32 rounded-lg overflow-hidden border">
-                          <ImageWithFallback
-                            src={img}
-                            alt={`Vista previa ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePortfolioImage(index)}
+                        className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full p-0.5 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
                     </div>
                   ))}
-                  {portfolioImages.length < 5 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleAddPortfolioImage}
-                      className="w-full"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Agregar Imagen ({portfolioImages.length}/5)
-                    </Button>
-                  )}
+                  {portfolioImages.length < 5 && (() => {
+                    const isUploading = Object.values(uploadingPortfolio).some(v => v);
+                    return (
+                      <label
+                        htmlFor="portfolioFiles"
+                        tabIndex={isUploading ? -1 : 0}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById('portfolioFiles')?.click(); } }}
+                        className="flex-shrink-0 block"
+                      >
+                        <div className={`w-24 h-24 flex flex-col items-center justify-center border-2 border-dashed rounded-lg transition-colors gap-1 ${isUploading ? 'bg-gray-50 opacity-70 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'}`}>
+                          <Upload className="w-5 h-5 text-blue-500" />
+                          <span className="text-xs text-blue-500 font-medium">
+                            {isUploading ? 'Subiendo...' : 'Seleccionar'}
+                          </span>
+                        </div>
+                        <input
+                          id="portfolioFiles"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={handlePortfolioMultiUpload}
+                          disabled={isUploading}
+                        />
+                      </label>
+                    );
+                  })()}
                 </div>
+                {Object.values(uploadingPortfolio).some(v => v) && (
+                  <Progress value={50} className="w-full mt-2" />
+                )}
               </div>
             </CardContent>
           </Card>
