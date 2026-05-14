@@ -3538,15 +3538,7 @@ export default function App() {
         <Toaster />
         <BookingConfirmation
           bookingDetails={confirmationDetails}
-          onViewBookings={() => {
-            window.location.assign('/me/reservas');
-          }}
-          onReturnHome={() => {
-            window.location.assign('/');
-          }}
-          onDownloadContract={handleDownloadConfirmedContract}
           onContactProvider={handleContactConfirmedProvider}
-          canDownloadContract={Boolean(bookingConfirmationData?.contract)}
           canContactProvider={Boolean(bookingConfirmationData?.bookingId)}
         />
 
