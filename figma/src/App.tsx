@@ -2760,10 +2760,15 @@ export default function App() {
         const bookingIdForChat = updated.bookingId || associatedBooking?.id;
         if (bookingIdForChat) {
           try {
+            const rawContractId = String(updated.id || '').trim();
+            if (!rawContractId) {
+              throw new Error('Missing contract id for chat token');
+            }
+            const encodedContractId = encodeURIComponent(rawContractId);
             const conversation = await supabase.ensureChatConversation({ bookingId: String(bookingIdForChat) });
             await supabase.sendChatMessage(
               conversation.id,
-              `Se ha enviado el contrato [CONTRACT:${updated.id}] al cliente.`,
+              `Se ha enviado el contrato [CONTRACT:${encodedContractId}] al cliente.`,
             );
           } catch (chatError) {
             console.error('Error sending contract chat message:', chatError);

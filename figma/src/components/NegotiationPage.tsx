@@ -482,7 +482,13 @@ export function NegotiationPage({ contract, booking, user, onBack, chatApi }: Ne
     }
 
     const token = tokenMatch[0];
-    const contractId = String(tokenMatch[1] || '').trim();
+    const encodedContractId = String(tokenMatch[1] || '').trim();
+    let contractId = encodedContractId;
+    try {
+      contractId = decodeURIComponent(encodedContractId);
+    } catch {
+      contractId = encodedContractId;
+    }
     const [before = '', after = ''] = body.split(token, 2);
 
     if (!contractId) {
