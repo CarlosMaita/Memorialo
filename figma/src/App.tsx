@@ -2714,6 +2714,9 @@ export default function App() {
 
   const handleContractUpdate = async (updatedContract: Contract) => {
     try {
+      const previousContract = contracts.find(c => c.id === updatedContract.id);
+      const previousStatus = previousContract?.status;
+
       // Update contract in Supabase
       const updated = await supabase.updateContract(updatedContract.id, updatedContract);
 
@@ -2742,6 +2745,26 @@ export default function App() {
             status: newBookingStatus
           };
           await handleBookingUpdate(updatedBooking);
+        }
+      }
+
+      const isContractSentToClient =
+        updated.status === 'pending_client' &&
+        previousStatus !== 'pending_client' &&
+        (!updated.artistUserId || String(updated.artistUserId) === String(currentUser?.id || ''));
+
+      if (isContractSentToClient) {
+        const bookingIdForChat = updated.bookingId || associatedBooking?.id;
+        if (bookingIdForChat) {
+          try {
+            const conversation = await supabase.ensureChatConversation({ bookingId: String(bookingIdForChat) });
+            await supabase.sendChatMessage(
+              conversation.id,
+              `Se ha enviado el contrato [CONTRACT:${updated.id}] al cliente.`,
+            );
+          } catch (chatError) {
+            console.error('Error sending contract chat message:', chatError);
+          }
         }
       }
 
