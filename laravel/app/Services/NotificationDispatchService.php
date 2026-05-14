@@ -172,7 +172,17 @@ class NotificationDispatchService
 
     private function resolveMailCtaUrl(mixed $ctaUrl, string $frontendUrl): string
     {
-        $value = trim((string) $ctaUrl);
+        if ($ctaUrl === null) {
+            return $frontendUrl;
+        }
+
+        if (is_string($ctaUrl) || is_numeric($ctaUrl) || is_bool($ctaUrl)) {
+            $value = trim((string) $ctaUrl);
+        } elseif (is_object($ctaUrl) && method_exists($ctaUrl, '__toString')) {
+            $value = trim((string) $ctaUrl);
+        } else {
+            return $frontendUrl;
+        }
 
         if ($value === '' || $value === '/') {
             return $frontendUrl;
