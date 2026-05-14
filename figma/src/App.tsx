@@ -2748,11 +2748,13 @@ export default function App() {
         }
       }
 
+      const contractArtistUserId = updated.artistUserId ? String(updated.artistUserId) : null;
+      const actorUserId = currentUser?.id ? String(currentUser.id) : null;
       const isContractSentToClient =
         updated.status === 'pending_client' &&
         previousStatus !== 'pending_client' &&
         // Only emit this chat message when the acting user is the provider owner of the contract.
-        (!updated.artistUserId || String(updated.artistUserId) === String(currentUser?.id || ''));
+        (!contractArtistUserId || contractArtistUserId === actorUserId);
 
       if (isContractSentToClient) {
         const bookingIdForChat = updated.bookingId || associatedBooking?.id;
