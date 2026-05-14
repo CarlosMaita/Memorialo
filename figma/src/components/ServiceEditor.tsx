@@ -27,6 +27,8 @@ interface ServiceEditorProps {
   categories: string[];
 }
 
+const ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'bmp'];
+
 export function ServiceEditor({ open, onClose, onSave, existingService, categories }: ServiceEditorProps) {
   const { uploadImage } = useSupabase();
   
@@ -304,10 +306,9 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     setPortfolioImages(updated);
   };
 
-  const allowedImageExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'bmp'];
   const isImageFile = (file: File) => {
     const fileName = file.name.toLowerCase();
-    const hasValidExtension = allowedImageExtensions.some((ext) => fileName.endsWith(`.${ext}`));
+    const hasValidExtension = ALLOWED_IMAGE_EXTENSIONS.some((ext) => fileName.endsWith(`.${ext}`));
     return file.type.startsWith('image/') && hasValidExtension;
   };
 
