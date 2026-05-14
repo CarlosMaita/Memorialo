@@ -552,7 +552,7 @@ export function ProviderNegotiationPage({
     }
 
     const linkClassName = mine ? 'font-semibold underline text-[#D4AF37]' : 'font-semibold underline text-[#1B2A47]';
-    const currentContractId = activeContract?.id === undefined || activeContract?.id === null ? '' : String(activeContract.id).trim();
+    const currentContractId = String(activeContract?.id ?? '').trim();
     const shouldOpenCurrentContract = currentContractId && currentContractId === contractId;
 
     return (
