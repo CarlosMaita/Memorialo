@@ -658,8 +658,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] max-w-5xl overflow-hidden rounded-[28px] border-none bg-slate-50 p-0 shadow-2xl">
-        <DialogHeader className="border-b border-slate-200 bg-white px-5 py-4 sm:px-6">
+      <DialogContent className="h-[100dvh] w-screen max-h-[100dvh] max-w-none overflow-hidden rounded-none border-none bg-slate-50 p-0 shadow-2xl sm:h-auto sm:w-[95vw] sm:max-h-[95vh] sm:max-w-5xl sm:rounded-[28px] [&_[data-slot='dialog-close']]:rounded-full [&_[data-slot='dialog-close']]:bg-white [&_[data-slot='dialog-close']]:p-2 [&_[data-slot='dialog-close']]:text-slate-700 [&_[data-slot='dialog-close']]:opacity-100 [&_[data-slot='dialog-close']]:shadow-md">
+        <DialogHeader className="border-b border-slate-200 bg-white px-5 pb-4 pt-14 sm:px-6 sm:py-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1 text-left">
               <DialogTitle className="text-2xl font-semibold text-slate-900">
