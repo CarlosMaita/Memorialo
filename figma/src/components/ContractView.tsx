@@ -354,7 +354,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
               <CardTitle className="text-sm">Partes del Contrato</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <User className="w-4 h-4 text-gray-500" />
@@ -429,7 +429,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                 </div>
               )}
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2">
                 <div>
                   <div className="flex items-center gap-1 mb-1">
                     <Calendar className="w-4 h-4 text-gray-500" />
