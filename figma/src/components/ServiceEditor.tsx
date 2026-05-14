@@ -304,14 +304,19 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     setPortfolioImages(updated);
   };
 
-  const isImageFile = (file: File) => file.type.startsWith('image/');
+  const allowedImageExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'bmp'];
+  const isImageFile = (file: File) => {
+    const fileName = file.name.toLowerCase();
+    const hasValidExtension = allowedImageExtensions.some((ext) => fileName.endsWith(`.${ext}`));
+    return file.type.startsWith('image/') && hasValidExtension;
+  };
 
   // Handle main image file upload
   const handleMainImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!isImageFile(file)) {
-      toast.error('Solo puedes subir archivos de imagen');
+      toast.error('Solo puedes subir imágenes (JPG, PNG, WEBP, GIF, AVIF o BMP)');
       e.target.value = '';
       return;
     }
@@ -356,7 +361,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     const imageFiles = files.filter(isImageFile);
 
     if (imageFiles.length === 0) {
-      toast.error('Solo puedes subir archivos de imagen');
+      toast.error('Solo puedes subir imágenes (JPG, PNG, WEBP, GIF, AVIF o BMP)');
       e.target.value = '';
       return;
     }
