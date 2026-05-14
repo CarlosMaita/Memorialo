@@ -4164,6 +4164,7 @@ export default function App() {
                     contract={contract}
                     booking={booking}
                     user={currentUser}
+                    onContractUpdate={handleContractUpdate}
                     onBack={() => navigateTo('/me/reservas')}
                     chatApi={supabase as any}
                   />

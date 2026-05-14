@@ -551,15 +551,26 @@ export function ProviderNegotiationPage({
       return <p className={baseClassName}>{body}</p>;
     }
 
-    const contractUrl = `/mi-negocio/negociacion/${encodeURIComponent(contractId)}`;
     const linkClassName = mine ? 'font-semibold underline text-[#D4AF37]' : 'font-semibold underline text-[#1B2A47]';
+    const currentContractId = String(activeContract?.id || '').trim();
+    const shouldOpenCurrentContract = currentContractId && currentContractId === contractId;
 
     return (
       <p className={baseClassName}>
         {before}
-        <a href={contractUrl} className={linkClassName}>
-          {`Contrato ${contractId}`}
-        </a>
+        {shouldOpenCurrentContract ? (
+          <button
+            type="button"
+            onClick={() => setShowSendContractDialog(true)}
+            className={linkClassName}
+          >
+            {`Contrato ${contractId}`}
+          </button>
+        ) : (
+          <a href={`/mi-negocio/negociacion/${encodeURIComponent(contractId)}`} className={linkClassName}>
+            {`Contrato ${contractId}`}
+          </a>
+        )}
         {after}
       </p>
     );
