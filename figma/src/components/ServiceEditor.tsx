@@ -656,8 +656,14 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     onClose();
   };
 
+  const handleDialogOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      handleClose();
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="!flex !flex-col h-[100dvh] w-screen max-h-[100dvh] max-w-none overflow-hidden rounded-none border-none bg-slate-50 p-0 shadow-2xl sm:h-[95vh] sm:w-[95vw] sm:max-h-[95vh] sm:max-w-5xl sm:rounded-[28px] [&_[data-slot='dialog-close']]:rounded-full [&_[data-slot='dialog-close']]:bg-white [&_[data-slot='dialog-close']]:p-2 [&_[data-slot='dialog-close']]:text-slate-700 [&_[data-slot='dialog-close']]:opacity-100 [&_[data-slot='dialog-close']]:shadow-md">
         <DialogHeader className="flex-shrink-0 border-b border-slate-200 bg-white px-5 pb-4 pt-14 sm:px-6 sm:py-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
