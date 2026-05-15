@@ -641,6 +641,12 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Only save when on the last step; otherwise advance to the next step
+    if (currentStep < steps.length - 1) {
+      handleNextStep();
+      return;
+    }
+
     if (!formData.name || !formData.category || !formData.subcategory || !formData.location || !formData.whatsappNumber || !formData.email) {
       toast.error('Por favor completa todos los campos obligatorios');
       return;
