@@ -680,7 +680,7 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
         </DialogContent>
       </Dialog>
 
-      <div className="flex h-[80vh] min-h-0 flex-col overflow-hidden gap-0 lg:mx-auto lg:h-[88vh] lg:max-h-[88vh] lg:w-full lg:max-w-[1380px] lg:flex-row-reverse lg:gap-5 lg:px-6 lg:py-6">
+      <div className="flex h-[calc(100dvh-88px)] min-h-0 flex-col overflow-hidden gap-0 lg:mx-auto lg:h-[88vh] lg:max-h-[88vh] lg:w-full lg:max-w-[1380px] lg:flex-row-reverse lg:gap-5 lg:px-6 lg:py-6">
 
           {/* Left: Chat */}
           <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:min-w-[420px]">
