@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
 import {
   CheckCircle,
+  Loader2,
+  Sparkles,
   MessageCircle,
 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -28,13 +31,64 @@ interface BookingConfirmationProps {
   bookingDetails: BookingConfirmationDetails;
   onContactProvider?: () => void;
   canContactProvider?: boolean;
+  showProcessingAnimation?: boolean;
 }
+
+const PROCESSING_ANIMATION_DURATION_MILLISECONDS = 3000;
+const BOUNCE_DOT_DELAYS = ['-0.3s', '-0.15s', '0s'];
 
 export function BookingConfirmation({
   bookingDetails,
   onContactProvider,
   canContactProvider = false,
+  showProcessingAnimation = true,
 }: BookingConfirmationProps) {
+  const [showProcessing, setShowProcessing] = useState(showProcessingAnimation);
+
+  useEffect(() => {
+    if (!showProcessingAnimation) {
+      setShowProcessing(false);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShowProcessing(false);
+    }, PROCESSING_ANIMATION_DURATION_MILLISECONDS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [showProcessingAnimation]);
+
+  if (showProcessing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#FEFDFB] to-[#EDEBF5] flex items-center justify-center px-4 py-12">
+        <Card className="w-full max-w-xl shadow-2xl border-2 border-[#D4AF37]/20 overflow-hidden">
+          <CardHeader className="text-center pb-6 bg-gradient-to-br from-[#0A1F44] to-[#0A1F44]/90 text-white rounded-t-lg">
+            <div className="flex justify-center mb-4">
+              <div className="relative bg-[#D4AF37] rounded-full p-4 shadow-lg">
+                <Loader2 className="w-10 h-10 text-[#0A1F44] animate-spin" />
+                <Sparkles className="w-4 h-4 text-[#0A1F44] absolute -top-1 -right-1 animate-pulse" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold">Procesando tu reserva</CardTitle>
+            <CardDescription className="text-[#D4AF37]/90 text-base">
+              Estamos enviando tu solicitud y preparando los detalles finales...
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="pt-8 pb-6">
+            <div className="flex items-center justify-center gap-2 text-[#0A1F44]">
+              {BOUNCE_DOT_DELAYS.map((delay, index) => (
+                <span key={index} className="h-2 w-2 rounded-full bg-[#D4AF37] animate-bounce" style={{ animationDelay: delay }} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FEFDFB] to-[#EDEBF5] flex items-center justify-center px-4 py-12">
       <Card className="w-full max-w-xl shadow-2xl border-2 border-[#D4AF37]/20">
