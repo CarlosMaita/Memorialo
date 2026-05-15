@@ -722,7 +722,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
               </DialogDescription>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left sm:min-w-[190px]">
+            <div className="hidden rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left sm:block sm:min-w-[190px]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Paso {currentStep + 1} de {steps.length}
               </p>
