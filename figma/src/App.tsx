@@ -3297,6 +3297,10 @@ export default function App() {
 
   const isFavoritesRoute = currentRoute === '/favoritos';
   const isPrivateSystemRoute = currentRoute.startsWith('/mi-negocio') || currentRoute.startsWith('/me/');
+  const isNegotiationWorkspaceRoute =
+    currentRoute.startsWith('/mi-negocio/negociacion') ||
+    currentRoute === '/mi-negocio/negociaciones' ||
+    currentRoute.startsWith('/me/negociacion/');
 
   const marketplaceCanonical = marketplaceRouteContext
     ? marketplaceRouteContext.canonicalPath
@@ -4118,7 +4122,7 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-[1400px] mx-auto px-3 md:px-6 py-4 md:py-4">
+      <main className={isNegotiationWorkspaceRoute ? 'w-full px-0 py-0 md:mx-auto md:max-w-[1400px] md:px-6 md:py-4' : 'max-w-[1400px] mx-auto px-3 md:px-6 py-4 md:py-4'}>
         {viewMode === 'admin' ? (
           currentUser && currentUser.role === 'admin' ? (
             <AdminDashboard
