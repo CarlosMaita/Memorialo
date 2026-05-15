@@ -3618,7 +3618,7 @@ export default function App() {
       {!showAbout && !showHowItWorks && !showForProviders && !showForClients && (
         <>
           {/* Header */}
-          <header className="sticky top-0 z-40 shadow-sm" style={{ backgroundColor: 'var(--navy-blue)' }}>
+          <header className={`${isNegotiationWorkspaceRoute ? 'hidden lg:sticky' : 'sticky'} top-0 z-40 shadow-sm`} style={{ backgroundColor: 'var(--navy-blue)' }}>
         <div className="max-w-[1400px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <button
@@ -4470,6 +4470,7 @@ export default function App() {
       </main>
 
           {/* Footer */}
+          <div className={isNegotiationWorkspaceRoute ? 'hidden lg:block' : ''}>
           <Footer
             onAboutClick={() => navigateTo('/nosotros')}
             onHowItWorksClick={() => navigateTo('/como-funciona')}
@@ -4482,6 +4483,7 @@ export default function App() {
             onConductClick={() => navigateTo('/codigo-conducta')}
             onNavigate={navigateTo}
           />
+          </div>
         </>
       )}
 

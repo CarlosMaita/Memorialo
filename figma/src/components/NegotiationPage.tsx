@@ -680,7 +680,7 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
         </DialogContent>
       </Dialog>
 
-      <div className="flex h-[calc(100dvh_-_88px)] min-h-0 flex-col overflow-hidden gap-0 lg:mx-auto lg:h-[88vh] lg:max-h-[88vh] lg:w-full lg:max-w-[1380px] lg:flex-row-reverse lg:gap-5 lg:px-6 lg:py-6">
+      <div className="flex h-dvh min-h-0 flex-col overflow-hidden gap-0 lg:mx-auto lg:h-[88vh] lg:max-h-[88vh] lg:w-full lg:max-w-[1380px] lg:flex-row-reverse lg:gap-5 lg:px-6 lg:py-6">
 
           {/* Left: Chat */}
           <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:min-w-[420px]">
@@ -779,7 +779,7 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
                   </div>
                 )}
 
-                <ScrollArea className="min-h-[260px] flex-1 px-2 py-1.5 lg:min-h-0 lg:px-5 lg:py-4">
+                <ScrollArea className="min-h-0 flex-1 px-2 py-1.5 lg:min-h-0 lg:px-5 lg:py-4">
                   <div className="space-y-1.5 pb-1 lg:space-y-2 lg:pb-0">
                     {loading && (
                       <p className="text-sm text-gray-500 text-center py-4">Cargando conversación...</p>
