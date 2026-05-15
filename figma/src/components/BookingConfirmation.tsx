@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
 import {
   CheckCircle,
+  Loader2,
+  Sparkles,
   MessageCircle,
 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -35,6 +38,45 @@ export function BookingConfirmation({
   onContactProvider,
   canContactProvider = false,
 }: BookingConfirmationProps) {
+  const [showProcessingAnimation, setShowProcessingAnimation] = useState(true);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setShowProcessingAnimation(false);
+    }, 3000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
+
+  if (showProcessingAnimation) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#FEFDFB] to-[#EDEBF5] flex items-center justify-center px-4 py-12">
+        <Card className="w-full max-w-xl shadow-2xl border-2 border-[#D4AF37]/20 overflow-hidden">
+          <CardHeader className="text-center pb-6 bg-gradient-to-br from-[#0A1F44] to-[#0A1F44]/90 text-white rounded-t-lg">
+            <div className="flex justify-center mb-4">
+              <div className="relative bg-[#D4AF37] rounded-full p-4 shadow-lg">
+                <Loader2 className="w-10 h-10 text-[#0A1F44] animate-spin" />
+                <Sparkles className="w-4 h-4 text-[#0A1F44] absolute -top-1 -right-1 animate-pulse" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl font-bold">Procesando tu reserva</CardTitle>
+            <CardDescription className="text-[#D4AF37]/90 text-base">
+              Estamos enviando tu solicitud y preparando los detalles finales...
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="pt-8 pb-6">
+            <div className="h-2 w-full bg-[#D4AF37]/20 rounded-full overflow-hidden">
+              <div className="h-full w-1/2 bg-[#D4AF37] rounded-full animate-[pulse_1s_ease-in-out_infinite]" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FEFDFB] to-[#EDEBF5] flex items-center justify-center px-4 py-12">
       <Card className="w-full max-w-xl shadow-2xl border-2 border-[#D4AF37]/20">
