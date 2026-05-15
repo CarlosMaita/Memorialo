@@ -1075,64 +1075,6 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
             </CardContent>
           </Card>
 
-                  <Card className="rounded-2xl border-slate-200 shadow-sm">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Notificación</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="whatsappNumber">WhatsApp Business *</Label>
-                          <Input
-                            id="whatsappNumber"
-                            required
-                            value={formData.whatsappNumber}
-                            onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
-                            placeholder="Ej: +58 412 1234567"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">
-                            Los clientes te contactarán después de firmar el contrato
-                          </p>
-                        </div>
-                        <div>
-                          <Label htmlFor="email">Correo Electrónico *</Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            required
-                            value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            placeholder="tu@email.com"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">
-                            Para notificaciones de reservas y contratos
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <div className="flex items-center justify-between p-4 border rounded-lg" style={{ borderColor: formData.isPublished ? '#10b981' : '#f59e0b', backgroundColor: formData.isPublished ? '#f0fdf4' : '#fef3c7' }}>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        {formData.isPublished ? <Eye className="w-5 h-5 text-green-600" /> : <EyeOff className="w-5 h-5 text-yellow-600" />}
-                        <Label htmlFor="isPublished" className="text-base cursor-pointer mb-0">
-                          {formData.isPublished ? 'Servicio Publicado' : 'Servicio Oculto'}
-                        </Label>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        {formData.isPublished
-                          ? 'Tu servicio es visible para todos los clientes en la búsqueda pública'
-                          : 'Tu servicio está oculto y solo tú puedes verlo. Ideal para editar sin mostrarlo aún'}
-                      </p>
-                    </div>
-                    <Switch
-                      id="isPublished"
-                      checked={formData.isPublished}
-                      onCheckedChange={(checked) => setFormData({ ...formData, isPublished: checked })}
-                    />
-                  </div>
-
                 </>
               )}
 
@@ -1526,6 +1468,64 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
               </div>
             </CardContent>
           </Card>
+
+                  <Card className="rounded-2xl border-slate-200 shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Notificación</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="whatsappNumber">WhatsApp Business *</Label>
+                          <Input
+                            id="whatsappNumber"
+                            required
+                            value={formData.whatsappNumber}
+                            onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
+                            placeholder="Ej: +58 412 1234567"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Los clientes te contactarán después de firmar el contrato
+                          </p>
+                        </div>
+                        <div>
+                          <Label htmlFor="email">Correo Electrónico *</Label>
+                          <Input
+                            id="email"
+                            type="email"
+                            required
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            placeholder="tu@email.com"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Para notificaciones de reservas y contratos
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="flex items-center justify-between p-4 border rounded-lg" style={{ borderColor: formData.isPublished ? '#10b981' : '#f59e0b', backgroundColor: formData.isPublished ? '#f0fdf4' : '#fef3c7' }}>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        {formData.isPublished ? <Eye className="w-5 h-5 text-green-600" /> : <EyeOff className="w-5 h-5 text-yellow-600" />}
+                        <Label htmlFor="isPublished" className="text-base cursor-pointer mb-0">
+                          {formData.isPublished ? 'Servicio Publicado' : 'Servicio Oculto'}
+                        </Label>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {formData.isPublished
+                          ? 'Tu servicio es visible para todos los clientes en la búsqueda pública'
+                          : 'Tu servicio está oculto y solo tú puedes verlo. Ideal para editar sin mostrarlo aún'}
+                      </p>
+                    </div>
+                    <Switch
+                      id="isPublished"
+                      checked={formData.isPublished}
+                      onCheckedChange={(checked) => setFormData({ ...formData, isPublished: checked })}
+                    />
+                  </div>
 
                 </>
               )}
