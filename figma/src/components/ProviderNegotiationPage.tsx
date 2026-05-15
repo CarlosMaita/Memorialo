@@ -810,7 +810,7 @@ export function ProviderNegotiationPage({
         </DialogContent>
       </Dialog>
 
-      <div className="flex h-[calc(100dvh_-_88px)] min-h-0 flex-col overflow-hidden gap-0 lg:mx-auto lg:h-[88vh] lg:max-h-[88vh] lg:w-full lg:max-w-[1380px] lg:flex-row lg:gap-5 lg:px-6 lg:py-6">
+      <div className="flex h-dvh min-h-0 flex-col overflow-hidden gap-0 lg:mx-auto lg:h-[88vh] lg:max-h-[88vh] lg:w-full lg:max-w-[1380px] lg:flex-row lg:gap-5 lg:px-6 lg:py-6">
         {/* Left: Contract list (hidden on mobile when viewing a contract) */}
         <div className="hidden shrink-0 bg-white lg:flex lg:h-full lg:min-h-0 lg:w-[320px] lg:max-h-[88vh] lg:flex-col lg:overflow-hidden lg:rounded-2xl lg:border lg:border-white/70 lg:bg-white/95 lg:shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
           {renderContractsSidebar()}
@@ -924,7 +924,7 @@ export function ProviderNegotiationPage({
                 </div>
               )}
 
-              <ScrollArea className="min-h-[260px] flex-1 px-2 py-1.5 lg:min-h-0 lg:px-5 lg:py-4">
+              <ScrollArea className="min-h-0 flex-1 px-2 py-1.5 lg:min-h-0 lg:px-5 lg:py-4">
                 <div className="space-y-1.5 pb-1 lg:space-y-2 lg:pb-0">
                   {loading && (
                     <p className="text-sm text-gray-500 text-center py-4">Cargando conversación...</p>
