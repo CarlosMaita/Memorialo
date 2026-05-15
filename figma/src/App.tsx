@@ -3299,7 +3299,6 @@ export default function App() {
   const isPrivateSystemRoute = currentRoute.startsWith('/mi-negocio') || currentRoute.startsWith('/me/');
   const isNegotiationWorkspaceRoute =
     currentRoute.startsWith('/mi-negocio/negociacion') ||
-    currentRoute === '/mi-negocio/negociaciones' ||
     currentRoute.startsWith('/me/negociacion/');
 
   const marketplaceCanonical = marketplaceRouteContext
