@@ -31,26 +31,36 @@ interface BookingConfirmationProps {
   bookingDetails: BookingConfirmationDetails;
   onContactProvider?: () => void;
   canContactProvider?: boolean;
+  showProcessingAnimation?: boolean;
 }
+
+const PROCESSING_ANIMATION_DURATION_MILLISECONDS = 3000;
+const BOUNCE_DOT_DELAYS = ['-0.3s', '-0.15s', '0s'];
 
 export function BookingConfirmation({
   bookingDetails,
   onContactProvider,
   canContactProvider = false,
+  showProcessingAnimation = true,
 }: BookingConfirmationProps) {
-  const [showProcessingAnimation, setShowProcessingAnimation] = useState(true);
+  const [showProcessing, setShowProcessing] = useState(showProcessingAnimation);
 
   useEffect(() => {
+    if (!showProcessingAnimation) {
+      setShowProcessing(false);
+      return;
+    }
+
     const timeoutId = window.setTimeout(() => {
-      setShowProcessingAnimation(false);
-    }, 3000);
+      setShowProcessing(false);
+    }, PROCESSING_ANIMATION_DURATION_MILLISECONDS);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, []);
+  }, [showProcessingAnimation]);
 
-  if (showProcessingAnimation) {
+  if (showProcessing) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#FEFDFB] to-[#EDEBF5] flex items-center justify-center px-4 py-12">
         <Card className="w-full max-w-xl shadow-2xl border-2 border-[#D4AF37]/20 overflow-hidden">
@@ -68,8 +78,10 @@ export function BookingConfirmation({
           </CardHeader>
 
           <CardContent className="pt-8 pb-6">
-            <div className="h-2 w-full bg-[#D4AF37]/20 rounded-full overflow-hidden">
-              <div className="h-full w-1/2 bg-[#D4AF37] rounded-full animate-[pulse_1s_ease-in-out_infinite]" />
+            <div className="flex items-center justify-center gap-2 text-[#0A1F44]">
+              {BOUNCE_DOT_DELAYS.map((delay, index) => (
+                <span key={index} className="h-2 w-2 rounded-full bg-[#D4AF37] animate-bounce" style={{ animationDelay: delay }} />
+              ))}
             </div>
           </CardContent>
         </Card>
