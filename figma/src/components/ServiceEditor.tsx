@@ -77,6 +77,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
   // Form ready state - para asegurar que los Select se rendericen con los valores
   const [formReady, setFormReady] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  // Ref to guard against mobile ghost-clicks: records when we last navigated steps
+  const lastStepNavigationTimeRef = useRef(0);
 
   // Ref para rastrear si ya cargamos los datos
   const hasLoadedDataRef = useRef(false);
@@ -631,10 +633,12 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
       return;
     }
 
+    lastStepNavigationTimeRef.current = Date.now();
     setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
   };
 
   const handlePrevStep = () => {
+    lastStepNavigationTimeRef.current = Date.now();
     setCurrentStep((prev) => Math.max(prev - 1, 0));
   };
 
@@ -644,6 +648,14 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     // Only save when on the last step; otherwise advance to the next step
     if (currentStep < steps.length - 1) {
       handleNextStep();
+      return;
+    }
+
+    // Guard against mobile ghost-clicks: on mobile a tap on "Siguiente" can
+    // leave a residual touch event that fires as a click on the "Guardar" button
+    // that appears in the same position after the step transition. Ignore any
+    // form submission that arrives within 500 ms of a step navigation.
+    if (Date.now() - lastStepNavigationTimeRef.current < 500) {
       return;
     }
 
