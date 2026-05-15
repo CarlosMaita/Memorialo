@@ -1541,25 +1541,25 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                 {currentStep === 3 && 'Revisa el resumen final y guarda cuando todo esté listo.'}
               </p>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button type="button" variant="outline" onClick={handleClose}>
+              <div className="flex flex-row gap-2">
+                <Button type="button" variant="outline" onClick={handleClose} className="hidden sm:flex">
                   Cancelar
                 </Button>
 
                 {currentStep > 0 && (
-                  <Button type="button" variant="outline" onClick={handlePrevStep}>
+                  <Button type="button" variant="outline" onClick={handlePrevStep} className="flex-1 sm:flex-none">
                     <ChevronLeft className="mr-2 h-4 w-4" />
                     Anterior
                   </Button>
                 )}
 
                 {currentStep < steps.length - 1 ? (
-                  <Button type="button" onClick={handleNextStep}>
+                  <Button type="button" onClick={handleNextStep} className="flex-1 sm:flex-none">
                     Siguiente
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button type="submit">
+                  <Button type="submit" className="flex-1 sm:flex-none">
                     {existingService ? 'Guardar cambios' : 'Crear servicio'}
                   </Button>
                 )}
