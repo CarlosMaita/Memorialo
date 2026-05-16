@@ -28,7 +28,7 @@ interface ServiceEditorProps {
 }
 
 export function ServiceEditor({ open, onClose, onSave, existingService, categories }: ServiceEditorProps) {
-  const { uploadImage } = useSupabase();
+  const { uploadImage, getService } = useSupabase();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -150,7 +150,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
       setSpecialties(['']);
       setAvailability([]);
       setMainImage('');
-      setPortfolioImages(['']);
+      setPortfolioImages([]);
       setCustomTerms({
         paymentTerms: DEFAULT_TERMS.paymentTerms,
         cancellationPolicy: DEFAULT_TERMS.cancellationPolicy,
@@ -193,26 +193,37 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     setFormReady(false);
     
     // Pequeño delay para asegurar que el DOM está listo
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
+        // Obtener el detalle completo del servicio para cargar las imágenes de galería
+        let serviceData: any = existingService;
+        if (!existingService.detailLoaded) {
+          try {
+            const detailedService = await getService(existingService.id);
+            if (detailedService) serviceData = detailedService;
+          } catch (err) {
+            console.warn('No se pudo cargar el detalle del servicio, usando datos en caché:', err);
+          }
+        }
+
         // Normalizar categoría
-        const normalizedCategory = normalizeCategoryToNew(existingService.category || '');
+        const normalizedCategory = normalizeCategoryToNew(serviceData.category || '');
         
         // Si category es una subcategoría válida, buscar en qué categoría principal está
         let mainCategory = normalizedCategory;
-        let subCategory = existingService.subcategory || '';
+        let subCategory = serviceData.subcategory || '';
         
-        // Verificar si existingService.category es realmente una subcategoría
+        // Verificar si serviceData.category es realmente una subcategoría
         for (const [catKey, catValue] of Object.entries(SERVICE_CATEGORIES)) {
-          if (catValue.subcategories.includes(existingService.category)) {
+          if (catValue.subcategories.includes(serviceData.category)) {
             mainCategory = catKey;
-            subCategory = existingService.category;
+            subCategory = serviceData.category;
             break;
           }
         }
         
         // Normalizar responseTime
-        let normalizedResponseTime = existingService.responseTime || '24 horas';
+        let normalizedResponseTime = serviceData.responseTime || '24 horas';
         if (normalizedResponseTime.includes('1 hour') || normalizedResponseTime.includes('< 1')) {
           normalizedResponseTime = '1 hora';
         } else if (normalizedResponseTime.includes('24')) {
@@ -222,27 +233,27 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
         }
         
         const loadedFormData = {
-          name: existingService.name || '',
+          name: serviceData.name || '',
           category: mainCategory,
           subcategory: subCategory,
-          description: existingService.bio || '',
-          location: existingService.location || '',
-          pricePerHour: existingService.pricePerHour ? existingService.pricePerHour.toString() : '',
+          description: serviceData.bio || '',
+          location: serviceData.location || '',
+          pricePerHour: serviceData.pricePerHour ? serviceData.pricePerHour.toString() : '',
           responseTime: normalizedResponseTime,
-          bio: existingService.bio || '',
-          whatsappNumber: existingService.whatsappNumber || '',
-          email: existingService.email || '',
-          isPublished: existingService.isPublished !== undefined ? existingService.isPublished : true,
-          allowCustomHourly: existingService.allowCustomHourly !== undefined ? existingService.allowCustomHourly : false
+          bio: serviceData.bio || '',
+          whatsappNumber: serviceData.whatsappNumber || '',
+          email: serviceData.email || '',
+          isPublished: serviceData.isPublished !== undefined ? serviceData.isPublished : true,
+          allowCustomHourly: serviceData.allowCustomHourly !== undefined ? serviceData.allowCustomHourly : false
         };
         
         setFormData(loadedFormData);
-        setServicePlans(existingService.servicePlans || []);
-        setSpecialties(existingService.specialties && existingService.specialties.length > 0 ? existingService.specialties : ['']);
-        setAvailability(existingService.availability || []);
-        setMainImage(existingService.image || '');
-        setPortfolioImages(existingService.portfolio && existingService.portfolio.length > 0 ? existingService.portfolio : []);
-        setCustomTerms(existingService.customTerms || {
+        setServicePlans(serviceData.servicePlans || []);
+        setSpecialties(serviceData.specialties && serviceData.specialties.length > 0 ? serviceData.specialties : ['']);
+        setAvailability(serviceData.availability || []);
+        setMainImage(serviceData.image || '');
+        setPortfolioImages(serviceData.portfolio && serviceData.portfolio.length > 0 ? serviceData.portfolio : []);
+        setCustomTerms(serviceData.customTerms || {
           paymentTerms: DEFAULT_TERMS.paymentTerms,
           cancellationPolicy: DEFAULT_TERMS.cancellationPolicy,
           additionalTerms: [...DEFAULT_TERMS.additionalTerms]
