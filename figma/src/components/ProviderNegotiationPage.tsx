@@ -214,7 +214,9 @@ export function ProviderNegotiationPage({
     let cancelled = false;
     chatApi.getChatConversations().then(convs => {
       if (!cancelled) setAllConversations(convs);
-    }).catch(() => {});
+    }).catch((err) => {
+      console.error('Error loading conversations for sidebar:', err);
+    });
     return () => { cancelled = true; };
   }, [chatApi]);
 
@@ -351,7 +353,7 @@ export function ProviderNegotiationPage({
           const exists = prev.some(m => m.id === message.id);
           return exists ? prev : [...prev, message];
         });
-      } else if (message.authorUserId !== String(user.id)) {
+      } else if (message.conversationId !== conversationId && message.authorUserId !== String(user.id)) {
         // Increment unread count for non-active conversations
         setAllConversations(prev => prev.map(c =>
           c.id === message.conversationId
