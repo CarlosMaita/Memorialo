@@ -4495,6 +4495,17 @@ export default function App() {
           currentRoute === '/mi-negocio/negociaciones' ||
           currentRoute.startsWith('/me/negociacion/')
         }
+        onNavigateToNegotiations={() => {
+          if (currentUser?.isProvider) {
+            setViewMode('business');
+            setDashboardView('provider');
+            navigateTo('/mi-negocio/negociaciones');
+          } else {
+            setViewMode('business');
+            setDashboardView('client');
+            navigateTo('/me/reservas');
+          }
+        }}
         api={{
           getChatConversations: supabase.getChatConversations,
           ensureChatConversation: supabase.ensureChatConversation,

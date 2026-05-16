@@ -49,6 +49,7 @@ interface ChatWidgetProps {
   bookings: any[];
   api: ChatApi;
   hideLauncher?: boolean;
+  onNavigateToNegotiations?: () => void;
 }
 
 type PendingAttachment = {
@@ -65,7 +66,7 @@ type OpenChatEventDetail = {
 
 const CHAT_WARNING_DISMISSED_STORAGE_KEY = 'memorialo-chat-warning-dismissed';
 
-export function ChatWidget({ user, bookings, api, hideLauncher = false }: ChatWidgetProps) {
+export function ChatWidget({ user, bookings, api, hideLauncher = false, onNavigateToNegotiations }: ChatWidgetProps) {
   const [conversationListOpen, setConversationListOpen] = useState(false);
   const [chatWindowOpen, setChatWindowOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -1019,8 +1020,8 @@ export function ChatWidget({ user, bookings, api, hideLauncher = false }: ChatWi
 
         {!chatWindowOpen && !hideLauncher && (
           <Button
-            onClick={handleToggleConversationList}
-            aria-label="Abrir chat"
+            onClick={onNavigateToNegotiations ?? handleToggleConversationList}
+            aria-label="Ir a negociaciones"
             className="h-14 w-14 rounded-full bg-[#1B2A47] p-0 text-white shadow-lg hover:bg-[#2d4270]"
           >
             <span className="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-transparent">
