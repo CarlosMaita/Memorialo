@@ -136,6 +136,7 @@ export function ProviderNegotiationPage({
   const [contractSearch, setContractSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [searching, setSearching] = useState(false);
+  const [allConversations, setAllConversations] = useState<ChatConversation[]>([]);
   const [dismissedWarnings, setDismissedWarnings] = useState<Record<string, boolean>>(() => {
     try {
       const stored = window.localStorage.getItem(CHAT_WARNING_DISMISSED_STORAGE_KEY);
@@ -196,6 +197,27 @@ export function ProviderNegotiationPage({
         .includes(q);
     });
   }, [activeContractsList, debouncedSearch]);
+
+  // Map bookingId → unreadCount from all conversations
+  const bookingUnreadMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const conv of allConversations) {
+      if (conv.bookingId) {
+        map[String(conv.bookingId)] = Math.max(0, Number(conv.unreadCount || 0));
+      }
+    }
+    return map;
+  }, [allConversations]);
+
+  // Load all conversations to show unread counts in sidebar
+  useEffect(() => {
+    let cancelled = false;
+    chatApi.getChatConversations().then(convs => {
+      if (!cancelled) setAllConversations(convs);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [chatApi]);
+
   // Debounce para búsqueda
   useEffect(() => {
     if (contractSearch === debouncedSearch) return;
@@ -248,6 +270,7 @@ export function ProviderNegotiationPage({
           setMessages(items);
           await chatApi.markChatConversationRead(conversationId);
           setConversation(prev => prev ? { ...prev, unreadCount: 0 } : prev);
+          setAllConversations(prev => prev.map(c => c.id === conversationId ? { ...c, unreadCount: 0 } : c));
         }
       } catch {
         console.error('Error loading messages.');
@@ -328,6 +351,13 @@ export function ProviderNegotiationPage({
           const exists = prev.some(m => m.id === message.id);
           return exists ? prev : [...prev, message];
         });
+      } else if (message.authorUserId !== String(user.id)) {
+        // Increment unread count for non-active conversations
+        setAllConversations(prev => prev.map(c =>
+          c.id === message.conversationId
+            ? { ...c, unreadCount: (c.unreadCount || 0) + 1 }
+            : c
+        ));
       }
 
       if (shouldHydrate && hydrateMessagesTimeoutRef.current === null && conversationId) {
@@ -341,7 +371,7 @@ export function ProviderNegotiationPage({
     });
 
     return () => unsubscribe();
-  }, [conversationId, chatApi]);
+  }, [conversationId, chatApi, user.id]);
 
   // Typing debounce
   useEffect(() => {
@@ -735,6 +765,7 @@ export function ProviderNegotiationPage({
             const isActive = contract.id === activeContractId;
             const booking = bookings.find(b => String(b.id) === String(contract.bookingId));
             const clientDisplayName = contract.clientName || booking?.clientName || 'Cliente';
+            const unreadCount = booking ? (bookingUnreadMap[String(booking.id)] || 0) : 0;
             return (
               <button
                 key={contract.id}
@@ -764,7 +795,13 @@ export function ProviderNegotiationPage({
                       </Badge>
                     </div>
                   </div>
-                  <ChevronRight className={`ml-1 h-3.5 w-3.5 shrink-0 lg:h-4 lg:w-4 ${isActive ? 'text-white/60' : 'text-gray-300'}`} />
+                  {unreadCount > 0 && !isActive ? (
+                    <Badge className="ml-1 shrink-0 bg-[#D4AF37] text-[#1B2A47] text-[10px] lg:text-[11px]">
+                      {unreadCount}
+                    </Badge>
+                  ) : (
+                    <ChevronRight className={`ml-1 h-3.5 w-3.5 shrink-0 lg:h-4 lg:w-4 ${isActive ? 'text-white/60' : 'text-gray-300'}`} />
+                  )}
                 </div>
               </button>
             );
