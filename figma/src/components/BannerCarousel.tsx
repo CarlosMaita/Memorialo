@@ -49,8 +49,10 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
         className="absolute inset-0 w-full h-full object-cover"
         loading="lazy"
       />
-      {/* Overlay gradient */}
+      {/* Overlay gradient - dark scrim for text readability */}
       <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 60%)' }} />
+      {/* MELI-style bottom fade: blends carousel into the page background */}
+      <div className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none" style={{ background: 'linear-gradient(to top, var(--background) 0%, transparent 100%)' }} />
 
       {/* Navigation arrows */}
       {count > 1 && (
