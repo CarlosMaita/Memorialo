@@ -42,7 +42,7 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
 
   const banner = banners[current];
   const content = (
-    <div className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden" style={{ height: '40vh', maxHeight: '40vh' }}>
+    <div className="relative left-1/2 w-screen -translate-x-1/2 overflow-hidden" style={{ height: '40vh' }}>
       <img
         src={banner.imageUrl}
         alt={banner.title}
