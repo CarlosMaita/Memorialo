@@ -195,7 +195,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
   const providerRepresentativeDetail = providerIdentificationNumber && !providerRepresentativeName.includes(providerIdentificationNumber)
     ? `${providerRepresentativeName} (${providerIdentificationLabel}: ${providerIdentificationNumber})`
     : providerRepresentativeName;
-  const agreements = (contract.terms.agreements || '').trim();
+  const agreements = (contract.terms.agreements || '').trim() || 'No se definieron acuerdos adicionales entre las partes.';
 
   const handleSign = () => {
     if (canEditTerms) {
@@ -485,7 +485,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                 />
               ) : (
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                  {agreements || 'No se definieron acuerdos adicionales entre las partes.'}
+                  {agreements}
                 </p>
               )}
             </CardContent>

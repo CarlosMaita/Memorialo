@@ -233,7 +233,7 @@ export const downloadContractPdf = (
   const providerPhone = options?.providerPhone || contract.artistWhatsapp;
   const planName = getPlanName(contract);
   const includedItems = getIncludedItems(contract);
-  const agreements = (contract.terms.agreements || '').trim();
+  const agreements = (contract.terms.agreements || '').trim() || 'No se definieron acuerdos adicionales entre las partes.';
   const { specialRequest, additionalTermsWithoutSpecialRequest } = extractSpecialRequest(contract);
 
   const ensureSpace = (height: number) => {
@@ -375,7 +375,7 @@ export const downloadContractPdf = (
   addServiceTable(serviceName, getMeasureLabel(contract), formatCurrency(contract.terms.price));
 
   addSectionTitle('Acuerdos');
-  addParagraph(agreements || 'No se definieron acuerdos adicionales entre las partes.', { fontSize: 11, gapAfter: 14 });
+  addParagraph(agreements, { fontSize: 11, gapAfter: 14 });
 
   addSectionTitle('Términos y Condiciones');
   addLabelValue('1. Términos de Pago', contract.terms.paymentTerms);
