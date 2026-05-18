@@ -3300,6 +3300,17 @@ export default function App() {
   const isNegotiationWorkspaceRoute =
     currentRoute.startsWith('/mi-negocio/negociacion/') ||
     currentRoute.startsWith('/me/negociacion/');
+  const isMarketplaceHomeRoute = currentRoute === '/' && !isFavoritesRoute && !marketplaceRouteContext;
+  const homeCategoryHighlights = Object.entries(SERVICE_CATEGORIES).slice(0, 5).map(([categoryName, categoryConfig]) => {
+    const firstSubcategory = categoryConfig.subcategories[0] || categoryName;
+
+    return {
+      categoryName,
+      icon: categoryConfig.icon,
+      description: `Descubre ${categoryConfig.subcategories.length} tipos de servicios para tu evento.`,
+      path: `/servicios/venezuela/${slugify(firstSubcategory)}`,
+    };
+  });
 
   const marketplaceCanonical = marketplaceRouteContext
     ? marketplaceRouteContext.canonicalPath
@@ -4304,17 +4315,95 @@ export default function App() {
             {/* SEO for marketplace home */}
             {!serviceArtist && (
               <SEOHead
+                title={isMarketplaceHomeRoute ? 'Home de servicios para eventos en Venezuela' : undefined}
+                description={isMarketplaceHomeRoute
+                  ? 'Conecta con proveedores confiables para bodas, fiestas y eventos corporativos. Explora categorias, servicios destacados y contrata en pocos pasos con Memorialo.'
+                  : undefined}
                 canonical={marketplaceCanonical}
-                keywords={marketplaceKeywords}
+                keywords={isMarketplaceHomeRoute
+                  ? 'home memorialo, proveedores de eventos, contratar servicios para eventos, bodas venezuela, marketplace eventos'
+                  : marketplaceKeywords}
                 noindex={visibleArtists.length === 0}
                 structuredData={buildMarketplaceStructuredData(visibleArtists)}
               />
+            )}
+            {isMarketplaceHomeRoute && (
+              <div className="space-y-8 mb-8">
+                <section className="rounded-2xl p-6 md:p-8 text-white" style={{ background: 'linear-gradient(135deg, var(--navy-blue) 0%, var(--copper) 100%)' }}>
+                  <Badge className="mb-3 bg-white/20 text-white border-white/30">Promociones y Novedades</Badge>
+                  <h2 className="text-2xl md:text-3xl font-semibold mb-2">Todo para tu evento, en un solo lugar</h2>
+                  <p className="text-sm md:text-base text-white/90 mb-4">
+                    Encuentra ofertas activas, nuevas publicaciones y proveedores listos para ayudarte a crear una celebración inolvidable.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="secondary" onClick={() => navigateTo('/servicios/venezuela')}>
+                      Ver servicios
+                    </Button>
+                    <Button variant="outline" className="bg-white/10 border-white/40 text-white hover:bg-white/20" onClick={() => navigateTo('/como-funciona')}>
+                      Como funciona
+                    </Button>
+                  </div>
+                </section>
+
+                <section>
+                  <div className="mb-3">
+                    <h2 className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--navy-blue)' }}>Categorias principales</h2>
+                    <p className="text-sm text-gray-600">Navega por las categorías más buscadas y llega rápido a lo que necesitas.</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    {homeCategoryHighlights.map((category) => (
+                      <button
+                        key={category.categoryName}
+                        type="button"
+                        onClick={() => navigateTo(category.path)}
+                        className="text-left rounded-xl border border-gray-200 bg-white p-4 hover:border-[var(--gold)] hover:shadow-sm transition-all"
+                      >
+                        <p className="text-2xl mb-2">{category.icon}</p>
+                        <p className="font-medium text-sm" style={{ color: 'var(--navy-blue)' }}>{category.categoryName}</p>
+                        <p className="text-xs text-gray-600 mt-1">{category.description}</p>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section>
+                  <div className="mb-3">
+                    <h2 className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--navy-blue)' }}>Contrata en 4 pasos</h2>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    {[
+                      'Busca por ciudad y categoría',
+                      'Compara perfiles y valoraciones',
+                      'Solicita tu reserva con detalles',
+                      'Confirma y coordina con el proveedor',
+                    ].map((step, index) => (
+                      <div key={step} className="rounded-xl border border-gray-200 bg-white p-4">
+                        <p className="text-xs font-semibold text-gray-500">Paso {index + 1}</p>
+                        <p className="text-sm mt-1" style={{ color: 'var(--navy-blue)' }}>{step}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section
+                  className="rounded-2xl border p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                  style={{ borderColor: 'rgba(247, 178, 103, 0.45)', backgroundColor: 'rgba(247, 178, 103, 0.1)' }}
+                >
+                  <div>
+                    <h2 className="text-xl font-semibold mb-1" style={{ color: 'var(--navy-blue)' }}>Unete a la red de proveedores de Memorialo</h2>
+                    <p className="text-sm text-gray-700">Publica tus servicios, recibe solicitudes y haz crecer tu negocio de eventos.</p>
+                  </div>
+                  <Button onClick={() => navigateTo('/proveedores')}>
+                    Quiero ser proveedor
+                  </Button>
+                </section>
+              </div>
             )}
             {/* Search & Filters */}
             <div className="mb-5 md:mb-8">
               <div className="mb-4 text-center hidden md:block">
                 <h2 className="mb-2 font-[Carattere] text-[24px]">
-                  {marketplaceHeading}
+                  {isMarketplaceHomeRoute ? 'Servicios relevantes para tu evento' : marketplaceHeading}
                 </h2>
               </div>
 
