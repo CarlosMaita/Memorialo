@@ -32,6 +32,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
+import { Switch } from './ui/switch';
 import { toast } from 'sonner@2.0.3';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -66,9 +67,14 @@ interface AdminDashboardProps {
   onUpdateEnabledCities: (cities: string[]) => Promise<void>;
   bannersSectionEnabled: boolean;
   onToggleBannersSection: (enabled: boolean) => Promise<void>;
+  relevantServicesSectionEnabled: boolean;
+  relevantServicesTitle: string;
+  relevantServicesSubtitle: string;
+  relevantServiceIds: string[];
+  onUpdateRelevantServicesConfig: (config: { enabled: boolean; title: string; subtitle: string; serviceIds: string[] }) => Promise<void>;
 }
 
-type AdminSection = 'overview' | 'billing' | 'banners' | 'providers' | 'interested' | 'users' | 'services';
+type AdminSection = 'overview' | 'billing' | 'banners' | 'relevant-services' | 'providers' | 'interested' | 'users' | 'services';
 
 const API_BASE = backendMode === 'laravel'
   ? laravelApiBaseUrl
@@ -78,6 +84,7 @@ const adminNavItems = [
   { id: 'overview' as const, label: 'Resumen', icon: <LayoutDashboard className="w-5 h-5" /> },
   { id: 'billing' as const, label: 'Facturación', icon: <DollarSign className="w-5 h-5" /> },
   { id: 'banners' as const, label: 'Banners', icon: <BookOpen className="w-5 h-5" /> },
+  { id: 'relevant-services' as const, label: 'Servicios relevantes', icon: <Star className="w-5 h-5" /> },
   { id: 'providers' as const, label: 'Proveedores', icon: <Briefcase className="w-5 h-5" /> },
   { id: 'interested' as const, label: 'Interesados', icon: <FileText className="w-5 h-5" /> },
   { id: 'users' as const, label: 'Usuarios', icon: <Users className="w-5 h-5" /> },
@@ -108,6 +115,11 @@ export function AdminDashboard({
   onUpdateEnabledCities,
   bannersSectionEnabled,
   onToggleBannersSection,
+  relevantServicesSectionEnabled,
+  relevantServicesTitle,
+  relevantServicesSubtitle,
+  relevantServiceIds,
+  onUpdateRelevantServicesConfig,
 }: AdminDashboardProps) {
   const ADMIN_TABLE_BATCH_SIZE = 16;
   const [searchQuery, setSearchQuery] = useState('');
@@ -116,8 +128,14 @@ export function AdminDashboard({
   const [userAccessFilter, setUserAccessFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'none'>('all');
   const [userTypeFilter, setUserTypeFilter] = useState<'all' | 'admin' | 'provider' | 'client'>('all');
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
+  const [relevantServiceSearchQuery, setRelevantServiceSearchQuery] = useState('');
   const [selectedEnabledCities, setSelectedEnabledCities] = useState<string[]>(enabledCities);
   const [savingEnabledCities, setSavingEnabledCities] = useState(false);
+  const [selectedRelevantServiceIds, setSelectedRelevantServiceIds] = useState<string[]>(relevantServiceIds);
+  const [relevantSectionEnabledDraft, setRelevantSectionEnabledDraft] = useState(relevantServicesSectionEnabled);
+  const [relevantTitleDraft, setRelevantTitleDraft] = useState(relevantServicesTitle);
+  const [relevantSubtitleDraft, setRelevantSubtitleDraft] = useState(relevantServicesSubtitle);
+  const [savingRelevantServices, setSavingRelevantServices] = useState(false);
   const [visibleProvidersCount, setVisibleProvidersCount] = useState(ADMIN_TABLE_BATCH_SIZE);
   const [visibleUsersCount, setVisibleUsersCount] = useState(ADMIN_TABLE_BATCH_SIZE);
   const [visibleServicesCount, setVisibleServicesCount] = useState(ADMIN_TABLE_BATCH_SIZE);
@@ -174,6 +192,13 @@ export function AdminDashboard({
   useEffect(() => {
     setSelectedEnabledCities(enabledCities);
   }, [enabledCities]);
+
+  useEffect(() => {
+    setSelectedRelevantServiceIds(relevantServiceIds);
+    setRelevantSectionEnabledDraft(relevantServicesSectionEnabled);
+    setRelevantTitleDraft(relevantServicesTitle);
+    setRelevantSubtitleDraft(relevantServicesSubtitle);
+  }, [relevantServiceIds, relevantServicesSectionEnabled, relevantServicesTitle, relevantServicesSubtitle]);
 
   useEffect(() => {
     if (!accessToken || currentUser.role !== 'admin') {
@@ -362,6 +387,28 @@ export function AdminDashboard({
     });
   }, [artists, providers, serviceSearchQuery]);
 
+  const filteredRelevantServices = useMemo(() => {
+    const query = relevantServiceSearchQuery.trim().toLowerCase();
+    if (!query) {
+      return artists.filter((service) => !service.isArchived && service.isPublished !== false);
+    }
+
+    return artists.filter((service) => {
+      if (service.isArchived || service.isPublished === false) {
+        return false;
+      }
+
+      const provider = providers.find((p) => p.userId === service.userId);
+
+      return (
+        service.name.toLowerCase().includes(query) ||
+        (service.category || '').toLowerCase().includes(query) ||
+        (service.subcategory || '').toLowerCase().includes(query) ||
+        (provider?.businessName || '').toLowerCase().includes(query)
+      );
+    });
+  }, [artists, providers, relevantServiceSearchQuery]);
+
   const visibleFilteredProviders = useMemo(
     () => filteredProviders.slice(0, visibleProvidersCount),
     [filteredProviders, visibleProvidersCount]
@@ -382,6 +429,26 @@ export function AdminDashboard({
     const persistedSelection = enabledCities.slice().sort().join('|');
     return currentSelection !== persistedSelection;
   }, [selectedEnabledCities, enabledCities]);
+
+  const hasRelevantServicesChanges = useMemo(() => {
+    const draftIds = selectedRelevantServiceIds.slice().sort().join('|');
+    const persistedIds = relevantServiceIds.slice().sort().join('|');
+    return (
+      draftIds !== persistedIds ||
+      relevantSectionEnabledDraft !== relevantServicesSectionEnabled ||
+      relevantTitleDraft.trim() !== relevantServicesTitle.trim() ||
+      relevantSubtitleDraft.trim() !== relevantServicesSubtitle.trim()
+    );
+  }, [
+    selectedRelevantServiceIds,
+    relevantServiceIds,
+    relevantSectionEnabledDraft,
+    relevantServicesSectionEnabled,
+    relevantTitleDraft,
+    relevantServicesTitle,
+    relevantSubtitleDraft,
+    relevantServicesSubtitle,
+  ]);
 
   useEffect(() => {
     setVisibleProvidersCount(ADMIN_TABLE_BATCH_SIZE);
@@ -467,6 +534,28 @@ export function AdminDashboard({
       await onUpdateEnabledCities(selectedEnabledCities);
     } finally {
       setSavingEnabledCities(false);
+    }
+  };
+
+  const toggleRelevantService = (serviceId: string) => {
+    setSelectedRelevantServiceIds((previous) => (
+      previous.includes(serviceId)
+        ? previous.filter((id) => id !== serviceId)
+        : [...previous, serviceId]
+    ));
+  };
+
+  const handleSaveRelevantServices = async () => {
+    try {
+      setSavingRelevantServices(true);
+      await onUpdateRelevantServicesConfig({
+        enabled: relevantSectionEnabledDraft,
+        title: relevantTitleDraft.trim() || 'Servicios relevantes',
+        subtitle: relevantSubtitleDraft.trim(),
+        serviceIds: selectedRelevantServiceIds,
+      });
+    } finally {
+      setSavingRelevantServices(false);
     }
   };
 
@@ -957,6 +1046,122 @@ export function AdminDashboard({
               bannersSectionEnabled={bannersSectionEnabled}
               onToggleBannersSection={onToggleBannersSection}
             />
+          )}
+
+          {activeSection === 'relevant-services' && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[#1B2A47] mb-1">Servicios relevantes</h2>
+                <p className="text-gray-500 text-sm">Gestiona la sección destacada del Home con título, subtítulo y servicios visibles.</p>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configuración de la sección</CardTitle>
+                  <CardDescription>Habilita o deshabilita el carrusel y define el encabezado del bloque.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      id="relevant-services-toggle"
+                      checked={relevantSectionEnabledDraft}
+                      onCheckedChange={setRelevantSectionEnabledDraft}
+                    />
+                    <Label htmlFor="relevant-services-toggle" className="cursor-pointer">
+                      {relevantSectionEnabledDraft ? 'Sección habilitada' : 'Sección deshabilitada'}
+                    </Label>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="relevant-services-title">Título</Label>
+                    <Input
+                      id="relevant-services-title"
+                      value={relevantTitleDraft}
+                      maxLength={120}
+                      onChange={(event) => setRelevantTitleDraft(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="relevant-services-subtitle">Subtítulo</Label>
+                    <Input
+                      id="relevant-services-subtitle"
+                      value={relevantSubtitleDraft}
+                      maxLength={220}
+                      onChange={(event) => setRelevantSubtitleDraft(event.target.value)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Servicios a mostrar</CardTitle>
+                  <CardDescription>Selecciona los servicios que aparecerán en el carrusel del Home.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Buscar servicio, categoría o proveedor..."
+                      value={relevantServiceSearchQuery}
+                      onChange={(event) => setRelevantServiceSearchQuery(event.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <div className="max-h-80 overflow-y-auto rounded-xl border border-gray-200 p-3 space-y-2">
+                    {filteredRelevantServices.length === 0 ? (
+                      <p className="text-sm text-gray-500">No se encontraron servicios para el filtro aplicado.</p>
+                    ) : (
+                      filteredRelevantServices.map((service) => {
+                        const provider = providers.find((candidate) => candidate.userId === service.userId);
+                        const serviceId = String(service.id);
+                        const isSelected = selectedRelevantServiceIds.includes(serviceId);
+
+                        return (
+                          <button
+                            key={serviceId}
+                            type="button"
+                            onClick={() => toggleRelevantService(serviceId)}
+                            className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
+                              isSelected
+                                ? 'border-[#D4AF37] bg-amber-50'
+                                : 'border-gray-200 bg-white hover:border-[#D4AF37]/50'
+                            }`}
+                          >
+                            <p className="text-sm font-medium text-[#1B2A47]">{service.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {provider?.businessName || 'Proveedor sin nombre'} · {service.location || 'Sin ciudad'}
+                            </p>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <p className="text-xs text-gray-500">
+                      Seleccionados: {selectedRelevantServiceIds.length}
+                    </p>
+                    <Button
+                      type="button"
+                      onClick={handleSaveRelevantServices}
+                      disabled={savingRelevantServices || !hasRelevantServicesChanges}
+                    >
+                      {savingRelevantServices ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Guardando...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Guardar servicios relevantes
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {activeSection === 'interested' && (

@@ -343,6 +343,11 @@ class AdminController extends Controller
             'enabledCities' => ['required', 'array'],
             'enabledCities.*' => ['string', 'max:100'],
             'bannersSectionEnabled' => ['sometimes', 'boolean'],
+            'relevantServicesSectionEnabled' => ['sometimes', 'boolean'],
+            'relevantServicesTitle' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'relevantServicesSubtitle' => ['sometimes', 'nullable', 'string', 'max:220'],
+            'relevantServiceIds' => ['sometimes', 'array'],
+            'relevantServiceIds.*' => ['string', 'max:30'],
         ]);
 
         $allCities = $this->marketplaceCityCatalog();
@@ -359,12 +364,37 @@ class AdminController extends Controller
         $settings = MarketplaceSetting::query()->firstOrCreate([], [
             'enabled_cities' => null,
             'banners_section_enabled' => false,
+            'relevant_services_section_enabled' => true,
+            'relevant_services_title' => 'Servicios relevantes',
+            'relevant_services_subtitle' => 'Descubre servicios recomendados para tu evento.',
+            'relevant_service_ids' => [],
         ]);
 
         $settings->enabled_cities = $enabledCities;
 
         if (array_key_exists('bannersSectionEnabled', $validated)) {
             $settings->banners_section_enabled = $validated['bannersSectionEnabled'];
+        }
+
+        if (array_key_exists('relevantServicesSectionEnabled', $validated)) {
+            $settings->relevant_services_section_enabled = $validated['relevantServicesSectionEnabled'];
+        }
+
+        if (array_key_exists('relevantServicesTitle', $validated)) {
+            $settings->relevant_services_title = $validated['relevantServicesTitle'] ?: null;
+        }
+
+        if (array_key_exists('relevantServicesSubtitle', $validated)) {
+            $settings->relevant_services_subtitle = $validated['relevantServicesSubtitle'] ?: null;
+        }
+
+        if (array_key_exists('relevantServiceIds', $validated)) {
+            $settings->relevant_service_ids = collect($validated['relevantServiceIds'] ?? [])
+                ->map(fn (mixed $serviceId) => trim((string) $serviceId))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
         }
 
         $settings->save();
@@ -460,6 +490,10 @@ class AdminController extends Controller
             'allCities' => $allCities,
             'enabledCities' => $enabledCities,
             'bannersSectionEnabled' => (bool) $settings?->banners_section_enabled,
+            'relevantServicesSectionEnabled' => $settings?->relevant_services_section_enabled !== false,
+            'relevantServicesTitle' => $settings?->relevant_services_title ?: 'Servicios relevantes',
+            'relevantServicesSubtitle' => $settings?->relevant_services_subtitle ?: 'Descubre servicios recomendados para tu evento.',
+            'relevantServiceIds' => is_array($settings?->relevant_service_ids) ? array_values($settings->relevant_service_ids) : [],
         ];
     }
 

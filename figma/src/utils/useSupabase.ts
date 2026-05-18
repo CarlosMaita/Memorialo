@@ -712,6 +712,10 @@ export function useSupabase() {
         allCities: Array.isArray(data?.allCities) ? data.allCities : [],
         enabledCities: Array.isArray(data?.enabledCities) ? data.enabledCities : [],
         bannersSectionEnabled: typeof data?.bannersSectionEnabled === 'boolean' ? data.bannersSectionEnabled : false,
+        relevantServicesSectionEnabled: typeof data?.relevantServicesSectionEnabled === 'boolean' ? data.relevantServicesSectionEnabled : true,
+        relevantServicesTitle: typeof data?.relevantServicesTitle === 'string' ? data.relevantServicesTitle : 'Servicios relevantes',
+        relevantServicesSubtitle: typeof data?.relevantServicesSubtitle === 'string' ? data.relevantServicesSubtitle : 'Descubre servicios recomendados para tu evento.',
+        relevantServiceIds: Array.isArray(data?.relevantServiceIds) ? data.relevantServiceIds.map((value: unknown) => String(value)) : [],
       };
     } catch (error) {
       console.error('Get marketplace config error:', error);
@@ -719,11 +723,32 @@ export function useSupabase() {
     }
   };
 
-  const updateMarketplaceConfig = async (enabledCities: string[], bannersSectionEnabled?: boolean) => {
+  const updateMarketplaceConfig = async (
+    enabledCities: string[],
+    options?: {
+      bannersSectionEnabled?: boolean;
+      relevantServicesSectionEnabled?: boolean;
+      relevantServicesTitle?: string;
+      relevantServicesSubtitle?: string;
+      relevantServiceIds?: string[];
+    },
+  ) => {
     try {
       const payload: Record<string, unknown> = { enabledCities };
-      if (typeof bannersSectionEnabled === 'boolean') {
-        payload.bannersSectionEnabled = bannersSectionEnabled;
+      if (typeof options?.bannersSectionEnabled === 'boolean') {
+        payload.bannersSectionEnabled = options.bannersSectionEnabled;
+      }
+      if (typeof options?.relevantServicesSectionEnabled === 'boolean') {
+        payload.relevantServicesSectionEnabled = options.relevantServicesSectionEnabled;
+      }
+      if (typeof options?.relevantServicesTitle === 'string') {
+        payload.relevantServicesTitle = options.relevantServicesTitle;
+      }
+      if (typeof options?.relevantServicesSubtitle === 'string') {
+        payload.relevantServicesSubtitle = options.relevantServicesSubtitle;
+      }
+      if (Array.isArray(options?.relevantServiceIds)) {
+        payload.relevantServiceIds = options.relevantServiceIds;
       }
       return await apiRequest('/admin/marketplace-config', 'PATCH', payload, accessToken || undefined);
     } catch (error) {
