@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, type MouseEvent } from 'react';
-import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase, Shield, Search, Bell, CheckCheck, Heart, Calendar, MessageCircle, Receipt, Settings } from 'lucide-react';
+import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase, Shield, Search, Bell, CheckCheck, Heart, Calendar, MessageCircle, Receipt, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Artist, ServicePlan, Contract, User, Review, Booking, Provider, Event } from './types';
 import { mockArtists, mockEvents, mockUsers, mockProviders } from './data/mockData';
 import { mockReviews } from './data/mockReviews';
@@ -228,6 +228,10 @@ export default function App() {
   const [enabledMarketplaceCities, setEnabledMarketplaceCities] = useState<string[]>(VENEZUELAN_CITIES);
   const [bannersSectionEnabled, setBannersSectionEnabled] = useState(false);
   const [homeBanners, setHomeBanners] = useState<{ id: string; title: string; imageUrl: string; link?: string | null; visible: boolean; order: number }[]>([]);
+  const [relevantServicesSectionEnabled, setRelevantServicesSectionEnabled] = useState(true);
+  const [relevantServicesTitle, setRelevantServicesTitle] = useState('Servicios relevantes');
+  const [relevantServicesSubtitle, setRelevantServicesSubtitle] = useState('Descubre servicios recomendados para tu evento.');
+  const [relevantServiceIds, setRelevantServiceIds] = useState<string[]>([]);
 
   // Notifications (N2)
   const notificationsEnabled = ((import.meta as any).env?.VITE_NOTIFICATIONS_HEADER_ENABLED ?? 'true') !== 'false';
@@ -246,6 +250,7 @@ export default function App() {
   const [providerAccountCreated, setProviderAccountCreated] = useState(false);
   const [homeVisibleCount, setHomeVisibleCount] = useState(HOME_INITIAL_ITEMS);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+  const relevantServicesCarouselRef = useRef<HTMLDivElement | null>(null);
   const previousRouteRef = useRef(window.location.pathname);
   const lastMarketplaceCriteriaKeyRef = useRef('');
   const marketplaceCacheRef = useRef<Record<string, MarketplaceCacheEntry>>({});
@@ -1350,6 +1355,14 @@ export default function App() {
           setAllMarketplaceCities(nextAllCities);
           setEnabledMarketplaceCities(nextEnabledCities);
           setBannersSectionEnabled(typeof config?.bannersSectionEnabled === 'boolean' ? config.bannersSectionEnabled : false);
+          setRelevantServicesSectionEnabled(typeof config?.relevantServicesSectionEnabled === 'boolean' ? config.relevantServicesSectionEnabled : true);
+          setRelevantServicesTitle(typeof config?.relevantServicesTitle === 'string' && config.relevantServicesTitle.trim()
+            ? config.relevantServicesTitle
+            : 'Servicios relevantes');
+          setRelevantServicesSubtitle(typeof config?.relevantServicesSubtitle === 'string'
+            ? config.relevantServicesSubtitle
+            : 'Descubre servicios recomendados para tu evento.');
+          setRelevantServiceIds(Array.isArray(config?.relevantServiceIds) ? config.relevantServiceIds.map((value) => String(value)) : []);
         }
       } catch {
         if (!cancelled) {
@@ -3235,12 +3248,37 @@ export default function App() {
 
   const handleToggleBannersSection = async (enabled: boolean) => {
     try {
-      await supabase.updateMarketplaceConfig(enabledMarketplaceCities, enabled);
+      await supabase.updateMarketplaceConfig(enabledMarketplaceCities, { bannersSectionEnabled: enabled });
       setBannersSectionEnabled(enabled);
       toast.success(enabled ? 'Sección de banners habilitada' : 'Sección de banners deshabilitada');
     } catch (error) {
       console.error('Error toggling banners section:', error);
       toast.error('No se pudo actualizar la configuración de banners');
+      throw error;
+    }
+  };
+
+  const handleUpdateRelevantServicesConfig = async (config: {
+    enabled: boolean;
+    title: string;
+    subtitle: string;
+    serviceIds: string[];
+  }) => {
+    try {
+      await supabase.updateMarketplaceConfig(enabledMarketplaceCities, {
+        relevantServicesSectionEnabled: config.enabled,
+        relevantServicesTitle: config.title,
+        relevantServicesSubtitle: config.subtitle,
+        relevantServiceIds: config.serviceIds,
+      });
+      setRelevantServicesSectionEnabled(config.enabled);
+      setRelevantServicesTitle(config.title);
+      setRelevantServicesSubtitle(config.subtitle);
+      setRelevantServiceIds(config.serviceIds);
+      toast.success('Configuración de servicios relevantes actualizada');
+    } catch (error) {
+      console.error('Error updating relevant services config:', error);
+      toast.error('No se pudo actualizar la configuración de servicios relevantes');
       throw error;
     }
   };
@@ -3344,6 +3382,19 @@ export default function App() {
       path: `/servicios/venezuela/${slugify(firstSubcategory)}`,
     };
   });
+  const homeRelevantServices = useMemo(() => {
+    const source = filteredArtists.filter((artist) => !(artist.isArchived || artist.isPublished === false));
+    if (source.length === 0) return [];
+
+    if (relevantServiceIds.length > 0) {
+      const artistById = new Map(source.map((artist) => [String(artist.id), artist]));
+      return relevantServiceIds
+        .map((serviceId) => artistById.get(String(serviceId)))
+        .filter((artist): artist is Artist => Boolean(artist));
+    }
+
+    return source.slice(0, 8);
+  }, [filteredArtists, relevantServiceIds]);
 
   const marketplaceCanonical = marketplaceRouteContext
     ? marketplaceRouteContext.canonicalPath
@@ -4196,6 +4247,11 @@ export default function App() {
               onUpdateEnabledCities={handleUpdateMarketplaceCities}
               bannersSectionEnabled={bannersSectionEnabled}
               onToggleBannersSection={handleToggleBannersSection}
+              relevantServicesSectionEnabled={relevantServicesSectionEnabled}
+              relevantServicesTitle={relevantServicesTitle}
+              relevantServicesSubtitle={relevantServicesSubtitle}
+              relevantServiceIds={relevantServiceIds}
+              onUpdateRelevantServicesConfig={handleUpdateRelevantServicesConfig}
             />
           ) : (
             <div className="text-center py-12">
@@ -4414,6 +4470,54 @@ export default function App() {
                     ))}
                   </div>
                 </section>
+
+                {relevantServicesSectionEnabled && homeRelevantServices.length > 0 && (
+                  <section>
+                    <div className="mb-3 flex items-start justify-between gap-2">
+                      <div>
+                        <h2 className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--navy-blue)' }}>
+                          {relevantServicesTitle || 'Servicios relevantes'}
+                        </h2>
+                        {relevantServicesSubtitle ? (
+                          <p className="text-sm text-gray-600">{relevantServicesSubtitle}</p>
+                        ) : null}
+                      </div>
+                      <div className="hidden md:flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => relevantServicesCarouselRef.current?.scrollBy({ left: -420, behavior: 'smooth' })}
+                          aria-label="Servicios relevantes anteriores"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => relevantServicesCarouselRef.current?.scrollBy({ left: 420, behavior: 'smooth' })}
+                          aria-label="Siguientes servicios relevantes"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div
+                      ref={relevantServicesCarouselRef}
+                      className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth"
+                    >
+                      {homeRelevantServices.map((artist) => (
+                        <div key={artist.id} className="shrink-0 snap-start w-full md:w-[calc((100%-0.75rem)/2)] xl:w-[calc((100%-2.25rem)/4)]">
+                          <ArtistCard
+                            artist={artist}
+                            onViewProfile={handleViewProfile}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
 
                 <section>
                   <div className="mb-3">
