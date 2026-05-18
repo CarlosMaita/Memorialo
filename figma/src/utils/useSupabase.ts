@@ -711,6 +711,7 @@ export function useSupabase() {
       return {
         allCities: Array.isArray(data?.allCities) ? data.allCities : [],
         enabledCities: Array.isArray(data?.enabledCities) ? data.enabledCities : [],
+        bannersSectionEnabled: typeof data?.bannersSectionEnabled === 'boolean' ? data.bannersSectionEnabled : false,
       };
     } catch (error) {
       console.error('Get marketplace config error:', error);
@@ -718,14 +719,26 @@ export function useSupabase() {
     }
   };
 
-  const updateMarketplaceConfig = async (enabledCities: string[]) => {
+  const updateMarketplaceConfig = async (enabledCities: string[], bannersSectionEnabled?: boolean) => {
     try {
-      return await apiRequest('/admin/marketplace-config', 'PATCH', {
-        enabledCities,
-      }, accessToken || undefined);
+      const payload: Record<string, unknown> = { enabledCities };
+      if (typeof bannersSectionEnabled === 'boolean') {
+        payload.bannersSectionEnabled = bannersSectionEnabled;
+      }
+      return await apiRequest('/admin/marketplace-config', 'PATCH', payload, accessToken || undefined);
     } catch (error) {
       console.error('Update marketplace config error:', error);
       throw error;
+    }
+  };
+
+  const getPublicBanners = async () => {
+    try {
+      const data = await apiRequest('/banners', 'GET');
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Get public banners error:', error);
+      return [];
     }
   };
 
@@ -1426,6 +1439,7 @@ export function useSupabase() {
     deleteService,
     getMarketplaceConfig,
     updateMarketplaceConfig,
+    getPublicBanners,
     createContract,
     getContracts,
     updateContract,

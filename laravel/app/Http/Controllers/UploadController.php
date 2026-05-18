@@ -52,7 +52,7 @@ class UploadController extends Controller
 
         $folder = (string) ($validated['folder'] ?? 'service-images');
 
-        if (! in_array($folder, ['service-images', 'avatar-images'], true)) {
+        if (! in_array($folder, ['service-images', 'avatar-images', 'banner-images'], true)) {
             return response()->json(['error' => 'Invalid upload folder'], 400);
         }
 

@@ -5,20 +5,23 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class MarketplaceSetting extends Model
+class Banner extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'enabled_cities',
-        'banners_section_enabled',
+        'title',
+        'image_url',
+        'link',
+        'visible',
+        'order',
     ];
 
     protected function casts(): array
     {
         return [
-            'enabled_cities' => 'array',
-            'banners_section_enabled' => 'boolean',
+            'visible' => 'boolean',
+            'order' => 'integer',
         ];
     }
 }
