@@ -233,7 +233,7 @@ export const downloadContractPdf = (
   const providerPhone = options?.providerPhone || contract.artistWhatsapp;
   const planName = getPlanName(contract);
   const includedItems = getIncludedItems(contract);
-  const agreements = String(contract.terms.agreements || '').trim();
+  const agreements = (contract.terms.agreements || '').trim();
   const { specialRequest, additionalTermsWithoutSpecialRequest } = extractSpecialRequest(contract);
 
   const ensureSpace = (height: number) => {

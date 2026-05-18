@@ -195,7 +195,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
   const providerRepresentativeDetail = providerIdentificationNumber && !providerRepresentativeName.includes(providerIdentificationNumber)
     ? `${providerRepresentativeName} (${providerIdentificationLabel}: ${providerIdentificationNumber})`
     : providerRepresentativeName;
-  const agreements = String(contract.terms.agreements || '').trim();
+  const agreements = (contract.terms.agreements || '').trim();
 
   const handleSign = () => {
     if (canEditTerms) {
