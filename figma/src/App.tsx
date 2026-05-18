@@ -4552,88 +4552,92 @@ export default function App() {
                 </section>
               </div>
             )}
-            {/* Search & Filters */}
-            <div className="mb-5 md:mb-8">
-              <div className="mb-4 text-center hidden md:block">
-                <h2 className="mb-2 font-[Carattere] text-[24px]">
-                  {isHomePageRoute ? 'Servicios relevantes para tu evento' : marketplaceHeading}
-                </h2>
-              </div>
-
-              <AirbnbSearchBar
-                onSearch={handleSearchCriteriaChange}
-                searchCriteria={searchCriteria}
-                availableCities={enabledMarketplaceCities}
-              />
-            </div>
-
-            {/* Results & Sort */}
-            <div className="mb-3 md:mb-4 flex flex-col-reverse md:flex-row items-start md:items-center justify-between gap-2 md:gap-3">
-              <p className="text-gray-600 text-xs md:text-base leading-tight">
-                Mostrando {displayedArtists.length} de {(isFavoritesRoute ? visibleArtists.length : Math.max(marketplaceTotal, visibleArtists.length))} servicio{(isFavoritesRoute ? visibleArtists.length : Math.max(marketplaceTotal, visibleArtists.length)) !== 1 ? 's' : ''} encontrado{(isFavoritesRoute ? visibleArtists.length : Math.max(marketplaceTotal, visibleArtists.length)) !== 1 ? 's' : ''}
-              </p>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Ordenar por:</span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gold/50"
-                >
-                  <option value="rating">Mejor Calificación</option>
-                  <option value="price-low">Menor Precio</option>
-                  <option value="price-high">Mayor Precio</option>
-                  <option value="reviews">Más Reseñas</option>
-                </select>
-              </div>
-            </div>
-
-            {isFavoritesRoute && !currentUser && (
-              <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 text-sm">
-                Debes iniciar sesión para ver tus favoritos.
-              </div>
-            )}
-
-            {/* Artist Grid */}
-            {visibleArtists.length > 0 ? (
+            {!isHomePageRoute && (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-2 md:gap-y-3">
-                  {displayedArtists.map((artist) => (
-                    <ArtistCard
-                      key={artist.id}
-                      artist={artist}
-                      onViewProfile={handleViewProfile}
-                    />
-                  ))}
+                {/* Search & Filters */}
+                <div className="mb-5 md:mb-8">
+                  <div className="mb-4 text-center hidden md:block">
+                    <h2 className="mb-2 font-[Carattere] text-[24px]">
+                      {marketplaceHeading}
+                    </h2>
+                  </div>
+
+                  <AirbnbSearchBar
+                    onSearch={handleSearchCriteriaChange}
+                    searchCriteria={searchCriteria}
+                    availableCities={enabledMarketplaceCities}
+                  />
                 </div>
-                {(displayedArtists.length < visibleArtists.length || (!isFavoritesRoute && marketplaceHasMore)) && (
-                  <div ref={loadMoreSentinelRef} className="h-14 flex items-center justify-center text-sm text-gray-500">
-                    {marketplaceLoading ? 'Cargando mas servicios...' : 'Desplazate para cargar mas servicios'}
+
+                {/* Results & Sort */}
+                <div className="mb-3 md:mb-4 flex flex-col-reverse md:flex-row items-start md:items-center justify-between gap-2 md:gap-3">
+                  <p className="text-gray-600 text-xs md:text-base leading-tight">
+                    Mostrando {displayedArtists.length} de {(isFavoritesRoute ? visibleArtists.length : Math.max(marketplaceTotal, visibleArtists.length))} servicio{(isFavoritesRoute ? visibleArtists.length : Math.max(marketplaceTotal, visibleArtists.length)) !== 1 ? 's' : ''} encontrado{(isFavoritesRoute ? visibleArtists.length : Math.max(marketplaceTotal, visibleArtists.length)) !== 1 ? 's' : ''}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Ordenar por:</span>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gold/50"
+                    >
+                      <option value="rating">Mejor Calificación</option>
+                      <option value="price-low">Menor Precio</option>
+                      <option value="price-high">Mayor Precio</option>
+                      <option value="reviews">Más Reseñas</option>
+                    </select>
+                  </div>
+                </div>
+
+                {isFavoritesRoute && !currentUser && (
+                  <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 text-sm">
+                    Debes iniciar sesión para ver tus favoritos.
+                  </div>
+                )}
+
+                {/* Artist Grid */}
+                {visibleArtists.length > 0 ? (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-2 md:gap-y-3">
+                      {displayedArtists.map((artist) => (
+                        <ArtistCard
+                          key={artist.id}
+                          artist={artist}
+                          onViewProfile={handleViewProfile}
+                        />
+                      ))}
+                    </div>
+                    {(displayedArtists.length < visibleArtists.length || (!isFavoritesRoute && marketplaceHasMore)) && (
+                      <div ref={loadMoreSentinelRef} className="h-14 flex items-center justify-center text-sm text-gray-500">
+                        {marketplaceLoading ? 'Cargando más servicios...' : 'Desplázate para cargar más servicios'}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500">
+                      {isFavoritesRoute
+                        ? 'No tienes servicios favoritos que coincidan con tus criterios'
+                        : 'No se encontraron proveedores que coincidan con tus criterios'}
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="mt-4"
+                      onClick={() => {
+                        handleSearchCriteriaChange({
+                          query: '',
+                          city: '',
+                          category: '',
+                          subcategory: '',
+                          priceRange: [0, 5000]
+                        });
+                      }}
+                    >
+                      Restablecer Filtros
+                    </Button>
                   </div>
                 )}
               </>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-gray-500">
-                  {isFavoritesRoute
-                    ? 'No tienes servicios favoritos que coincidan con tus criterios'
-                    : 'No se encontraron proveedores que coincidan con tus criterios'}
-                </p>
-                <Button
-                  variant="outline"
-                  className="mt-4"
-                  onClick={() => {
-                    handleSearchCriteriaChange({
-                      query: '',
-                      city: '',
-                      category: '',
-                      subcategory: '',
-                      priceRange: [0, 5000]
-                    });
-                  }}
-                >
-                  Restablecer Filtros
-                </Button>
-              </div>
             )}
           </>
         ) : (
