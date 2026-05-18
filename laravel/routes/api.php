@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\BannerController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ContractController;
@@ -84,6 +85,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/users/{id}/provider-access/revoke', [AdminController::class, 'revokeProviderAccess']);
     Route::delete('/admin/users/{id}', [AdminController::class, 'deleteUser']);
 
+    Route::get('/admin/banners', [BannerController::class, 'index']);
+    Route::post('/admin/banners', [BannerController::class, 'store']);
+    Route::put('/admin/banners/{id}', [BannerController::class, 'update']);
+    Route::delete('/admin/banners/{id}', [BannerController::class, 'destroy']);
+
     Route::post('/upload-image', [UploadController::class, 'image']);
 
     Route::post('/reviews', [ReviewController::class, 'store']);
@@ -113,6 +119,7 @@ Route::get('/providers/user/{userId}', [ProviderController::class, 'showByUser']
 Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/services/{id}', [ServiceController::class, 'show']);
 Route::get('/marketplace/config', [AdminController::class, 'marketplaceConfig']);
+Route::get('/banners', [BannerController::class, 'publicIndex']);
 Route::get('/events', [EventController::class, 'index']);
 Route::get('/billing/config', [BillingController::class, 'config']);
 Route::get('/reviews', [ReviewController::class, 'index']);

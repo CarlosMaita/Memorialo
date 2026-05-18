@@ -342,6 +342,7 @@ class AdminController extends Controller
         $validated = $request->validate([
             'enabledCities' => ['required', 'array'],
             'enabledCities.*' => ['string', 'max:100'],
+            'bannersSectionEnabled' => ['sometimes', 'boolean'],
         ]);
 
         $allCities = $this->marketplaceCityCatalog();
@@ -357,9 +358,15 @@ class AdminController extends Controller
 
         $settings = MarketplaceSetting::query()->firstOrCreate([], [
             'enabled_cities' => null,
+            'banners_section_enabled' => false,
         ]);
 
         $settings->enabled_cities = $enabledCities;
+
+        if (array_key_exists('bannersSectionEnabled', $validated)) {
+            $settings->banners_section_enabled = $validated['bannersSectionEnabled'];
+        }
+
         $settings->save();
 
         return response()->json($this->formatMarketplaceConfig($settings));
@@ -452,6 +459,7 @@ class AdminController extends Controller
         return [
             'allCities' => $allCities,
             'enabledCities' => $enabledCities,
+            'bannersSectionEnabled' => (bool) $settings?->banners_section_enabled,
         ];
     }
 

@@ -36,6 +36,7 @@ import { toast } from 'sonner@2.0.3';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { AdminBillingSection } from './AdminBillingSection';
+import { AdminBannersSection } from './AdminBannersSection';
 import { AdminInterestedProvidersSection } from './AdminInterestedProvidersSection';
 import { ConfirmDialog } from './ConfirmDialog';
 import { backendMode, laravelApiBaseUrl } from '../utils/supabase/client';
@@ -63,9 +64,11 @@ interface AdminDashboardProps {
   allCities: string[];
   enabledCities: string[];
   onUpdateEnabledCities: (cities: string[]) => Promise<void>;
+  bannersSectionEnabled: boolean;
+  onToggleBannersSection: (enabled: boolean) => Promise<void>;
 }
 
-type AdminSection = 'overview' | 'billing' | 'providers' | 'interested' | 'users' | 'services';
+type AdminSection = 'overview' | 'billing' | 'banners' | 'providers' | 'interested' | 'users' | 'services';
 
 const API_BASE = backendMode === 'laravel'
   ? laravelApiBaseUrl
@@ -74,6 +77,7 @@ const API_BASE = backendMode === 'laravel'
 const adminNavItems = [
   { id: 'overview' as const, label: 'Resumen', icon: <LayoutDashboard className="w-5 h-5" /> },
   { id: 'billing' as const, label: 'Facturación', icon: <DollarSign className="w-5 h-5" /> },
+  { id: 'banners' as const, label: 'Banners', icon: <BookOpen className="w-5 h-5" /> },
   { id: 'providers' as const, label: 'Proveedores', icon: <Briefcase className="w-5 h-5" /> },
   { id: 'interested' as const, label: 'Interesados', icon: <FileText className="w-5 h-5" /> },
   { id: 'users' as const, label: 'Usuarios', icon: <Users className="w-5 h-5" /> },
@@ -101,7 +105,9 @@ export function AdminDashboard({
   onRevokeProviderAccess,
   allCities,
   enabledCities,
-  onUpdateEnabledCities
+  onUpdateEnabledCities,
+  bannersSectionEnabled,
+  onToggleBannersSection,
 }: AdminDashboardProps) {
   const ADMIN_TABLE_BATCH_SIZE = 16;
   const [searchQuery, setSearchQuery] = useState('');
@@ -943,6 +949,14 @@ export function AdminDashboard({
 
           {activeSection === 'billing' && (
             <AdminBillingSection accessToken={accessToken} />
+          )}
+
+          {activeSection === 'banners' && (
+            <AdminBannersSection
+              accessToken={accessToken}
+              bannersSectionEnabled={bannersSectionEnabled}
+              onToggleBannersSection={onToggleBannersSection}
+            />
           )}
 
           {activeSection === 'interested' && (

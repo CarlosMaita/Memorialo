@@ -32,6 +32,7 @@ import { BookingConfirmation } from './components/BookingConfirmation';
 import { ChatWidget } from './components/ChatWidget';
 import { NegotiationPage } from './components/NegotiationPage';
 import { ProviderNegotiationPage } from './components/ProviderNegotiationPage';
+import { BannerCarousel } from './components/BannerCarousel';
 import { SEOHead, buildMarketplaceStructuredData } from './components/SEOHead';
 import { Button } from './components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
@@ -225,6 +226,8 @@ export default function App() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [allMarketplaceCities, setAllMarketplaceCities] = useState<string[]>(VENEZUELAN_CITIES);
   const [enabledMarketplaceCities, setEnabledMarketplaceCities] = useState<string[]>(VENEZUELAN_CITIES);
+  const [bannersSectionEnabled, setBannersSectionEnabled] = useState(false);
+  const [homeBanners, setHomeBanners] = useState<{ id: string; title: string; imageUrl: string; link?: string | null; visible: boolean; order: number }[]>([]);
 
   // Notifications (N2)
   const notificationsEnabled = ((import.meta as any).env?.VITE_NOTIFICATIONS_HEADER_ENABLED ?? 'true') !== 'false';
@@ -1346,6 +1349,7 @@ export default function App() {
         if (!cancelled) {
           setAllMarketplaceCities(nextAllCities);
           setEnabledMarketplaceCities(nextEnabledCities);
+          setBannersSectionEnabled(typeof config?.bannersSectionEnabled === 'boolean' ? config.bannersSectionEnabled : false);
         }
       } catch {
         if (!cancelled) {
@@ -1355,7 +1359,19 @@ export default function App() {
       }
     };
 
+    const loadBanners = async () => {
+      try {
+        const banners = await supabase.getPublicBanners();
+        if (!cancelled) {
+          setHomeBanners(Array.isArray(banners) ? banners : []);
+        }
+      } catch {
+        // silently ignore banner load errors
+      }
+    };
+
     void loadMarketplaceConfig();
+    void loadBanners();
 
     return () => {
       cancelled = true;
@@ -3217,6 +3233,18 @@ export default function App() {
     }
   };
 
+  const handleToggleBannersSection = async (enabled: boolean) => {
+    try {
+      await supabase.updateMarketplaceConfig(enabledMarketplaceCities, enabled);
+      setBannersSectionEnabled(enabled);
+      toast.success(enabled ? 'Sección de banners habilitada' : 'Sección de banners deshabilitada');
+    } catch (error) {
+      console.error('Error toggling banners section:', error);
+      toast.error('No se pudo actualizar la configuración de banners');
+      throw error;
+    }
+  };
+
   // Get user-specific data
   const userBookings = currentUser
     ? bookings.filter(b => b.userId === currentUser.id)
@@ -4162,6 +4190,8 @@ export default function App() {
               allCities={allMarketplaceCities}
               enabledCities={enabledMarketplaceCities}
               onUpdateEnabledCities={handleUpdateMarketplaceCities}
+              bannersSectionEnabled={bannersSectionEnabled}
+              onToggleBannersSection={handleToggleBannersSection}
             />
           ) : (
             <div className="text-center py-12">
@@ -4334,6 +4364,11 @@ export default function App() {
             )}
             {isHomePageRoute && (
               <div className="space-y-8 mb-8">
+                {bannersSectionEnabled && homeBanners.length > 0 && (
+                  <section>
+                    <BannerCarousel banners={homeBanners} />
+                  </section>
+                )}
                 <section className="rounded-2xl p-6 md:p-8 text-white" style={{ background: 'linear-gradient(135deg, var(--navy-blue) 0%, var(--copper) 100%)' }}>
                   <Badge className="mb-3 bg-white/20 text-white border-white/30">
                     <span className="mr-1" aria-hidden="true">📢</span>
