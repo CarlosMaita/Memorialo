@@ -58,6 +58,7 @@ interface ContractRecord {
     paymentTerms: string;
     cancellationPolicy: string;
     additionalTerms: string[];
+    agreements?: string;
     specialRequests?: string;
   };
 }
@@ -137,6 +138,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     paymentTerms: '',
     cancellationPolicy: '',
     additionalTerms: [] as string[],
+    agreements: '',
   });
   const [specialRequestTerm, setSpecialRequestTerm] = useState('');
 
@@ -150,6 +152,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
       paymentTerms: contract.terms.paymentTerms || '',
       cancellationPolicy: contract.terms.cancellationPolicy || '',
       additionalTerms: extracted.additionalTermsWithoutSpecialRequest,
+      agreements: contract.terms.agreements || '',
     });
     setSpecialRequestTerm(extracted.specialRequest);
     setAgreedToTerms(false);
@@ -192,6 +195,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
   const providerRepresentativeDetail = providerIdentificationNumber && !providerRepresentativeName.includes(providerIdentificationNumber)
     ? `${providerRepresentativeName} (${providerIdentificationLabel}: ${providerIdentificationNumber})`
     : providerRepresentativeName;
+  const agreements = String(contract.terms.agreements || '').trim();
 
   const handleSign = () => {
     if (canEditTerms) {
@@ -235,6 +239,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
           paymentTerms: editableTerms.paymentTerms.trim(),
           cancellationPolicy: editableTerms.cancellationPolicy.trim(),
           additionalTerms: finalAdditionalTerms,
+          agreements: editableTerms.agreements.trim(),
         },
         status: (userType === 'client' && contract.artistSignature) || (userType === 'artist' && contract.clientSignature)
           ? 'active'
@@ -462,6 +467,27 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                   <p className="text-sm">{contract.terms.location}</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Acuerdos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {canEditTerms ? (
+                <Textarea
+                  value={editableTerms.agreements}
+                  onChange={(e) => setEditableTerms({ ...editableTerms, agreements: e.target.value })}
+                  placeholder="Describe los acuerdos establecidos con el cliente"
+                  rows={4}
+                  className="resize-y text-sm"
+                />
+              ) : (
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                  {agreements || 'No se definieron acuerdos adicionales entre las partes.'}
+                </p>
+              )}
             </CardContent>
           </Card>
 
