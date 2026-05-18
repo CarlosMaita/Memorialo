@@ -87,10 +87,6 @@ export function BannerCarousel({ banners }: BannerCarouselProps) {
         </div>
       )}
 
-      {/* Title */}
-      <div className="absolute bottom-8 left-6 z-10">
-        <p className="text-white text-base font-medium drop-shadow-sm">{banner.title}</p>
-      </div>
     </div>
   );
 
