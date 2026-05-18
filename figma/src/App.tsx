@@ -3300,14 +3300,19 @@ export default function App() {
   const isNegotiationWorkspaceRoute =
     currentRoute.startsWith('/mi-negocio/negociacion/') ||
     currentRoute.startsWith('/me/negociacion/');
-  const isMarketplaceHomeRoute = currentRoute === '/' && !isFavoritesRoute && !marketplaceRouteContext;
+  const HOME_SEO_TITLE = 'Inicio de servicios para eventos en Venezuela';
+  const HOME_SEO_DESCRIPTION =
+    'Conecta con proveedores confiables para bodas, fiestas y eventos corporativos. Explora categorías, servicios destacados y contrata en pocos pasos con Memorialo.';
+  const buildHomeCategoryDescription = (subcategoryCount: number) =>
+    `Descubre ${subcategoryCount} tipos de servicios para tu evento.`;
+  const isHomePageRoute = currentRoute === '/' && !isFavoritesRoute && !marketplaceRouteContext;
   const homeCategoryHighlights = Object.entries(SERVICE_CATEGORIES).slice(0, 5).map(([categoryName, categoryConfig]) => {
     const firstSubcategory = categoryConfig.subcategories[0] || categoryName;
 
     return {
       categoryName,
       icon: categoryConfig.icon,
-      description: `Descubre ${categoryConfig.subcategories.length} tipos de servicios para tu evento.`,
+      description: buildHomeCategoryDescription(categoryConfig.subcategories.length),
       path: `/servicios/venezuela/${slugify(firstSubcategory)}`,
     };
   });
@@ -4315,22 +4320,25 @@ export default function App() {
             {/* SEO for marketplace home */}
             {!serviceArtist && (
               <SEOHead
-                title={isMarketplaceHomeRoute ? 'Home de servicios para eventos en Venezuela' : undefined}
-                description={isMarketplaceHomeRoute
-                  ? 'Conecta con proveedores confiables para bodas, fiestas y eventos corporativos. Explora categorias, servicios destacados y contrata en pocos pasos con Memorialo.'
+                title={isHomePageRoute ? HOME_SEO_TITLE : undefined}
+                description={isHomePageRoute
+                  ? HOME_SEO_DESCRIPTION
                   : undefined}
                 canonical={marketplaceCanonical}
-                keywords={isMarketplaceHomeRoute
+                keywords={isHomePageRoute
                   ? 'home memorialo, proveedores de eventos, contratar servicios para eventos, bodas venezuela, marketplace eventos'
                   : marketplaceKeywords}
                 noindex={visibleArtists.length === 0}
                 structuredData={buildMarketplaceStructuredData(visibleArtists)}
               />
             )}
-            {isMarketplaceHomeRoute && (
+            {isHomePageRoute && (
               <div className="space-y-8 mb-8">
                 <section className="rounded-2xl p-6 md:p-8 text-white" style={{ background: 'linear-gradient(135deg, var(--navy-blue) 0%, var(--copper) 100%)' }}>
-                  <Badge className="mb-3 bg-white/20 text-white border-white/30">Promociones y Novedades</Badge>
+                  <Badge className="mb-3 bg-white/20 text-white border-white/30">
+                    <span className="mr-1" aria-hidden="true">📢</span>
+                    Promociones y Novedades
+                  </Badge>
                   <h2 className="text-2xl md:text-3xl font-semibold mb-2">Todo para tu evento, en un solo lugar</h2>
                   <p className="text-sm md:text-base text-white/90 mb-4">
                     Encuentra ofertas activas, nuevas publicaciones y proveedores listos para ayudarte a crear una celebración inolvidable.
@@ -4340,14 +4348,14 @@ export default function App() {
                       Ver servicios
                     </Button>
                     <Button variant="outline" className="bg-white/10 border-white/40 text-white hover:bg-white/20" onClick={() => navigateTo('/como-funciona')}>
-                      Como funciona
+                      Cómo funciona
                     </Button>
                   </div>
                 </section>
 
                 <section>
                   <div className="mb-3">
-                    <h2 className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--navy-blue)' }}>Categorias principales</h2>
+                    <h2 className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--navy-blue)' }}>Categorías principales</h2>
                     <p className="text-sm text-gray-600">Navega por las categorías más buscadas y llega rápido a lo que necesitas.</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -4358,7 +4366,9 @@ export default function App() {
                         onClick={() => navigateTo(category.path)}
                         className="text-left rounded-xl border border-gray-200 bg-white p-4 hover:border-[var(--gold)] hover:shadow-sm transition-all"
                       >
-                        <p className="text-2xl mb-2">{category.icon}</p>
+                        <p className="text-2xl mb-2">
+                          <span role="img" aria-label={`Ícono representativo de la categoría ${category.categoryName}`}>{category.icon}</span>
+                        </p>
                         <p className="font-medium text-sm" style={{ color: 'var(--navy-blue)' }}>{category.categoryName}</p>
                         <p className="text-xs text-gray-600 mt-1">{category.description}</p>
                       </button>
@@ -4390,7 +4400,7 @@ export default function App() {
                   style={{ borderColor: 'rgba(247, 178, 103, 0.45)', backgroundColor: 'rgba(247, 178, 103, 0.1)' }}
                 >
                   <div>
-                    <h2 className="text-xl font-semibold mb-1" style={{ color: 'var(--navy-blue)' }}>Unete a la red de proveedores de Memorialo</h2>
+                    <h2 className="text-xl font-semibold mb-1" style={{ color: 'var(--navy-blue)' }}>Únete a la red de proveedores de Memorialo</h2>
                     <p className="text-sm text-gray-700">Publica tus servicios, recibe solicitudes y haz crecer tu negocio de eventos.</p>
                   </div>
                   <Button onClick={() => navigateTo('/proveedores')}>
@@ -4403,7 +4413,7 @@ export default function App() {
             <div className="mb-5 md:mb-8">
               <div className="mb-4 text-center hidden md:block">
                 <h2 className="mb-2 font-[Carattere] text-[24px]">
-                  {isMarketplaceHomeRoute ? 'Servicios relevantes para tu evento' : marketplaceHeading}
+                  {isHomePageRoute ? 'Servicios relevantes para tu evento' : marketplaceHeading}
                 </h2>
               </div>
 
