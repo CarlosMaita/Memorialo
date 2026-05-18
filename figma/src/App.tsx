@@ -4609,7 +4609,7 @@ export default function App() {
                     </div>
                     {(displayedArtists.length < visibleArtists.length || (!isFavoritesRoute && marketplaceHasMore)) && (
                       <div ref={loadMoreSentinelRef} className="h-14 flex items-center justify-center text-sm text-gray-500">
-                        {marketplaceLoading ? 'Cargando mas servicios...' : 'Desplazate para cargar mas servicios'}
+                        {marketplaceLoading ? 'Cargando más servicios...' : 'Desplázate para cargar más servicios'}
                       </div>
                     )}
                   </>
