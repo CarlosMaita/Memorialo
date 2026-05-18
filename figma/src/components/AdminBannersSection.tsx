@@ -89,7 +89,8 @@ export function AdminBannersSection({ accessToken, bannersSectionEnabled, onTogg
       order: banner.order,
     });
     setImageFile(null);
-    setImagePreview(banner.imageUrl);
+    // Only set preview for safe URLs
+    setImagePreview(/^https?:\/\//i.test(banner.imageUrl) ? banner.imageUrl : null);
     setDialogOpen(true);
   };
 
@@ -382,7 +383,7 @@ export function AdminBannersSection({ accessToken, bannersSectionEnabled, onTogg
             <div className="space-y-1.5">
               <Label>Imagen *</Label>
               <div className="space-y-2">
-                {imagePreview && (
+                {imagePreview && /^(https?:\/\/|data:image\/)/.test(imagePreview) && (
                   <img
                     src={imagePreview}
                     alt="Vista previa"
@@ -403,6 +404,7 @@ export function AdminBannersSection({ accessToken, bannersSectionEnabled, onTogg
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    aria-label="Seleccionar imagen para el banner"
                     className="hidden"
                     onChange={handleFileChange}
                   />
@@ -415,8 +417,11 @@ export function AdminBannersSection({ accessToken, bannersSectionEnabled, onTogg
                       placeholder="https://..."
                       value={form.imageUrl}
                       onChange={(e) => {
-                        setForm((prev) => ({ ...prev, imageUrl: e.target.value }));
-                        setImagePreview(e.target.value || null);
+                        const value = e.target.value;
+                        setForm((prev) => ({ ...prev, imageUrl: value }));
+                        // Only allow http/https URLs as image preview to prevent XSS
+                        const safe = /^https?:\/\//i.test(value) ? value : null;
+                        setImagePreview(safe);
                       }}
                     />
                   </div>
