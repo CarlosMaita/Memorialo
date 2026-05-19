@@ -163,8 +163,8 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
       agreements: contract.terms.agreements || '',
     });
     setSpecialRequestTerm(extracted.specialRequest);
-    setRejectReason(String(contract.metadata?.contractRejection?.reason || '').trim());
-    setRejectImprovementComment(String(contract.metadata?.contractRejection?.improvementComment || '').trim());
+    setRejectReason('');
+    setRejectImprovementComment('');
     setAgreedToTerms(false);
   }, [contract, open]);
 

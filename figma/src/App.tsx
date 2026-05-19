@@ -2907,8 +2907,11 @@ export default function App() {
             }
             const encodedContractId = encodeURIComponent(rawContractId);
             const rejection = updated?.metadata?.contractRejection || {};
-            const rejectionReason = String(rejection.reason || '').trim() || 'No especificado';
-            const rejectionImprovementComment = String(rejection.improvementComment || '').trim() || 'No especificado';
+            const rejectionReason = String(rejection.reason || '').trim();
+            const rejectionImprovementComment = String(rejection.improvementComment || '').trim();
+            if (!rejectionReason || !rejectionImprovementComment) {
+              throw new Error('Missing rejection reason or improvement comment for chat message');
+            }
             const conversation = await supabase.ensureChatConversation({ bookingId: String(bookingIdForChat) });
             await supabase.sendChatMessage(
               conversation.id,
