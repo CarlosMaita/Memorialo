@@ -531,11 +531,12 @@ export default function App() {
     setMarketplaceArtists((previous) => applyReviewAggregates(previous, reviews));
   }, [reviews]);
 
-  // Load all users when currentUser becomes admin
+  // Load all users and all services when currentUser becomes admin
   useEffect(() => {
     if (currentUser && currentUser.role === 'admin') {
-      console.log('Admin user detected, loading all users...');
+      console.log('Admin user detected, loading all users and services...');
       loadAllUsers();
+      loadAllServices();
     }
   }, [currentUser?.role]);
 
@@ -726,6 +727,19 @@ export default function App() {
     } catch (error) {
       console.error('Error loading users:', error);
       setAllUsers(mockUsers);
+    }
+  };
+
+  const loadAllServices = async () => {
+    try {
+      console.log('Loading all services from database for admin...');
+      const servicesData = await supabase.getServices({ view: 'summary' });
+      if (servicesData && servicesData.length > 0) {
+        console.log(`✅ Loaded ${servicesData.length} services from database`);
+        setArtists((prev) => mergeArtistsById(prev, servicesData));
+      }
+    } catch (error) {
+      console.error('Error loading all services:', error);
     }
   };
 
