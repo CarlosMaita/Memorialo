@@ -597,6 +597,11 @@ export function AdminDashboard({
     [filteredCollectionServices],
   );
 
+  const selectedFilteredCollectionServicesCount = useMemo(
+    () => filteredCollectionServiceIds.filter((serviceId) => selectedCollectionServiceIds.includes(serviceId)).length,
+    [filteredCollectionServiceIds, selectedCollectionServiceIds],
+  );
+
   const visibleFilteredProviders = useMemo(
     () => filteredProviders.slice(0, visibleProvidersCount),
     [filteredProviders, visibleProvidersCount]
@@ -898,7 +903,7 @@ export function AdminDashboard({
         ? await onUpdateCollection(editingCollectionId, payload)
         : await onCreateCollection(payload);
 
-      if (savedCollection?.id || !editingCollectionId) {
+      if (savedCollection?.id || editingCollectionId) {
         closeCollectionForm();
       }
     } finally {
@@ -2089,7 +2094,7 @@ export function AdminDashboard({
                           <Button type="button" variant="outline" size="sm" onClick={selectAllFilteredCollectionServices} disabled={filteredCollectionServices.length === 0}>
                             Seleccionar filtrados
                           </Button>
-                          <Button type="button" variant="outline" size="sm" onClick={clearFilteredCollectionServices} disabled={selectedCollectionServiceIds.length === 0}>
+                          <Button type="button" variant="outline" size="sm" onClick={clearFilteredCollectionServices} disabled={selectedFilteredCollectionServicesCount === 0}>
                             Quitar filtrados
                           </Button>
                         </div>
