@@ -45,6 +45,12 @@ interface ContractRecord {
     providerRepresentativeName?: string;
     providerLegalEntityType?: 'person' | 'company';
     providerIdentificationNumber?: string;
+    contractRejection?: {
+      reason?: string;
+      improvementComment?: string;
+      rejectedAt?: string;
+      rejectedBy?: 'client' | 'artist';
+    };
   };
   terms: {
     measureType?: 'time' | 'unit';
@@ -134,6 +140,8 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
   const [rejecting, setRejecting] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectImprovementComment, setRejectImprovementComment] = useState('');
   const [editableTerms, setEditableTerms] = useState({
     paymentTerms: '',
     cancellationPolicy: '',
@@ -155,6 +163,8 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
       agreements: contract.terms.agreements || '',
     });
     setSpecialRequestTerm(extracted.specialRequest);
+    setRejectReason(String(contract.metadata?.contractRejection?.reason || '').trim());
+    setRejectImprovementComment(String(contract.metadata?.contractRejection?.improvementComment || '').trim());
     setAgreedToTerms(false);
   }, [contract, open]);
 
@@ -176,6 +186,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
   const canSign = userType === 'client'
     ? !contract.clientSignature
     : !contract.artistSignature;
+  const canRejectContract = userType === 'client' && contract.status === 'pending_client' && !contract.clientSignature;
 
   const otherPartyHasSigned = userType === 'client'
     ? !!contract.artistSignature
@@ -265,6 +276,16 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
   };
 
   const handleRejectClick = () => {
+    if (!rejectReason.trim()) {
+      toast.error('Debes indicar el motivo del rechazo');
+      return;
+    }
+
+    if (!rejectImprovementComment.trim()) {
+      toast.error('Debes indicar el comentario de mejora');
+      return;
+    }
+
     setShowRejectConfirm(true);
   };
 
@@ -299,14 +320,23 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     setTimeout(() => {
       const rejectedContract: ContractRecord = {
         ...contract,
-        status: 'cancelled'
+        status: 'en_negociacion',
+        metadata: {
+          ...contract.metadata,
+          contractRejection: {
+            reason: rejectReason.trim(),
+            improvementComment: rejectImprovementComment.trim(),
+            rejectedAt: new Date().toISOString(),
+            rejectedBy: userType,
+          },
+        },
       };
 
       if (onReject) {
         onReject(rejectedContract);
       }
 
-      toast.error('Contrato rechazado');
+      toast.success('Contrato rechazado y enviado para ajustes');
       setRejecting(false);
       onClose();
     }, 1000);
@@ -648,6 +678,33 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                   </Label>
                 </div>
 
+                {canRejectContract && (
+                  <div className="grid grid-cols-1 gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="rejectReason">Motivo del rechazo</Label>
+                      <Textarea
+                        id="rejectReason"
+                        value={rejectReason}
+                        onChange={(event) => setRejectReason(event.target.value)}
+                        placeholder="Ej. El alcance no coincide con lo solicitado."
+                        rows={3}
+                        disabled={signing || rejecting}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="rejectImprovementComment">Comentario de mejora</Label>
+                      <Textarea
+                        id="rejectImprovementComment"
+                        value={rejectImprovementComment}
+                        onChange={(event) => setRejectImprovementComment(event.target.value)}
+                        placeholder="Ej. Ajustar horarios, entregables y condiciones de pago."
+                        rows={3}
+                        disabled={signing || rejecting}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Button
                     onClick={handleSign}
@@ -656,7 +713,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                   >
                     {signing ? 'Firmando...' : 'Firmar Contrato'}
                   </Button>
-                  {userType === 'artist' && (
+                  {canRejectContract && (
                     <Button
                       variant="outline"
                       onClick={handleRejectClick}
@@ -717,7 +774,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
         onOpenChange={setShowRejectConfirm}
         onConfirm={handleRejectConfirmed}
         title="¿Rechazar este contrato?"
-        description="¿Estás seguro de que deseas rechazar este contrato? Esta acción no se puede deshacer y el contrato será cancelado permanentemente."
+        description="Se notificará al proveedor por chat con el motivo y comentario de mejora para que ajuste y vuelva a enviar el contrato."
         confirmText="Sí, rechazar"
         cancelText="No, volver"
         variant="danger"
