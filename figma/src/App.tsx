@@ -2204,13 +2204,13 @@ export default function App() {
   useEffect(() => {
     const normalizedPath = (currentRoute.split('?')[0] || '/').replace(/\/+$/, '') || '/';
 
-    if (normalizedPath.startsWith('/mi-negocio') && !currentUser) {
-      setViewMode('client');
-      setShowAuthDialog(true);
-      return;
-    }
-
     if (normalizedPath.startsWith('/mi-negocio')) {
+      if (!currentUser) {
+        setViewMode('client');
+        setShowAuthDialog(true);
+        return;
+      }
+
       setViewMode('business');
       setDashboardView('provider');
 
