@@ -3847,7 +3847,7 @@ export default function App() {
       {!showAbout && !showHowItWorks && !showForProviders && !showForClients && (
         <>
           {/* Header */}
-          <header className={`${isNegotiationWorkspaceRoute ? 'hidden lg:sticky' : 'sticky'} top-0 z-40 shadow-sm`} style={{ backgroundColor: 'var(--navy-blue)' }}>
+          <header className={`${isNegotiationWorkspaceRoute ? 'hidden lg:block lg:sticky' : 'sticky'} top-0 z-40 shadow-sm`} style={{ backgroundColor: 'var(--navy-blue)' }}>
         <div className="max-w-[1400px] mx-auto px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <button
