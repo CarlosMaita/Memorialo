@@ -239,6 +239,10 @@ export default function App() {
   const [mainContentPrimaryButtonLink, setMainContentPrimaryButtonLink] = useState('/servicios/venezuela');
   const [mainContentSecondaryButtonText, setMainContentSecondaryButtonText] = useState('Cómo funciona');
   const [mainContentSecondaryButtonLink, setMainContentSecondaryButtonLink] = useState('/como-funciona');
+  const [mainContentBgType, setMainContentBgType] = useState<'gradient' | 'solid' | 'image'>('gradient');
+  const [mainContentBgColor, setMainContentBgColor] = useState('#0A1F44');
+  const [mainContentBgGradient, setMainContentBgGradient] = useState('linear-gradient(135deg, #0A1F44 0%, #B8860B 100%)');
+  const [mainContentBgImageUrl, setMainContentBgImageUrl] = useState('');
 
   // Notifications (N2)
   const notificationsEnabled = ((import.meta as any).env?.VITE_NOTIFICATIONS_HEADER_ENABLED ?? 'true') !== 'false';
@@ -1405,6 +1409,20 @@ export default function App() {
           setMainContentSecondaryButtonLink(typeof config?.mainContentSecondaryButtonLink === 'string' && config.mainContentSecondaryButtonLink.trim()
             ? config.mainContentSecondaryButtonLink
             : '/como-funciona');
+          setMainContentBgType(
+            config?.mainContentBgType === 'solid' || config?.mainContentBgType === 'image'
+              ? config.mainContentBgType
+              : 'gradient',
+          );
+          setMainContentBgColor(typeof config?.mainContentBgColor === 'string' && config.mainContentBgColor.trim()
+            ? config.mainContentBgColor
+            : '#0A1F44');
+          setMainContentBgGradient(typeof config?.mainContentBgGradient === 'string' && config.mainContentBgGradient.trim()
+            ? config.mainContentBgGradient
+            : 'linear-gradient(135deg, #0A1F44 0%, #B8860B 100%)');
+          setMainContentBgImageUrl(typeof config?.mainContentBgImageUrl === 'string'
+            ? config.mainContentBgImageUrl
+            : '');
         }
       } catch {
         if (!cancelled) {
@@ -3333,6 +3351,10 @@ export default function App() {
     primaryButtonLink: string;
     secondaryButtonText: string;
     secondaryButtonLink: string;
+    bgType: 'gradient' | 'solid' | 'image';
+    bgColor: string;
+    bgGradient: string;
+    bgImageUrl: string;
   }) => {
     try {
       await supabase.updateMarketplaceConfig(enabledMarketplaceCities, {
@@ -3343,6 +3365,10 @@ export default function App() {
         mainContentPrimaryButtonLink: config.primaryButtonLink,
         mainContentSecondaryButtonText: config.secondaryButtonText,
         mainContentSecondaryButtonLink: config.secondaryButtonLink,
+        mainContentBgType: config.bgType,
+        mainContentBgColor: config.bgColor,
+        mainContentBgGradient: config.bgGradient,
+        mainContentBgImageUrl: config.bgImageUrl,
       });
       setMainContentAccent(config.accent);
       setMainContentTitle(config.title);
@@ -3351,6 +3377,10 @@ export default function App() {
       setMainContentPrimaryButtonLink(config.primaryButtonLink);
       setMainContentSecondaryButtonText(config.secondaryButtonText);
       setMainContentSecondaryButtonLink(config.secondaryButtonLink);
+      setMainContentBgType(config.bgType);
+      setMainContentBgColor(config.bgColor);
+      setMainContentBgGradient(config.bgGradient);
+      setMainContentBgImageUrl(config.bgImageUrl);
       toast.success('Contenido principal actualizado');
     } catch (error) {
       console.error('Error updating main content config:', error);
@@ -4360,6 +4390,10 @@ export default function App() {
               mainContentPrimaryButtonLink={mainContentPrimaryButtonLink}
               mainContentSecondaryButtonText={mainContentSecondaryButtonText}
               mainContentSecondaryButtonLink={mainContentSecondaryButtonLink}
+              mainContentBgType={mainContentBgType}
+              mainContentBgColor={mainContentBgColor}
+              mainContentBgGradient={mainContentBgGradient}
+              mainContentBgImageUrl={mainContentBgImageUrl}
               onUpdateMainContentConfig={handleUpdateMainContentConfig}
             />
           ) : (
@@ -4538,7 +4572,16 @@ export default function App() {
                     <BannerCarousel banners={homeBanners} />
                   </section>
                 )}
-                <section className="rounded-2xl p-6 md:p-8 text-white" style={{ background: 'linear-gradient(135deg, var(--navy-blue) 0%, var(--copper) 100%)' }}>
+                <section
+                  className="rounded-2xl p-6 md:p-8 text-white"
+                  style={
+                    mainContentBgType === 'solid'
+                      ? { backgroundColor: mainContentBgColor }
+                      : mainContentBgType === 'image' && mainContentBgImageUrl
+                        ? { backgroundImage: `url(${mainContentBgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
+                        : { background: mainContentBgGradient || 'linear-gradient(135deg, var(--navy-blue) 0%, var(--copper) 100%)' }
+                  }
+                >
                   <Badge asChild className="mb-3 bg-white/20 text-white border-white/30">
                     <h1>
                       <span className="mr-1" aria-hidden="true">📢</span>

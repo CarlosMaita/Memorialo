@@ -747,6 +747,10 @@ export function useSupabase() {
       mainContentPrimaryButtonLink?: string;
       mainContentSecondaryButtonText?: string;
       mainContentSecondaryButtonLink?: string;
+      mainContentBgType?: string;
+      mainContentBgColor?: string;
+      mainContentBgGradient?: string;
+      mainContentBgImageUrl?: string;
     },
   ) => {
     try {
@@ -786,6 +790,18 @@ export function useSupabase() {
       }
       if (typeof options?.mainContentSecondaryButtonLink === 'string') {
         payload.mainContentSecondaryButtonLink = options.mainContentSecondaryButtonLink;
+      }
+      if (typeof options?.mainContentBgType === 'string') {
+        payload.mainContentBgType = options.mainContentBgType;
+      }
+      if (typeof options?.mainContentBgColor === 'string') {
+        payload.mainContentBgColor = options.mainContentBgColor;
+      }
+      if (typeof options?.mainContentBgGradient === 'string') {
+        payload.mainContentBgGradient = options.mainContentBgGradient;
+      }
+      if (typeof options?.mainContentBgImageUrl === 'string') {
+        payload.mainContentBgImageUrl = options.mainContentBgImageUrl;
       }
       return await apiRequest('/admin/marketplace-config', 'PATCH', payload, accessToken || undefined);
     } catch (error) {

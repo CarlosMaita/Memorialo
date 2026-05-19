@@ -23,6 +23,10 @@ class MarketplaceSetting extends Model
         'main_content_primary_button_link',
         'main_content_secondary_button_text',
         'main_content_secondary_button_link',
+        'main_content_bg_type',
+        'main_content_bg_color',
+        'main_content_bg_gradient',
+        'main_content_bg_image_url',
     ];
 
     protected function casts(): array

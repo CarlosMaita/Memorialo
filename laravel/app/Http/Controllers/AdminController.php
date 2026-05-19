@@ -355,6 +355,10 @@ class AdminController extends Controller
             'mainContentPrimaryButtonLink' => ['sometimes', 'nullable', 'string', 'max:255'],
             'mainContentSecondaryButtonText' => ['sometimes', 'nullable', 'string', 'max:80'],
             'mainContentSecondaryButtonLink' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'mainContentBgType' => ['sometimes', 'nullable', 'string', 'in:gradient,solid,image'],
+            'mainContentBgColor' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'mainContentBgGradient' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'mainContentBgImageUrl' => ['sometimes', 'nullable', 'string', 'max:1000'],
         ]);
 
         $allCities = $this->marketplaceCityCatalog();
@@ -437,6 +441,22 @@ class AdminController extends Controller
 
         if (array_key_exists('mainContentSecondaryButtonLink', $validated)) {
             $settings->main_content_secondary_button_link = $validated['mainContentSecondaryButtonLink'] ?: null;
+        }
+
+        if (array_key_exists('mainContentBgType', $validated)) {
+            $settings->main_content_bg_type = $validated['mainContentBgType'] ?: 'gradient';
+        }
+
+        if (array_key_exists('mainContentBgColor', $validated)) {
+            $settings->main_content_bg_color = $validated['mainContentBgColor'] ?: null;
+        }
+
+        if (array_key_exists('mainContentBgGradient', $validated)) {
+            $settings->main_content_bg_gradient = $validated['mainContentBgGradient'] ?: null;
+        }
+
+        if (array_key_exists('mainContentBgImageUrl', $validated)) {
+            $settings->main_content_bg_image_url = $validated['mainContentBgImageUrl'] ?: null;
         }
 
         $settings->save();
@@ -543,6 +563,10 @@ class AdminController extends Controller
             'mainContentPrimaryButtonLink' => $settings?->main_content_primary_button_link ?: '/servicios/venezuela',
             'mainContentSecondaryButtonText' => $settings?->main_content_secondary_button_text ?: 'Cómo funciona',
             'mainContentSecondaryButtonLink' => $settings?->main_content_secondary_button_link ?: '/como-funciona',
+            'mainContentBgType' => $settings?->main_content_bg_type ?: 'gradient',
+            'mainContentBgColor' => $settings?->main_content_bg_color ?: '#0A1F44',
+            'mainContentBgGradient' => $settings?->main_content_bg_gradient ?: 'linear-gradient(135deg, #0A1F44 0%, #B8860B 100%)',
+            'mainContentBgImageUrl' => $settings?->main_content_bg_image_url ?: null,
         ];
     }
 
