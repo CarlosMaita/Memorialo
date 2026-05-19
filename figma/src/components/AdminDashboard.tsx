@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, type ChangeEvent } from 'react';
 import { Provider, User, Artist, Contract, Booking, Review } from '../types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -27,7 +27,8 @@ import {
   BookOpen,
   MapPin,
   Save,
-  Loader2
+  Loader2,
+  ImagePlus
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Textarea } from './ui/textarea';
@@ -185,6 +186,8 @@ export function AdminDashboard({
   const [mainContentBgGradientDraft, setMainContentBgGradientDraft] = useState(mainContentBgGradient);
   const [mainContentBgImageUrlDraft, setMainContentBgImageUrlDraft] = useState(mainContentBgImageUrl);
   const [savingMainContent, setSavingMainContent] = useState(false);
+  const [uploadingMainContentBgImage, setUploadingMainContentBgImage] = useState(false);
+  const mainContentBgFileInputRef = useRef<HTMLInputElement | null>(null);
   const [visibleProvidersCount, setVisibleProvidersCount] = useState(ADMIN_TABLE_BATCH_SIZE);
   const [visibleUsersCount, setVisibleUsersCount] = useState(ADMIN_TABLE_BATCH_SIZE);
   const [visibleServicesCount, setVisibleServicesCount] = useState(ADMIN_TABLE_BATCH_SIZE);
@@ -691,6 +694,75 @@ export function AdminDashboard({
       });
     } finally {
       setSavingMainContent(false);
+    }
+  };
+
+  const handleMainContentBgImageFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    if (!accessToken) {
+      toast.error('Debes iniciar sesión para subir imágenes');
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('El archivo debe ser una imagen');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('La imagen no debe superar los 5MB');
+      return;
+    }
+
+    try {
+      setUploadingMainContentBgImage(true);
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const response = await fetch(`${API_BASE}/upload-image`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          imageData: base64,
+          fileName: file.name,
+          contentType: file.type,
+          folder: 'banner-images',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData?.error ?? 'Error al subir la imagen');
+      }
+
+      const data = await response.json();
+      const uploadedUrl = typeof data?.url === 'string' ? data.url : '';
+
+      if (!uploadedUrl) {
+        throw new Error('No se recibió URL de la imagen');
+      }
+
+      setMainContentBgTypeDraft('image');
+      setMainContentBgImageUrlDraft(uploadedUrl);
+      toast.success('Imagen subida correctamente. Guarda para publicar el cambio.');
+    } catch (error: any) {
+      toast.error(error?.message ?? 'Error al subir la imagen');
+    } finally {
+      setUploadingMainContentBgImage(false);
     }
   };
 
@@ -1334,6 +1406,35 @@ export function AdminDashboard({
                     {mainContentBgTypeDraft === 'image' && (
                       <div className="space-y-1.5">
                         <Label htmlFor="main-content-bg-image-url">URL de imagen de fondo</Label>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => mainContentBgFileInputRef.current?.click()}
+                            disabled={uploadingMainContentBgImage}
+                          >
+                            {uploadingMainContentBgImage ? (
+                              <>
+                                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                                Subiendo...
+                              </>
+                            ) : (
+                              <>
+                                <ImagePlus className="mr-1 h-4 w-4" />
+                                Subir imagen
+                              </>
+                            )}
+                          </Button>
+                          <input
+                            ref={mainContentBgFileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            aria-label="Seleccionar imagen de fondo"
+                            onChange={handleMainContentBgImageFileChange}
+                          />
+                        </div>
                         <Input
                           id="main-content-bg-image-url"
                           value={mainContentBgImageUrlDraft}
