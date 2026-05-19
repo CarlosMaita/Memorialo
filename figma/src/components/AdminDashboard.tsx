@@ -740,7 +740,7 @@ export function AdminDashboard({
           imageData: base64,
           fileName: file.name,
           contentType: file.type,
-          folder: 'banner-images',
+          folder: 'main-content-bg-images',
         }),
       });
 
@@ -758,7 +758,7 @@ export function AdminDashboard({
 
       setMainContentBgTypeDraft('image');
       setMainContentBgImageUrlDraft(uploadedUrl);
-      toast.success('Imagen subida correctamente. Guarda para publicar el cambio.');
+      toast.success('Imagen subida correctamente. Guarda los cambios para publicarlo.');
     } catch (error: any) {
       toast.error(error?.message ?? 'Error al subir la imagen');
     } finally {
