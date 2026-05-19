@@ -2871,6 +2871,11 @@ export default function App() {
         (updated.status === 'active' || updated.status === 'pending_artist') &&
         // Only emit this chat message when the acting user is the client.
         contractClientId !== null && contractClientId === actorUserId;
+      const isContractRejectedByClient =
+        previousStatus === 'pending_client' &&
+        updated.status === 'en_negociacion' &&
+        // Only emit this chat message when the acting user is the client.
+        contractClientId !== null && contractClientId === actorUserId;
 
       if (isContractSignedByClient) {
         const bookingIdForChat = updated.bookingId || associatedBooking?.id;
@@ -2892,9 +2897,37 @@ export default function App() {
         }
       }
 
+      if (isContractRejectedByClient) {
+        const bookingIdForChat = updated.bookingId || associatedBooking?.id;
+        if (bookingIdForChat) {
+          try {
+            const rawContractId = String(updated.id || '').trim();
+            if (!rawContractId) {
+              throw new Error('Missing contract id for chat token');
+            }
+            const encodedContractId = encodeURIComponent(rawContractId);
+            const rejection = updated?.metadata?.contractRejection || {};
+            const rejectionReason = String(rejection.reason || '').trim();
+            const rejectionImprovementComment = String(rejection.improvementComment || '').trim();
+            if (!rejectionReason || !rejectionImprovementComment) {
+              throw new Error('Missing rejection reason or improvement comment for chat message');
+            }
+            const conversation = await supabase.ensureChatConversation({ bookingId: String(bookingIdForChat) });
+            await supabase.sendChatMessage(
+              conversation.id,
+              `El cliente ha rechazado el contrato [CONTRACT:${encodedContractId}]. Motivo: ${rejectionReason}. Mejoras sugeridas: ${rejectionImprovementComment}.`,
+            );
+          } catch (chatError) {
+            console.error('Error sending client rejected contract chat message:', chatError);
+          }
+        }
+      }
+
       // Show appropriate message based on status
       if (updatedContract.status === 'cancelled') {
         toast.error('Contrato rechazado - La reserva ha sido cancelada');
+      } else if (updatedContract.status === 'en_negociacion' && previousStatus === 'pending_client') {
+        toast.success('Contrato rechazado. El proveedor podrá ajustar y reenviar el contrato.');
       } else if (updatedContract.status === 'active') {
         toast.success('Contrato firmado y activado - Reserva confirmada');
       } else {
