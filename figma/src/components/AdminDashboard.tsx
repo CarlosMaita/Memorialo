@@ -38,6 +38,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
+import { Checkbox } from './ui/checkbox';
 import { toast } from 'sonner@2.0.3';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -216,6 +217,7 @@ export function AdminDashboard({
   const [selectedCollectionServiceIds, setSelectedCollectionServiceIds] = useState<string[]>([]);
   const [collectionServiceSearchQuery, setCollectionServiceSearchQuery] = useState('');
   const [savingCollection, setSavingCollection] = useState(false);
+  const [showCollectionForm, setShowCollectionForm] = useState(false);
   const [mainContentAccentDraft, setMainContentAccentDraft] = useState(mainContentAccent);
   const [mainContentTitleDraft, setMainContentTitleDraft] = useState(mainContentTitle);
   const [mainContentSubtitleDraft, setMainContentSubtitleDraft] = useState(mainContentSubtitle);
@@ -590,6 +592,16 @@ export function AdminDashboard({
     });
   }, [artists, providers, collectionServiceSearchQuery]);
 
+  const filteredCollectionServiceIds = useMemo(
+    () => filteredCollectionServices.map((service) => String(service.id)),
+    [filteredCollectionServices],
+  );
+
+  const selectedFilteredCollectionServicesCount = useMemo(
+    () => filteredCollectionServiceIds.filter((serviceId) => selectedCollectionServiceIds.includes(serviceId)).length,
+    [filteredCollectionServiceIds, selectedCollectionServiceIds],
+  );
+
   const visibleFilteredProviders = useMemo(
     () => filteredProviders.slice(0, visibleProvidersCount),
     [filteredProviders, visibleProvidersCount]
@@ -824,6 +836,16 @@ export function AdminDashboard({
     setCollectionServiceSearchQuery('');
   };
 
+  const openCreateCollectionForm = () => {
+    resetCollectionForm();
+    setShowCollectionForm(true);
+  };
+
+  const closeCollectionForm = () => {
+    resetCollectionForm();
+    setShowCollectionForm(false);
+  };
+
   const toggleCollectionService = (serviceId: string) => {
     setSelectedCollectionServiceIds((previous) => (
       previous.includes(serviceId)
@@ -838,6 +860,20 @@ export function AdminDashboard({
     setCollectionSubtitleDraft(collection.subtitle || '');
     setCollectionSlugDraft(collection.slug);
     setSelectedCollectionServiceIds(Array.isArray(collection.serviceIds) ? collection.serviceIds : []);
+    setShowCollectionForm(true);
+  };
+
+  const selectAllFilteredCollectionServices = () => {
+    setSelectedCollectionServiceIds((previous) => {
+      const merged = new Set(previous);
+      filteredCollectionServiceIds.forEach((serviceId) => merged.add(serviceId));
+      return Array.from(merged);
+    });
+  };
+
+  const clearFilteredCollectionServices = () => {
+    const filteredIds = new Set(filteredCollectionServiceIds);
+    setSelectedCollectionServiceIds((previous) => previous.filter((serviceId) => !filteredIds.has(serviceId)));
   };
 
   const handleSaveCollection = async () => {
@@ -867,10 +903,8 @@ export function AdminDashboard({
         ? await onUpdateCollection(editingCollectionId, payload)
         : await onCreateCollection(payload);
 
-      if (savedCollection?.id) {
-        handleEditCollection(savedCollection);
-      } else if (!editingCollectionId) {
-        resetCollectionForm();
+      if (savedCollection?.id || editingCollectionId) {
+        closeCollectionForm();
       }
     } finally {
       setSavingCollection(false);
@@ -1902,158 +1936,215 @@ export function AdminDashboard({
               </div>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>{editingCollectionId ? 'Editar colección' : 'Nueva colección'}</CardTitle>
-                  <CardDescription>Define el título, subtítulo, slug y los servicios que formarán parte de la colección.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="collection-title">Título</Label>
-                      <Input
-                        id="collection-title"
-                        value={collectionTitleDraft}
-                        maxLength={160}
-                        onChange={(event) => setCollectionTitleDraft(event.target.value)}
-                        placeholder="Servicios para bodas 2026"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="collection-slug">Slug</Label>
-                      <Input
-                        id="collection-slug"
-                        value={collectionSlugDraft}
-                        maxLength={180}
-                        onChange={(event) => setCollectionSlugDraft(slugify(event.target.value))}
-                        placeholder="servicios-para-bodas-2026"
-                      />
-                      <p className="text-xs text-gray-500">URL pública: /coleccion/{slugify(collectionSlugDraft || collectionTitleDraft) || 'tu-slug'}</p>
-                    </div>
+                <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Colecciones creadas ({collections.length})</CardTitle>
+                    <CardDescription>Edita o elimina agrupaciones ya publicadas.</CardDescription>
                   </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="collection-subtitle">Subtítulo</Label>
-                    <Textarea
-                      id="collection-subtitle"
-                      value={collectionSubtitleDraft}
-                      maxLength={320}
-                      onChange={(event) => setCollectionSubtitleDraft(event.target.value)}
-                      placeholder="Agrupa publicaciones ideales para esta intención de búsqueda."
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <p className="text-xs text-gray-500">
-                      Servicios seleccionados: {selectedCollectionServiceIds.length}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <Button type="button" variant="outline" onClick={resetCollectionForm}>
-                        {editingCollectionId ? 'Cancelar edición' : 'Limpiar'}
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={handleSaveCollection}
-                        disabled={savingCollection || !hasCollectionChanges}
-                      >
-                        {savingCollection ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Guardando...
-                          </>
-                        ) : (
-                          <>
-                            {editingCollectionId ? <Pencil className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-                            {editingCollectionId ? 'Guardar colección' : 'Crear colección'}
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Servicios de la colección</CardTitle>
-                  <CardDescription>Selecciona los servicios que aparecerán en la landing pública de esta colección.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Buscar servicio, categoría o proveedor..."
-                      value={collectionServiceSearchQuery}
-                      onChange={(event) => setCollectionServiceSearchQuery(event.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  <div className="max-h-80 overflow-y-auto rounded-xl border border-gray-200 p-3 space-y-2">
-                    {filteredCollectionServices.length === 0 ? (
-                      <p className="text-sm text-gray-500">No se encontraron servicios para el filtro aplicado.</p>
-                    ) : (
-                      filteredCollectionServices.map((service) => {
-                        const provider = providers.find((candidate) => candidate.userId === service.userId);
-                        const serviceId = String(service.id);
-                        const isSelected = selectedCollectionServiceIds.includes(serviceId);
-
-                        return (
-                          <button
-                            key={serviceId}
-                            type="button"
-                            onClick={() => toggleCollectionService(serviceId)}
-                            className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
-                              isSelected
-                                ? 'border-[#D4AF37] bg-amber-50'
-                                : 'border-gray-200 bg-white hover:border-[#D4AF37]/50'
-                            }`}
-                          >
-                            <p className="text-sm font-medium text-[#1B2A47]">{service.name}</p>
-                            <p className="text-xs text-gray-500">
-                              {provider?.businessName || 'Proveedor sin nombre'} · {service.location || 'Sin ciudad'}
-                            </p>
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Colecciones creadas</CardTitle>
-                  <CardDescription>Edita o elimina agrupaciones ya publicadas.</CardDescription>
+                  <Button type="button" size="sm" onClick={openCreateCollectionForm}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Crear colección
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {collections.length === 0 ? (
                     <p className="text-sm text-gray-500">Aún no hay colecciones creadas.</p>
                   ) : (
-                    collections.map((collection) => (
-                      <div key={collection.id} className="rounded-xl border border-gray-200 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <div className="min-w-0">
-                          <p className="font-medium text-[#1B2A47]">{collection.title}</p>
-                          <p className="text-xs text-gray-500 break-all">/coleccion/{collection.slug}</p>
-                          {collection.subtitle ? (
-                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">{collection.subtitle}</p>
-                          ) : null}
-                          <p className="text-xs text-gray-400 mt-2">{collection.serviceIds.length} servicio{collection.serviceIds.length === 1 ? '' : 's'} seleccionado{collection.serviceIds.length === 1 ? '' : 's'}</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button type="button" variant="outline" size="sm" onClick={() => handleEditCollection(collection)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Editar
-                          </Button>
-                          <Button type="button" variant="destructive" size="sm" onClick={() => handleDeleteCollection(collection)}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Eliminar
-                          </Button>
-                        </div>
-                      </div>
-                    ))
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Título</TableHead>
+                            <TableHead>Slug</TableHead>
+                            <TableHead>Servicios</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {collections.map((collection) => (
+                            <TableRow key={collection.id}>
+                              <TableCell className="min-w-[220px]">
+                                <p className="font-medium text-[#1B2A47]">{collection.title}</p>
+                                {collection.subtitle ? (
+                                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{collection.subtitle}</p>
+                                ) : (
+                                  <p className="text-xs text-gray-400 mt-1">Sin subtítulo</p>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs text-gray-500 break-all">/coleccion/{collection.slug}</TableCell>
+                              <TableCell className="text-xs text-gray-500">
+                                {collection.serviceIds.length} servicio{collection.serviceIds.length === 1 ? '' : 's'}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex justify-end gap-2">
+                                  <Button type="button" variant="outline" size="sm" onClick={() => handleEditCollection(collection)}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Editar
+                                  </Button>
+                                  <Button type="button" variant="destructive" size="sm" onClick={() => handleDeleteCollection(collection)}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Eliminar
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   )}
                 </CardContent>
               </Card>
+
+              {showCollectionForm && (
+                <>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>{editingCollectionId ? 'Editar colección' : 'Nueva colección'}</CardTitle>
+                      <CardDescription>Define el título, subtítulo, slug y los servicios que formarán parte de la colección.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="collection-title">Título</Label>
+                          <Input
+                            id="collection-title"
+                            value={collectionTitleDraft}
+                            maxLength={160}
+                            onChange={(event) => setCollectionTitleDraft(event.target.value)}
+                            placeholder="Servicios para bodas 2026"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="collection-slug">Slug</Label>
+                          <Input
+                            id="collection-slug"
+                            value={collectionSlugDraft}
+                            maxLength={180}
+                            onChange={(event) => setCollectionSlugDraft(slugify(event.target.value))}
+                            placeholder="servicios-para-bodas-2026"
+                          />
+                          <p className="text-xs text-gray-500">URL pública: /coleccion/{slugify(collectionSlugDraft || collectionTitleDraft) || 'tu-slug'}</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="collection-subtitle">Subtítulo</Label>
+                        <Textarea
+                          id="collection-subtitle"
+                          value={collectionSubtitleDraft}
+                          maxLength={320}
+                          onChange={(event) => setCollectionSubtitleDraft(event.target.value)}
+                          placeholder="Agrupa publicaciones ideales para esta intención de búsqueda."
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <p className="text-xs text-gray-500">
+                          Servicios seleccionados: {selectedCollectionServiceIds.length}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <Button type="button" variant="outline" onClick={closeCollectionForm}>
+                            {editingCollectionId ? 'Cancelar edición' : 'Cancelar'}
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={handleSaveCollection}
+                            disabled={savingCollection || !hasCollectionChanges}
+                          >
+                            {savingCollection ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Guardando...
+                              </>
+                            ) : (
+                              <>
+                                {editingCollectionId ? <Pencil className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+                                {editingCollectionId ? 'Guardar colección' : 'Crear colección'}
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Servicios de la colección</CardTitle>
+                      <CardDescription>Busca y selecciona servicios con checkboxes para agregarlos a la colección.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          placeholder="Buscar servicio, categoría o proveedor..."
+                          value={collectionServiceSearchQuery}
+                          onChange={(event) => setCollectionServiceSearchQuery(event.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs text-gray-500">
+                          Mostrando {filteredCollectionServices.length} servicio{filteredCollectionServices.length === 1 ? '' : 's'} · Seleccionados {selectedCollectionServiceIds.length}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={selectAllFilteredCollectionServices} disabled={filteredCollectionServices.length === 0}>
+                            Seleccionar filtrados
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" onClick={clearFilteredCollectionServices} disabled={selectedFilteredCollectionServicesCount === 0}>
+                            Quitar filtrados
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="max-h-80 overflow-y-auto rounded-xl border border-gray-200">
+                        {filteredCollectionServices.length === 0 ? (
+                          <p className="text-sm text-gray-500 p-4">No se encontraron servicios para el filtro aplicado.</p>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-14 text-center">Sel.</TableHead>
+                                <TableHead>Servicio</TableHead>
+                                <TableHead>Proveedor</TableHead>
+                                <TableHead>Categoría</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {filteredCollectionServices.map((service) => {
+                                const provider = providers.find((candidate) => candidate.userId === service.userId);
+                                const serviceId = String(service.id);
+                                const isSelected = selectedCollectionServiceIds.includes(serviceId);
+
+                                return (
+                                  <TableRow key={serviceId} className={isSelected ? 'bg-amber-50/60' : ''}>
+                                    <TableCell className="text-center">
+                                      <Checkbox
+                                        checked={isSelected}
+                                        onCheckedChange={() => toggleCollectionService(serviceId)}
+                                        aria-label={`Seleccionar ${service.name}`}
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <p className="text-sm font-medium text-[#1B2A47]">{service.name}</p>
+                                      <p className="text-xs text-gray-500">{service.location || 'Sin ciudad'}</p>
+                                    </TableCell>
+                                    <TableCell className="text-sm text-gray-600">{provider?.businessName || 'Proveedor sin nombre'}</TableCell>
+                                    <TableCell className="text-sm text-gray-600">{service.category || service.subcategory || 'Sin categoría'}</TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </div>
           )}
 
