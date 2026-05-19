@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Clock } from 'lucide-react';
 import { apiRequest } from '../utils/supabase/client';
 
+const MAX_SUGGESTIONS = 6;
+const DEBOUNCE_DELAY_MS = 280;
+
 interface Suggestion {
   id: string;
   name: string;
@@ -46,9 +49,10 @@ export function SmartSearchBar({
 
     setLoading(true);
     try {
-      const data = await apiRequest(`/services/suggestions?q=${encodeURIComponent(query.trim())}`, 'GET');
+      const params = new URLSearchParams({ q: query.trim() });
+      const data = await apiRequest(`/services/suggestions?${params.toString()}`, 'GET');
       const items: Suggestion[] = Array.isArray(data) ? data : [];
-      setSuggestions(items.slice(0, 6));
+      setSuggestions(items.slice(0, MAX_SUGGESTIONS));
       setIsOpen(items.length > 0);
     } catch {
       setSuggestions([]);
@@ -71,7 +75,7 @@ export function SmartSearchBar({
 
     debounceRef.current = setTimeout(() => {
       fetchSuggestions(value);
-    }, 280);
+    }, DEBOUNCE_DELAY_MS);
 
     return () => {
       if (debounceRef.current) {

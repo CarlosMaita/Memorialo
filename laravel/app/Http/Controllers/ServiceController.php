@@ -326,15 +326,18 @@ class ServiceController extends Controller
             return response()->json([]);
         }
 
+        // Escape special LIKE wildcards to prevent unintended matches
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q);
+
         $services = Service::query()
             ->where('is_active', true)
-            ->where(function (Builder $builder) use ($q) {
+            ->where(function (Builder $builder) use ($escaped) {
                 $builder
-                    ->where('title', 'like', "%{$q}%")
-                    ->orWhere('category', 'like', "%{$q}%")
-                    ->orWhere('subcategory', 'like', "%{$q}%");
+                    ->where('title', 'like', "%{$escaped}%")
+                    ->orWhere('category', 'like', "%{$escaped}%")
+                    ->orWhere('subcategory', 'like', "%{$escaped}%");
             })
-            ->orderByRaw("CASE WHEN title LIKE ? THEN 0 ELSE 1 END", ["{$q}%"])
+            ->orderByRaw("CASE WHEN title LIKE ? THEN 0 ELSE 1 END", ["{$escaped}%"])
             ->orderByDesc('rating')
             ->limit(6)
             ->get(['id', 'title', 'category', 'subcategory']);
