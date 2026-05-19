@@ -72,9 +72,25 @@ interface AdminDashboardProps {
   relevantServicesSubtitle: string;
   relevantServiceIds: string[];
   onUpdateRelevantServicesConfig: (config: { enabled: boolean; title: string; subtitle: string; serviceIds: string[] }) => Promise<void>;
+  mainContentAccent: string;
+  mainContentTitle: string;
+  mainContentSubtitle: string;
+  mainContentPrimaryButtonText: string;
+  mainContentPrimaryButtonLink: string;
+  mainContentSecondaryButtonText: string;
+  mainContentSecondaryButtonLink: string;
+  onUpdateMainContentConfig: (config: {
+    accent: string;
+    title: string;
+    subtitle: string;
+    primaryButtonText: string;
+    primaryButtonLink: string;
+    secondaryButtonText: string;
+    secondaryButtonLink: string;
+  }) => Promise<void>;
 }
 
-type AdminSection = 'overview' | 'billing' | 'banners' | 'relevant-services' | 'providers' | 'interested' | 'users' | 'services';
+type AdminSection = 'overview' | 'billing' | 'banners' | 'main-content' | 'relevant-services' | 'providers' | 'interested' | 'users' | 'services';
 
 const API_BASE = backendMode === 'laravel'
   ? laravelApiBaseUrl
@@ -84,6 +100,7 @@ const adminNavItems = [
   { id: 'overview' as const, label: 'Resumen', icon: <LayoutDashboard className="w-5 h-5" /> },
   { id: 'billing' as const, label: 'Facturación', icon: <DollarSign className="w-5 h-5" /> },
   { id: 'banners' as const, label: 'Banners', icon: <BookOpen className="w-5 h-5" /> },
+  { id: 'main-content' as const, label: 'Contenido principal', icon: <Star className="w-5 h-5" /> },
   { id: 'relevant-services' as const, label: 'Servicios relevantes', icon: <Star className="w-5 h-5" /> },
   { id: 'providers' as const, label: 'Proveedores', icon: <Briefcase className="w-5 h-5" /> },
   { id: 'interested' as const, label: 'Interesados', icon: <FileText className="w-5 h-5" /> },
@@ -120,6 +137,14 @@ export function AdminDashboard({
   relevantServicesSubtitle,
   relevantServiceIds,
   onUpdateRelevantServicesConfig,
+  mainContentAccent,
+  mainContentTitle,
+  mainContentSubtitle,
+  mainContentPrimaryButtonText,
+  mainContentPrimaryButtonLink,
+  mainContentSecondaryButtonText,
+  mainContentSecondaryButtonLink,
+  onUpdateMainContentConfig,
 }: AdminDashboardProps) {
   const ADMIN_TABLE_BATCH_SIZE = 16;
   const [searchQuery, setSearchQuery] = useState('');
@@ -136,6 +161,14 @@ export function AdminDashboard({
   const [relevantTitleDraft, setRelevantTitleDraft] = useState(relevantServicesTitle);
   const [relevantSubtitleDraft, setRelevantSubtitleDraft] = useState(relevantServicesSubtitle);
   const [savingRelevantServices, setSavingRelevantServices] = useState(false);
+  const [mainContentAccentDraft, setMainContentAccentDraft] = useState(mainContentAccent);
+  const [mainContentTitleDraft, setMainContentTitleDraft] = useState(mainContentTitle);
+  const [mainContentSubtitleDraft, setMainContentSubtitleDraft] = useState(mainContentSubtitle);
+  const [mainContentPrimaryButtonTextDraft, setMainContentPrimaryButtonTextDraft] = useState(mainContentPrimaryButtonText);
+  const [mainContentPrimaryButtonLinkDraft, setMainContentPrimaryButtonLinkDraft] = useState(mainContentPrimaryButtonLink);
+  const [mainContentSecondaryButtonTextDraft, setMainContentSecondaryButtonTextDraft] = useState(mainContentSecondaryButtonText);
+  const [mainContentSecondaryButtonLinkDraft, setMainContentSecondaryButtonLinkDraft] = useState(mainContentSecondaryButtonLink);
+  const [savingMainContent, setSavingMainContent] = useState(false);
   const [visibleProvidersCount, setVisibleProvidersCount] = useState(ADMIN_TABLE_BATCH_SIZE);
   const [visibleUsersCount, setVisibleUsersCount] = useState(ADMIN_TABLE_BATCH_SIZE);
   const [visibleServicesCount, setVisibleServicesCount] = useState(ADMIN_TABLE_BATCH_SIZE);
@@ -199,6 +232,24 @@ export function AdminDashboard({
     setRelevantTitleDraft(relevantServicesTitle);
     setRelevantSubtitleDraft(relevantServicesSubtitle);
   }, [relevantServiceIds, relevantServicesSectionEnabled, relevantServicesTitle, relevantServicesSubtitle]);
+
+  useEffect(() => {
+    setMainContentAccentDraft(mainContentAccent);
+    setMainContentTitleDraft(mainContentTitle);
+    setMainContentSubtitleDraft(mainContentSubtitle);
+    setMainContentPrimaryButtonTextDraft(mainContentPrimaryButtonText);
+    setMainContentPrimaryButtonLinkDraft(mainContentPrimaryButtonLink);
+    setMainContentSecondaryButtonTextDraft(mainContentSecondaryButtonText);
+    setMainContentSecondaryButtonLinkDraft(mainContentSecondaryButtonLink);
+  }, [
+    mainContentAccent,
+    mainContentTitle,
+    mainContentSubtitle,
+    mainContentPrimaryButtonText,
+    mainContentPrimaryButtonLink,
+    mainContentSecondaryButtonText,
+    mainContentSecondaryButtonLink,
+  ]);
 
   useEffect(() => {
     if (!accessToken || currentUser.role !== 'admin') {
@@ -450,6 +501,33 @@ export function AdminDashboard({
     relevantServicesSubtitle,
   ]);
 
+  const hasMainContentChanges = useMemo(() => {
+    return (
+      mainContentAccentDraft.trim() !== mainContentAccent.trim() ||
+      mainContentTitleDraft.trim() !== mainContentTitle.trim() ||
+      mainContentSubtitleDraft.trim() !== mainContentSubtitle.trim() ||
+      mainContentPrimaryButtonTextDraft.trim() !== mainContentPrimaryButtonText.trim() ||
+      mainContentPrimaryButtonLinkDraft.trim() !== mainContentPrimaryButtonLink.trim() ||
+      mainContentSecondaryButtonTextDraft.trim() !== mainContentSecondaryButtonText.trim() ||
+      mainContentSecondaryButtonLinkDraft.trim() !== mainContentSecondaryButtonLink.trim()
+    );
+  }, [
+    mainContentAccentDraft,
+    mainContentAccent,
+    mainContentTitleDraft,
+    mainContentTitle,
+    mainContentSubtitleDraft,
+    mainContentSubtitle,
+    mainContentPrimaryButtonTextDraft,
+    mainContentPrimaryButtonText,
+    mainContentPrimaryButtonLinkDraft,
+    mainContentPrimaryButtonLink,
+    mainContentSecondaryButtonTextDraft,
+    mainContentSecondaryButtonText,
+    mainContentSecondaryButtonLinkDraft,
+    mainContentSecondaryButtonLink,
+  ]);
+
   useEffect(() => {
     setVisibleProvidersCount(ADMIN_TABLE_BATCH_SIZE);
   }, [searchQuery, filterStatus, filteredProviders.length]);
@@ -556,6 +634,23 @@ export function AdminDashboard({
       });
     } finally {
       setSavingRelevantServices(false);
+    }
+  };
+
+  const handleSaveMainContent = async () => {
+    try {
+      setSavingMainContent(true);
+      await onUpdateMainContentConfig({
+        accent: mainContentAccentDraft.trim() || 'Promociones y Novedades',
+        title: mainContentTitleDraft.trim() || 'Todo para tu evento, en un solo lugar',
+        subtitle: mainContentSubtitleDraft.trim() || 'Encuentra ofertas activas, nuevas publicaciones y proveedores listos para ayudarte a crear una celebración inolvidable.',
+        primaryButtonText: mainContentPrimaryButtonTextDraft.trim() || 'Ver servicios',
+        primaryButtonLink: mainContentPrimaryButtonLinkDraft.trim() || '/servicios/venezuela',
+        secondaryButtonText: mainContentSecondaryButtonTextDraft.trim() || 'Cómo funciona',
+        secondaryButtonLink: mainContentSecondaryButtonLinkDraft.trim() || '/como-funciona',
+      });
+    } finally {
+      setSavingMainContent(false);
     }
   };
 
@@ -1046,6 +1141,110 @@ export function AdminDashboard({
               bannersSectionEnabled={bannersSectionEnabled}
               onToggleBannersSection={onToggleBannersSection}
             />
+          )}
+
+          {activeSection === 'main-content' && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[#1B2A47] mb-1">Contenido principal</h2>
+                <p className="text-gray-500 text-sm">Edita el CTA principal del home: acentuación, textos y botones.</p>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configuración del CTA principal</CardTitle>
+                  <CardDescription>Define el contenido informativo y los enlaces de acción.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="main-content-accent">Acentuación (h1)</Label>
+                    <Input
+                      id="main-content-accent"
+                      value={mainContentAccentDraft}
+                      maxLength={120}
+                      onChange={(event) => setMainContentAccentDraft(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="main-content-title">Título (p)</Label>
+                    <Input
+                      id="main-content-title"
+                      value={mainContentTitleDraft}
+                      maxLength={180}
+                      onChange={(event) => setMainContentTitleDraft(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="main-content-subtitle">Subtítulo (p)</Label>
+                    <Textarea
+                      id="main-content-subtitle"
+                      value={mainContentSubtitleDraft}
+                      maxLength={320}
+                      onChange={(event) => setMainContentSubtitleDraft(event.target.value)}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="main-content-primary-button-text">Botón principal (texto)</Label>
+                      <Input
+                        id="main-content-primary-button-text"
+                        value={mainContentPrimaryButtonTextDraft}
+                        maxLength={80}
+                        onChange={(event) => setMainContentPrimaryButtonTextDraft(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="main-content-primary-button-link">Botón principal (link)</Label>
+                      <Input
+                        id="main-content-primary-button-link"
+                        value={mainContentPrimaryButtonLinkDraft}
+                        maxLength={255}
+                        onChange={(event) => setMainContentPrimaryButtonLinkDraft(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="main-content-secondary-button-text">Botón secundario (texto)</Label>
+                      <Input
+                        id="main-content-secondary-button-text"
+                        value={mainContentSecondaryButtonTextDraft}
+                        maxLength={80}
+                        onChange={(event) => setMainContentSecondaryButtonTextDraft(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="main-content-secondary-button-link">Botón secundario (link)</Label>
+                      <Input
+                        id="main-content-secondary-button-link"
+                        value={mainContentSecondaryButtonLinkDraft}
+                        maxLength={255}
+                        onChange={(event) => setMainContentSecondaryButtonLinkDraft(event.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      onClick={handleSaveMainContent}
+                      disabled={savingMainContent || !hasMainContentChanges}
+                    >
+                      {savingMainContent ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Guardando...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Guardar contenido principal
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {activeSection === 'relevant-services' && (

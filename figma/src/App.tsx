@@ -232,6 +232,13 @@ export default function App() {
   const [relevantServicesTitle, setRelevantServicesTitle] = useState('Servicios relevantes');
   const [relevantServicesSubtitle, setRelevantServicesSubtitle] = useState('Descubre servicios recomendados para tu evento.');
   const [relevantServiceIds, setRelevantServiceIds] = useState<string[]>([]);
+  const [mainContentAccent, setMainContentAccent] = useState('Promociones y Novedades');
+  const [mainContentTitle, setMainContentTitle] = useState('Todo para tu evento, en un solo lugar');
+  const [mainContentSubtitle, setMainContentSubtitle] = useState('Encuentra ofertas activas, nuevas publicaciones y proveedores listos para ayudarte a crear una celebración inolvidable.');
+  const [mainContentPrimaryButtonText, setMainContentPrimaryButtonText] = useState('Ver servicios');
+  const [mainContentPrimaryButtonLink, setMainContentPrimaryButtonLink] = useState('/servicios/venezuela');
+  const [mainContentSecondaryButtonText, setMainContentSecondaryButtonText] = useState('Cómo funciona');
+  const [mainContentSecondaryButtonLink, setMainContentSecondaryButtonLink] = useState('/como-funciona');
 
   // Notifications (N2)
   const notificationsEnabled = ((import.meta as any).env?.VITE_NOTIFICATIONS_HEADER_ENABLED ?? 'true') !== 'false';
@@ -1377,6 +1384,27 @@ export default function App() {
             ? config.relevantServicesSubtitle
             : 'Descubre servicios recomendados para tu evento.');
           setRelevantServiceIds(Array.isArray(config?.relevantServiceIds) ? config.relevantServiceIds.map((value) => String(value)) : []);
+          setMainContentAccent(typeof config?.mainContentAccent === 'string' && config.mainContentAccent.trim()
+            ? config.mainContentAccent
+            : 'Promociones y Novedades');
+          setMainContentTitle(typeof config?.mainContentTitle === 'string' && config.mainContentTitle.trim()
+            ? config.mainContentTitle
+            : 'Todo para tu evento, en un solo lugar');
+          setMainContentSubtitle(typeof config?.mainContentSubtitle === 'string'
+            ? config.mainContentSubtitle
+            : 'Encuentra ofertas activas, nuevas publicaciones y proveedores listos para ayudarte a crear una celebración inolvidable.');
+          setMainContentPrimaryButtonText(typeof config?.mainContentPrimaryButtonText === 'string' && config.mainContentPrimaryButtonText.trim()
+            ? config.mainContentPrimaryButtonText
+            : 'Ver servicios');
+          setMainContentPrimaryButtonLink(typeof config?.mainContentPrimaryButtonLink === 'string' && config.mainContentPrimaryButtonLink.trim()
+            ? config.mainContentPrimaryButtonLink
+            : '/servicios/venezuela');
+          setMainContentSecondaryButtonText(typeof config?.mainContentSecondaryButtonText === 'string' && config.mainContentSecondaryButtonText.trim()
+            ? config.mainContentSecondaryButtonText
+            : 'Cómo funciona');
+          setMainContentSecondaryButtonLink(typeof config?.mainContentSecondaryButtonLink === 'string' && config.mainContentSecondaryButtonLink.trim()
+            ? config.mainContentSecondaryButtonLink
+            : '/como-funciona');
         }
       } catch {
         if (!cancelled) {
@@ -3297,6 +3325,65 @@ export default function App() {
     }
   };
 
+  const handleUpdateMainContentConfig = async (config: {
+    accent: string;
+    title: string;
+    subtitle: string;
+    primaryButtonText: string;
+    primaryButtonLink: string;
+    secondaryButtonText: string;
+    secondaryButtonLink: string;
+  }) => {
+    try {
+      await supabase.updateMarketplaceConfig(enabledMarketplaceCities, {
+        mainContentAccent: config.accent,
+        mainContentTitle: config.title,
+        mainContentSubtitle: config.subtitle,
+        mainContentPrimaryButtonText: config.primaryButtonText,
+        mainContentPrimaryButtonLink: config.primaryButtonLink,
+        mainContentSecondaryButtonText: config.secondaryButtonText,
+        mainContentSecondaryButtonLink: config.secondaryButtonLink,
+      });
+      setMainContentAccent(config.accent);
+      setMainContentTitle(config.title);
+      setMainContentSubtitle(config.subtitle);
+      setMainContentPrimaryButtonText(config.primaryButtonText);
+      setMainContentPrimaryButtonLink(config.primaryButtonLink);
+      setMainContentSecondaryButtonText(config.secondaryButtonText);
+      setMainContentSecondaryButtonLink(config.secondaryButtonLink);
+      toast.success('Contenido principal actualizado');
+    } catch (error) {
+      console.error('Error updating main content config:', error);
+      toast.error('No se pudo actualizar el contenido principal');
+      throw error;
+    }
+  };
+
+  const handleMainContentButtonClick = (link: string) => {
+    const normalizedLink = link.trim();
+    if (!normalizedLink) {
+      return;
+    }
+
+    if (/^https?:\/\//i.test(normalizedLink)) {
+      try {
+        const absoluteUrl = new URL(normalizedLink);
+        if (absoluteUrl.origin === window.location.origin) {
+          navigateTo(`${absoluteUrl.pathname}${absoluteUrl.search}${absoluteUrl.hash}` || '/');
+          return;
+        }
+
+        window.open(absoluteUrl.toString(), '_blank', 'noopener,noreferrer');
+      } catch {
+        toast.error('El enlace configurado no es válido');
+      }
+      return;
+    }
+
+    const internalPath = normalizedLink.startsWith('/') ? normalizedLink : `/${normalizedLink}`;
+    navigateTo(internalPath);
+  };
+
   // Get user-specific data
   const userBookings = currentUser
     ? bookings.filter(b => b.userId === currentUser.id)
@@ -4266,6 +4353,14 @@ export default function App() {
               relevantServicesSubtitle={relevantServicesSubtitle}
               relevantServiceIds={relevantServiceIds}
               onUpdateRelevantServicesConfig={handleUpdateRelevantServicesConfig}
+              mainContentAccent={mainContentAccent}
+              mainContentTitle={mainContentTitle}
+              mainContentSubtitle={mainContentSubtitle}
+              mainContentPrimaryButtonText={mainContentPrimaryButtonText}
+              mainContentPrimaryButtonLink={mainContentPrimaryButtonLink}
+              mainContentSecondaryButtonText={mainContentSecondaryButtonText}
+              mainContentSecondaryButtonLink={mainContentSecondaryButtonLink}
+              onUpdateMainContentConfig={handleUpdateMainContentConfig}
             />
           ) : (
             <div className="text-center py-12">
@@ -4444,20 +4539,22 @@ export default function App() {
                   </section>
                 )}
                 <section className="rounded-2xl p-6 md:p-8 text-white" style={{ background: 'linear-gradient(135deg, var(--navy-blue) 0%, var(--copper) 100%)' }}>
-                  <Badge className="mb-3 bg-white/20 text-white border-white/30">
-                    <span className="mr-1" aria-hidden="true">📢</span>
-                    Promociones y Novedades
+                  <Badge asChild className="mb-3 bg-white/20 text-white border-white/30">
+                    <h1>
+                      <span className="mr-1" aria-hidden="true">📢</span>
+                      {mainContentAccent}
+                    </h1>
                   </Badge>
-                  <h2 className="text-2xl md:text-3xl font-semibold mb-2">Todo para tu evento, en un solo lugar</h2>
+                  <p className="text-2xl md:text-3xl font-semibold mb-2">{mainContentTitle}</p>
                   <p className="text-sm md:text-base text-white/90 mb-4">
-                    Encuentra ofertas activas, nuevas publicaciones y proveedores listos para ayudarte a crear una celebración inolvidable.
+                    {mainContentSubtitle}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="secondary" onClick={() => navigateTo('/servicios/venezuela')}>
-                      Ver servicios
+                    <Button variant="secondary" onClick={() => handleMainContentButtonClick(mainContentPrimaryButtonLink)}>
+                      {mainContentPrimaryButtonText}
                     </Button>
-                    <Button variant="outline" className="bg-white/10 border-white/40 text-white hover:bg-white/20" onClick={() => navigateTo('/como-funciona')}>
-                      Cómo funciona
+                    <Button variant="outline" className="bg-white/10 border-white/40 text-white hover:bg-white/20" onClick={() => handleMainContentButtonClick(mainContentSecondaryButtonLink)}>
+                      {mainContentSecondaryButtonText}
                     </Button>
                   </div>
                 </section>

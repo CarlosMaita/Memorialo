@@ -35,6 +35,42 @@ class MarketplaceCityAvailabilityTest extends TestCase
             ->assertJsonPath('enabledCities.1', 'Valencia');
     }
 
+    public function test_admin_can_update_main_home_content_config(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'is_provider' => false,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $this->patchJson('/api/admin/marketplace-config', [
+            'enabledCities' => ['Caracas'],
+            'mainContentAccent' => 'Destacados del día',
+            'mainContentTitle' => 'Encuentra todo para tu evento',
+            'mainContentSubtitle' => 'Información principal editable desde admin.',
+            'mainContentPrimaryButtonText' => 'Explorar',
+            'mainContentPrimaryButtonLink' => '/servicios',
+            'mainContentSecondaryButtonText' => 'Ver guía',
+            'mainContentSecondaryButtonLink' => '/como-funciona',
+        ])
+            ->assertOk()
+            ->assertJsonPath('mainContentAccent', 'Destacados del día')
+            ->assertJsonPath('mainContentTitle', 'Encuentra todo para tu evento')
+            ->assertJsonPath('mainContentPrimaryButtonText', 'Explorar')
+            ->assertJsonPath('mainContentSecondaryButtonLink', '/como-funciona');
+
+        $this->getJson('/api/marketplace/config')
+            ->assertOk()
+            ->assertJsonPath('mainContentAccent', 'Destacados del día')
+            ->assertJsonPath('mainContentTitle', 'Encuentra todo para tu evento')
+            ->assertJsonPath('mainContentSubtitle', 'Información principal editable desde admin.')
+            ->assertJsonPath('mainContentPrimaryButtonText', 'Explorar')
+            ->assertJsonPath('mainContentPrimaryButtonLink', '/servicios')
+            ->assertJsonPath('mainContentSecondaryButtonText', 'Ver guía')
+            ->assertJsonPath('mainContentSecondaryButtonLink', '/como-funciona');
+    }
+
     public function test_public_marketplace_only_returns_enabled_city_services_for_active_listing(): void
     {
         $user = User::factory()->create([

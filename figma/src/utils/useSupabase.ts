@@ -716,6 +716,15 @@ export function useSupabase() {
         relevantServicesTitle: typeof data?.relevantServicesTitle === 'string' ? data.relevantServicesTitle : 'Servicios relevantes',
         relevantServicesSubtitle: typeof data?.relevantServicesSubtitle === 'string' ? data.relevantServicesSubtitle : 'Descubre servicios recomendados para tu evento.',
         relevantServiceIds: Array.isArray(data?.relevantServiceIds) ? data.relevantServiceIds.map((value: unknown) => String(value)) : [],
+        mainContentAccent: typeof data?.mainContentAccent === 'string' ? data.mainContentAccent : 'Promociones y Novedades',
+        mainContentTitle: typeof data?.mainContentTitle === 'string' ? data.mainContentTitle : 'Todo para tu evento, en un solo lugar',
+        mainContentSubtitle: typeof data?.mainContentSubtitle === 'string'
+          ? data.mainContentSubtitle
+          : 'Encuentra ofertas activas, nuevas publicaciones y proveedores listos para ayudarte a crear una celebración inolvidable.',
+        mainContentPrimaryButtonText: typeof data?.mainContentPrimaryButtonText === 'string' ? data.mainContentPrimaryButtonText : 'Ver servicios',
+        mainContentPrimaryButtonLink: typeof data?.mainContentPrimaryButtonLink === 'string' ? data.mainContentPrimaryButtonLink : '/servicios/venezuela',
+        mainContentSecondaryButtonText: typeof data?.mainContentSecondaryButtonText === 'string' ? data.mainContentSecondaryButtonText : 'Cómo funciona',
+        mainContentSecondaryButtonLink: typeof data?.mainContentSecondaryButtonLink === 'string' ? data.mainContentSecondaryButtonLink : '/como-funciona',
       };
     } catch (error) {
       console.error('Get marketplace config error:', error);
@@ -731,6 +740,13 @@ export function useSupabase() {
       relevantServicesTitle?: string;
       relevantServicesSubtitle?: string;
       relevantServiceIds?: string[];
+      mainContentAccent?: string;
+      mainContentTitle?: string;
+      mainContentSubtitle?: string;
+      mainContentPrimaryButtonText?: string;
+      mainContentPrimaryButtonLink?: string;
+      mainContentSecondaryButtonText?: string;
+      mainContentSecondaryButtonLink?: string;
     },
   ) => {
     try {
@@ -749,6 +765,27 @@ export function useSupabase() {
       }
       if (Array.isArray(options?.relevantServiceIds)) {
         payload.relevantServiceIds = options.relevantServiceIds;
+      }
+      if (typeof options?.mainContentAccent === 'string') {
+        payload.mainContentAccent = options.mainContentAccent;
+      }
+      if (typeof options?.mainContentTitle === 'string') {
+        payload.mainContentTitle = options.mainContentTitle;
+      }
+      if (typeof options?.mainContentSubtitle === 'string') {
+        payload.mainContentSubtitle = options.mainContentSubtitle;
+      }
+      if (typeof options?.mainContentPrimaryButtonText === 'string') {
+        payload.mainContentPrimaryButtonText = options.mainContentPrimaryButtonText;
+      }
+      if (typeof options?.mainContentPrimaryButtonLink === 'string') {
+        payload.mainContentPrimaryButtonLink = options.mainContentPrimaryButtonLink;
+      }
+      if (typeof options?.mainContentSecondaryButtonText === 'string') {
+        payload.mainContentSecondaryButtonText = options.mainContentSecondaryButtonText;
+      }
+      if (typeof options?.mainContentSecondaryButtonLink === 'string') {
+        payload.mainContentSecondaryButtonLink = options.mainContentSecondaryButtonLink;
       }
       return await apiRequest('/admin/marketplace-config', 'PATCH', payload, accessToken || undefined);
     } catch (error) {
