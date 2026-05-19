@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FileText, CheckCircle, AlertCircle, Calendar, DollarSign, Clock, MapPin, User, MessageCircle, Mail, Plus, Trash2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/dialog';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -139,6 +139,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
   const [signing, setSigning] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [showRejectDetailsDialog, setShowRejectDetailsDialog] = useState(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectImprovementComment, setRejectImprovementComment] = useState('');
@@ -165,6 +166,8 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     setSpecialRequestTerm(extracted.specialRequest);
     setRejectReason('');
     setRejectImprovementComment('');
+    setShowRejectDetailsDialog(false);
+    setShowRejectConfirm(false);
     setAgreedToTerms(false);
   }, [contract, open]);
 
@@ -276,6 +279,10 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
   };
 
   const handleRejectClick = () => {
+    setShowRejectDetailsDialog(true);
+  };
+
+  const handleRejectDetailsContinue = () => {
     if (!rejectReason.trim()) {
       toast.error('Debes indicar el motivo del rechazo');
       return;
@@ -286,6 +293,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
       return;
     }
 
+    setShowRejectDetailsDialog(false);
     setShowRejectConfirm(true);
   };
 
@@ -678,33 +686,6 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                   </Label>
                 </div>
 
-                {canRejectContract && (
-                  <div className="grid grid-cols-1 gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="rejectReason">Motivo del rechazo</Label>
-                      <Textarea
-                        id="rejectReason"
-                        value={rejectReason}
-                        onChange={(event) => setRejectReason(event.target.value)}
-                        placeholder="Ej. El alcance no coincide con lo solicitado."
-                        rows={3}
-                        disabled={signing || rejecting}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="rejectImprovementComment">Comentario de mejora</Label>
-                      <Textarea
-                        id="rejectImprovementComment"
-                        value={rejectImprovementComment}
-                        onChange={(event) => setRejectImprovementComment(event.target.value)}
-                        placeholder="Ej. Ajustar horarios, entregables y condiciones de pago."
-                        rows={3}
-                        disabled={signing || rejecting}
-                      />
-                    </div>
-                  </div>
-                )}
-
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Button
                     onClick={handleSign}
@@ -779,6 +760,57 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
         cancelText="No, volver"
         variant="danger"
       />
+
+      <Dialog open={showRejectDetailsDialog} onOpenChange={setShowRejectDetailsDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Rechazar contrato</DialogTitle>
+            <DialogDescription>
+              Indica el motivo del rechazo y las mejoras sugeridas para que el proveedor pueda ajustar el contrato.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-3 rounded-lg border border-red-200 bg-red-50 p-4">
+            <div className="space-y-2">
+              <Label htmlFor="rejectReasonModal">Motivo del rechazo</Label>
+              <Textarea
+                id="rejectReasonModal"
+                value={rejectReason}
+                onChange={(event) => setRejectReason(event.target.value)}
+                placeholder="Ej. El alcance no coincide con lo solicitado."
+                rows={3}
+                disabled={signing || rejecting}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rejectImprovementCommentModal">Comentario de mejora</Label>
+              <Textarea
+                id="rejectImprovementCommentModal"
+                value={rejectImprovementComment}
+                onChange={(event) => setRejectImprovementComment(event.target.value)}
+                placeholder="Ej. Ajustar horarios, entregables y condiciones de pago."
+                rows={3}
+                disabled={signing || rejecting}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowRejectDetailsDialog(false)}
+              disabled={signing || rejecting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRejectDetailsContinue}
+              disabled={signing || rejecting}
+            >
+              Continuar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
