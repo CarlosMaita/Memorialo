@@ -741,6 +741,62 @@ export function useSupabase() {
     }
   };
 
+  const getCollections = async () => {
+    try {
+      const data = await apiRequest('/collections', 'GET');
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Get collections error:', error);
+      throw error;
+    }
+  };
+
+  const getCollectionBySlug = async (slug: string) => {
+    try {
+      return await apiRequest(`/collections/${encodeURIComponent(slug)}`, 'GET');
+    } catch (error) {
+      console.error('Get collection detail error:', error);
+      throw error;
+    }
+  };
+
+  const createCollection = async (payload: {
+    title: string;
+    subtitle?: string;
+    slug: string;
+    serviceIds: string[];
+  }) => {
+    try {
+      return await apiRequest('/admin/collections', 'POST', payload, accessToken || undefined);
+    } catch (error) {
+      console.error('Create collection error:', error);
+      throw error;
+    }
+  };
+
+  const updateCollection = async (collectionId: string, payload: {
+    title: string;
+    subtitle?: string;
+    slug: string;
+    serviceIds: string[];
+  }) => {
+    try {
+      return await apiRequest(`/admin/collections/${collectionId}`, 'PUT', payload, accessToken || undefined);
+    } catch (error) {
+      console.error('Update collection error:', error);
+      throw error;
+    }
+  };
+
+  const deleteCollection = async (collectionId: string) => {
+    try {
+      return await apiRequest(`/admin/collections/${collectionId}`, 'DELETE', undefined, accessToken || undefined);
+    } catch (error) {
+      console.error('Delete collection error:', error);
+      throw error;
+    }
+  };
+
   const updateMarketplaceConfig = async (
     enabledCities: string[],
     options?: {
@@ -1544,6 +1600,11 @@ export function useSupabase() {
     getService,
     updateService,
     deleteService,
+    getCollections,
+    getCollectionBySlug,
+    createCollection,
+    updateCollection,
+    deleteCollection,
     getMarketplaceConfig,
     updateMarketplaceConfig,
     getPublicBanners,

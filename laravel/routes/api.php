@@ -10,6 +10,7 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ChatConversationController;
 use App\Http\Controllers\ChatMessageController;
+use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\ReviewController;
@@ -71,6 +72,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/billing/admin/invoices/{invoiceId}/approve', [BillingController::class, 'approvePayment']);
     Route::post('/billing/admin/invoices/{invoiceId}/reject', [BillingController::class, 'rejectPayment']);
 
+    Route::post('/admin/collections', [CollectionController::class, 'store']);
+    Route::put('/admin/collections/{id}', [CollectionController::class, 'update']);
+    Route::delete('/admin/collections/{id}', [CollectionController::class, 'destroy']);
+
     Route::get('/admin/users', [AdminController::class, 'users']);
     Route::get('/admin/interested-providers', [AdminController::class, 'interestedProviders']);
     Route::patch('/admin/marketplace-config', [AdminController::class, 'updateMarketplaceConfig']);
@@ -119,6 +124,8 @@ Route::get('/providers/user/{userId}', [ProviderController::class, 'showByUser']
 Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/services/suggestions', [ServiceController::class, 'suggestions']);
 Route::get('/services/{id}', [ServiceController::class, 'show']);
+Route::get('/collections', [CollectionController::class, 'index']);
+Route::get('/collections/{slug}', [CollectionController::class, 'show']);
 Route::get('/marketplace/config', [AdminController::class, 'marketplaceConfig']);
 Route::get('/banners', [BannerController::class, 'publicIndex']);
 Route::get('/events', [EventController::class, 'index']);
