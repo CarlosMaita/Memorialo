@@ -54,6 +54,24 @@ export function ServiceDetailPage({
 
   const artistReviews = reviews.filter((r) => r.artistId === artist.id);
   const allImages = [artist.image, ...portfolioImages].filter(Boolean) as string[];
+  const desktopGalleryImages = allImages.length > 5 ? allImages.slice(0, 5) : allImages;
+  const desktopGalleryCount = desktopGalleryImages.length;
+
+  const desktopGridClassName =
+    desktopGalleryCount <= 1
+      ? 'md:grid-cols-1 md:grid-rows-1'
+      : desktopGalleryCount === 2
+        ? 'md:grid-cols-2 md:grid-rows-1'
+        : desktopGalleryCount <= 4
+          ? 'md:grid-cols-2 md:grid-rows-2'
+          : 'md:grid-cols-4 md:grid-rows-2';
+
+  const mainImageSpanClassName =
+    desktopGalleryCount === 3
+      ? 'md:col-span-1 md:row-span-2'
+      : desktopGalleryCount >= 5
+        ? 'md:col-span-2 md:row-span-2'
+        : 'md:col-span-1 md:row-span-1';
 
   const slugify = (value?: string) => {
     if (!value) return '';
@@ -177,21 +195,21 @@ export function ServiceDetailPage({
           <div className="lg:col-span-2 space-y-8">
             {/* Header gallery */}
             {portfolioImages.length > 0 ? (
-              <div className="relative grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-2 rounded-xl overflow-hidden h-[300px] md:h-[420px]">
+              <div className={`relative grid grid-cols-1 ${desktopGridClassName} gap-2 rounded-xl overflow-hidden h-[300px] md:h-[420px]`}>
                 {/* Main image */}
                 <div
-                  className="md:col-span-2 md:row-span-2 relative cursor-pointer group"
+                  className={`relative cursor-pointer group ${mainImageSpanClassName}`}
                   onClick={() => { setLightboxIndex(0); setLightboxOpen(true); }}
                 >
                   <ImageWithFallback
-                    src={artist.image}
+                    src={allImages[0]}
                     alt={artist.name}
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                 </div>
                 {/* Secondary images */}
-                {portfolioImages.slice(0, 4).map((img, i) => (
+                {desktopGalleryImages.slice(1).map((img, i) => (
                   <div
                     key={i}
                     className="relative cursor-pointer group hidden md:block"
@@ -203,13 +221,6 @@ export function ServiceDetailPage({
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                    {i === 3 && portfolioImages.length > 4 && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                        <span className="text-white font-semibold text-lg">
-                          +{portfolioImages.length - 4} fotos
-                        </span>
-                      </div>
-                    )}
                   </div>
                 ))}
                 {/* Mobile: show all photos button */}
