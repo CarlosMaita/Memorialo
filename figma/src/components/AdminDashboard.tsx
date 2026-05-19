@@ -1596,6 +1596,8 @@ export function AdminDashboard({
               </Card>
             </div>
           )}
+
+          {activeSection === 'relevant-services' && (
             <div className="space-y-4">
               <div>
                 <h2 className="text-2xl font-bold text-[#1B2A47] mb-1">Servicios relevantes</h2>
