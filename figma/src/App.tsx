@@ -4252,7 +4252,7 @@ export default function App() {
               <Button
                 variant={viewMode === 'client' ? 'secondary' : 'ghost'}
                 onClick={() => { handleHeaderHomeRefresh(); setMobileMenuOpen(false); }}
-                className={`w-full justify-start ${viewMode === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
+                className={`w-full justify-center ${viewMode === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
               >
                 <Users className="w-4 h-4 mr-2" />
                 Buscar Servicios
@@ -4372,7 +4372,7 @@ export default function App() {
                     setShowAuthDialog(true);
                     setMobileMenuOpen(false);
                   }}
-                  className="w-full"
+                  className="w-full justify-center"
                 >
                   <LogIn className="w-4 h-4 mr-2" />
                   Iniciar Sesión
