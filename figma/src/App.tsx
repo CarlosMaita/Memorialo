@@ -2255,24 +2255,28 @@ export default function App() {
 
       setViewMode('business');
       setDashboardView('client');
-    }
 
-    if (normalizedPath === '/me/reservas') {
-      const queryString = currentRoute.includes('?') ? currentRoute.slice(currentRoute.indexOf('?') + 1) : '';
-      const queryParams = new URLSearchParams(queryString);
-      const focusedContractId = (queryParams.get('contractId') || queryParams.get('contract') || '').trim() || null;
+      if (normalizedPath === '/me/reservas') {
+        let queryParams = new URLSearchParams();
+        try {
+          queryParams = new URL(currentRoute, window.location.origin).searchParams;
+        } catch {
+          const queryString = currentRoute.includes('?') ? currentRoute.slice(currentRoute.indexOf('?') + 1) : '';
+          queryParams = new URLSearchParams(queryString);
+        }
+        const focusedContractId = queryParams.get('contractId')?.trim() || null;
 
-      setViewMode('business');
-      setDashboardView('client');
-      setClientDashboardSection('bookings');
-      setClientFocusedContractId(focusedContractId);
-      setNegotiationContractId(null);
-    } else if (normalizedPath.startsWith('/me/negociacion/')) {
-      const contractId = normalizedPath.slice('/me/negociacion/'.length) || null;
-      setViewMode('business');
-      setDashboardView('client');
-      setClientFocusedContractId(null);
-      setNegotiationContractId(contractId);
+        setClientDashboardSection('bookings');
+        setClientFocusedContractId(focusedContractId);
+        setNegotiationContractId(null);
+      } else if (normalizedPath.startsWith('/me/negociacion/')) {
+        const contractId = normalizedPath.slice('/me/negociacion/'.length) || null;
+
+        setClientFocusedContractId(null);
+        setNegotiationContractId(contractId);
+      }
+
+      return;
     }
   }, [currentRoute, currentUser]);
 
