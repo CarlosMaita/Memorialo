@@ -3366,7 +3366,17 @@ export default function App() {
     }
 
     if (/^https?:\/\//i.test(normalizedLink)) {
-      window.location.assign(normalizedLink);
+      try {
+        const absoluteUrl = new URL(normalizedLink);
+        if (absoluteUrl.origin === window.location.origin) {
+          navigateTo(`${absoluteUrl.pathname}${absoluteUrl.search}${absoluteUrl.hash}` || '/');
+          return;
+        }
+
+        window.open(absoluteUrl.toString(), '_blank', 'noopener,noreferrer');
+      } catch {
+        toast.error('El enlace configurado no es válido');
+      }
       return;
     }
 
