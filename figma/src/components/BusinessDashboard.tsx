@@ -92,7 +92,7 @@ type SidebarSection = 'dashboard' | 'settings' | 'services' | 'contracts' | 'boo
 const DASHBOARD_COMMISSION_RATE = 0.08;
 
 const navItems: { id: SidebarSection; label: string; icon: React.ReactNode }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
+  { id: 'dashboard', label: 'Resumen', icon: <LayoutDashboard className="w-5 h-5" /> },
   { id: 'services', label: 'Mis Servicios', icon: <Briefcase className="w-5 h-5" /> },
   { id: 'bookings', label: 'Reservas', icon: <Calendar className="w-5 h-5" /> },
   { id: 'billing', label: 'Facturación', icon: <Receipt className="w-5 h-5" /> },
@@ -1046,7 +1046,7 @@ export function BusinessDashboard({
           {activeSection === 'dashboard' && (
             <div className="space-y-6">
               <div>
-                <h1 className="text-2xl font-bold text-[#1B2A47] mb-1">Dashboard</h1>
+                <h1 className="text-2xl font-bold text-[#1B2A47] mb-1">Resumen</h1>
                 <p className="text-gray-500 text-sm">Resumen general de tu negocio</p>
               </div>
 
