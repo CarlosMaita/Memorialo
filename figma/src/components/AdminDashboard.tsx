@@ -1997,85 +1997,54 @@ export function AdminDashboard({
               </Card>
 
               {showCollectionForm && (
-                <>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>{editingCollectionId ? 'Editar colección' : 'Nueva colección'}</CardTitle>
-                      <CardDescription>Define el título, subtítulo, slug y los servicios que formarán parte de la colección.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-1.5">
-                          <Label htmlFor="collection-title">Título</Label>
-                          <Input
-                            id="collection-title"
-                            value={collectionTitleDraft}
-                            maxLength={160}
-                            onChange={(event) => setCollectionTitleDraft(event.target.value)}
-                            placeholder="Servicios para bodas 2026"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="collection-slug">Slug</Label>
-                          <Input
-                            id="collection-slug"
-                            value={collectionSlugDraft}
-                            maxLength={180}
-                            onChange={(event) => setCollectionSlugDraft(slugify(event.target.value))}
-                            placeholder="servicios-para-bodas-2026"
-                          />
-                          <p className="text-xs text-gray-500">URL pública: /coleccion/{slugify(collectionSlugDraft || collectionTitleDraft) || 'tu-slug'}</p>
-                        </div>
-                      </div>
-
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{editingCollectionId ? 'Editar colección' : 'Nueva colección'}</CardTitle>
+                    <CardDescription>Define el título, subtítulo, slug y los servicios que formarán parte de la colección.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-1.5">
-                        <Label htmlFor="collection-subtitle">Subtítulo</Label>
-                        <Textarea
-                          id="collection-subtitle"
-                          value={collectionSubtitleDraft}
-                          maxLength={320}
-                          onChange={(event) => setCollectionSubtitleDraft(event.target.value)}
-                          placeholder="Agrupa publicaciones ideales para esta intención de búsqueda."
-                          rows={3}
+                        <Label htmlFor="collection-title">Título</Label>
+                        <Input
+                          id="collection-title"
+                          value={collectionTitleDraft}
+                          maxLength={160}
+                          onChange={(event) => setCollectionTitleDraft(event.target.value)}
+                          placeholder="Servicios para bodas 2026"
                         />
                       </div>
-
-                      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                        <p className="text-xs text-gray-500">
-                          Servicios seleccionados: {selectedCollectionServiceIds.length}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          <Button type="button" variant="outline" onClick={closeCollectionForm}>
-                            {editingCollectionId ? 'Cancelar edición' : 'Cancelar'}
-                          </Button>
-                          <Button
-                            type="button"
-                            onClick={handleSaveCollection}
-                            disabled={savingCollection || !hasCollectionChanges}
-                          >
-                            {savingCollection ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Guardando...
-                              </>
-                            ) : (
-                              <>
-                                {editingCollectionId ? <Pencil className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-                                {editingCollectionId ? 'Guardar colección' : 'Crear colección'}
-                              </>
-                            )}
-                          </Button>
-                        </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="collection-slug">Slug</Label>
+                        <Input
+                          id="collection-slug"
+                          value={collectionSlugDraft}
+                          maxLength={180}
+                          onChange={(event) => setCollectionSlugDraft(slugify(event.target.value))}
+                          placeholder="servicios-para-bodas-2026"
+                        />
+                        <p className="text-xs text-gray-500">URL pública: /coleccion/{slugify(collectionSlugDraft || collectionTitleDraft) || 'tu-slug'}</p>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Servicios de la colección</CardTitle>
-                      <CardDescription>Busca y selecciona servicios con checkboxes para agregarlos a la colección.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="collection-subtitle">Subtítulo</Label>
+                      <Textarea
+                        id="collection-subtitle"
+                        value={collectionSubtitleDraft}
+                        maxLength={320}
+                        onChange={(event) => setCollectionSubtitleDraft(event.target.value)}
+                        placeholder="Agrupa publicaciones ideales para esta intención de búsqueda."
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="space-y-4 rounded-xl border border-gray-200 p-4">
+                      <div>
+                        <h3 className="text-base font-semibold text-[#1B2A47]">Servicios de la colección</h3>
+                        <p className="text-sm text-gray-500">Busca y selecciona servicios con checkboxes para agregarlos a la colección.</p>
+                      </div>
+
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input
@@ -2141,9 +2110,37 @@ export function AdminDashboard({
                           </Table>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
-                </>
+                    </div>
+
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                      <p className="text-xs text-gray-500">
+                        Servicios seleccionados: {selectedCollectionServiceIds.length}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" onClick={closeCollectionForm}>
+                          {editingCollectionId ? 'Cancelar edición' : 'Cancelar'}
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={handleSaveCollection}
+                          disabled={savingCollection || !hasCollectionChanges}
+                        >
+                          {savingCollection ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Guardando...
+                            </>
+                          ) : (
+                            <>
+                              {editingCollectionId ? <Pencil className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+                              {editingCollectionId ? 'Guardar colección' : 'Crear colección'}
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
             </div>
           )}
