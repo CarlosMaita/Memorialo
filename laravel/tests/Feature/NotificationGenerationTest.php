@@ -62,6 +62,7 @@ class NotificationGenerationTest extends TestCase
             'date' => '2026-06-10',
             'location' => 'CDMX',
             'status' => 'pending',
+            'contractId' => 'contract-notif-1',
         ])->assertCreated();
 
         $this->assertDatabaseHas('notifications', [
@@ -86,7 +87,7 @@ class NotificationGenerationTest extends TestCase
             ->where('type', NotificationTypes::SERVICE_REQUEST_CREATED)
             ->first();
 
-        $this->assertSame('/mi-negocio/negociaciones', $providerNotification?->data['ctaUrl'] ?? null);
+        $this->assertSame('/mi-negocio/negociacion/contract-notif-1', $providerNotification?->data['ctaUrl'] ?? null);
     }
 
     public function test_contract_active_and_completed_generate_client_notifications(): void
