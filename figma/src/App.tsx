@@ -4577,7 +4577,7 @@ export default function App() {
                   style={
                     mainContentBgType === 'solid'
                       ? { backgroundColor: mainContentBgColor }
-                      : mainContentBgType === 'image' && mainContentBgImageUrl
+                      : mainContentBgType === 'image' && /^https?:\/\//i.test(mainContentBgImageUrl)
                         ? { backgroundImage: `url(${mainContentBgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
                         : { background: mainContentBgGradient || 'linear-gradient(135deg, var(--navy-blue) 0%, var(--copper) 100%)' }
                   }

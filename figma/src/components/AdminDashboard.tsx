@@ -1299,7 +1299,7 @@ export function AdminDashboard({
                           placeholder="linear-gradient(135deg, #0A1F44 0%, #B8860B 100%)"
                           onChange={(event) => setMainContentBgGradientDraft(event.target.value)}
                         />
-                        <p className="text-xs text-gray-500">Usa sintaxis CSS válida para <code>background</code>, ej: <code>linear-gradient(135deg, #0A1F44 0%, #B8860B 100%)</code></p>
+                        <p className="text-xs text-gray-500">Usa sintaxis CSS válida para <code>background</code>, ej.: <code>linear-gradient(135deg, #0A1F44 0%, #B8860B 100%)</code></p>
                         {mainContentBgGradientDraft.trim() && (
                           <div
                             className="h-10 rounded-lg border border-gray-200"
@@ -1342,7 +1342,7 @@ export function AdminDashboard({
                           onChange={(event) => setMainContentBgImageUrlDraft(event.target.value)}
                         />
                         <p className="text-xs text-gray-500">Usa una imagen de alta resolución (mínimo 1200×400 px). La imagen se ajustará a la sección.</p>
-                        {mainContentBgImageUrlDraft.trim() && (
+                        {mainContentBgImageUrlDraft.trim() && /^https?:\/\//i.test(mainContentBgImageUrlDraft.trim()) && (
                           <div
                             className="h-20 rounded-lg border border-gray-200 bg-gray-100"
                             style={{ backgroundImage: `url(${mainContentBgImageUrlDraft.trim()})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
