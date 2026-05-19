@@ -55,26 +55,24 @@ export function ServiceDetailPage({
 
   const artistReviews = reviews.filter((r) => r.artistId === artist.id);
   const allImages = [artist.image, ...portfolioImages].filter(Boolean) as string[];
-  const desktopGalleryImages = allImages.length > MAX_DESKTOP_GALLERY_IMAGES
-    ? allImages.slice(0, MAX_DESKTOP_GALLERY_IMAGES)
-    : allImages;
+  const desktopGalleryImages = allImages.slice(0, MAX_DESKTOP_GALLERY_IMAGES);
   const desktopGalleryCount = desktopGalleryImages.length;
 
-  const desktopGridClassName =
-    desktopGalleryCount <= 1
-      ? 'md:grid-cols-1 md:grid-rows-1'
-      : desktopGalleryCount === 2
-        ? 'md:grid-cols-2 md:grid-rows-1'
-        : desktopGalleryCount <= 4
-          ? 'md:grid-cols-2 md:grid-rows-2'
-          : 'md:grid-cols-4 md:grid-rows-2';
+  let desktopGridClassName = 'md:grid-cols-1 md:grid-rows-1';
+  if (desktopGalleryCount === 2) {
+    desktopGridClassName = 'md:grid-cols-2 md:grid-rows-1';
+  } else if (desktopGalleryCount >= 3 && desktopGalleryCount <= 4) {
+    desktopGridClassName = 'md:grid-cols-2 md:grid-rows-2';
+  } else if (desktopGalleryCount >= MAX_DESKTOP_GALLERY_IMAGES) {
+    desktopGridClassName = 'md:grid-cols-4 md:grid-rows-2';
+  }
 
-  const mainImageSpanClassName =
-    desktopGalleryCount === 3
-      ? 'md:col-span-1 md:row-span-2'
-      : desktopGalleryCount >= MAX_DESKTOP_GALLERY_IMAGES
-        ? 'md:col-span-2 md:row-span-2'
-        : 'md:col-span-1 md:row-span-1';
+  let mainImageSpanClassName = 'md:col-span-1 md:row-span-1';
+  if (desktopGalleryCount === 3) {
+    mainImageSpanClassName = 'md:col-span-1 md:row-span-2';
+  } else if (desktopGalleryCount >= MAX_DESKTOP_GALLERY_IMAGES) {
+    mainImageSpanClassName = 'md:col-span-2 md:row-span-2';
+  }
 
   const slugify = (value?: string) => {
     if (!value) return '';
