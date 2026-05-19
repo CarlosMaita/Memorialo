@@ -2205,6 +2205,12 @@ export default function App() {
     const normalizedPath = (currentRoute.split('?')[0] || '/').replace(/\/+$/, '') || '/';
 
     if (normalizedPath.startsWith('/mi-negocio')) {
+      if (!currentUser) {
+        setViewMode('client');
+        setShowAuthDialog(true);
+        return;
+      }
+
       setViewMode('business');
       setDashboardView('provider');
 
@@ -2251,7 +2257,7 @@ export default function App() {
       setDashboardView('client');
       setNegotiationContractId(contractId);
     }
-  }, [currentRoute]);
+  }, [currentRoute, currentUser]);
 
   useEffect(() => {
     const normalizedPath = (currentRoute.split('?')[0] || '/').replace(/\/+$/, '') || '/';
