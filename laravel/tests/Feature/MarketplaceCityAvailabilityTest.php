@@ -53,12 +53,14 @@ class MarketplaceCityAvailabilityTest extends TestCase
             'mainContentPrimaryButtonLink' => '/servicios',
             'mainContentSecondaryButtonText' => 'Ver guía',
             'mainContentSecondaryButtonLink' => '/como-funciona',
+            'providerEventReminderHours' => 24,
         ])
             ->assertOk()
             ->assertJsonPath('mainContentAccent', 'Destacados del día')
             ->assertJsonPath('mainContentTitle', 'Encuentra todo para tu evento')
             ->assertJsonPath('mainContentPrimaryButtonText', 'Explorar')
-            ->assertJsonPath('mainContentSecondaryButtonLink', '/como-funciona');
+            ->assertJsonPath('mainContentSecondaryButtonLink', '/como-funciona')
+            ->assertJsonPath('providerEventReminderHours', 24);
 
         $this->getJson('/api/marketplace/config')
             ->assertOk()
@@ -68,7 +70,8 @@ class MarketplaceCityAvailabilityTest extends TestCase
             ->assertJsonPath('mainContentPrimaryButtonText', 'Explorar')
             ->assertJsonPath('mainContentPrimaryButtonLink', '/servicios')
             ->assertJsonPath('mainContentSecondaryButtonText', 'Ver guía')
-            ->assertJsonPath('mainContentSecondaryButtonLink', '/como-funciona');
+            ->assertJsonPath('mainContentSecondaryButtonLink', '/como-funciona')
+            ->assertJsonPath('providerEventReminderHours', 24);
     }
 
     public function test_public_marketplace_only_returns_enabled_city_services_for_active_listing(): void

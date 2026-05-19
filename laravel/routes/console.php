@@ -52,3 +52,4 @@ Artisan::command('app:ensure-admin', function () {
 
 Schedule::command('chat:purge-expired')->dailyAt('02:30');
 Schedule::command('billing:run-cycle')->dailyAt('03:00');
+Schedule::command('notifications:send-provider-event-reminders')->hourly();

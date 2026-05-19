@@ -27,6 +27,7 @@ class MarketplaceSetting extends Model
         'main_content_bg_color',
         'main_content_bg_gradient',
         'main_content_bg_image_url',
+        'provider_event_reminder_hours',
     ];
 
     protected function casts(): array
