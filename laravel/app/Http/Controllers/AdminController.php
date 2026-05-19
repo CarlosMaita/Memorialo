@@ -359,6 +359,7 @@ class AdminController extends Controller
             'mainContentBgColor' => ['sometimes', 'nullable', 'string', 'max:50'],
             'mainContentBgGradient' => ['sometimes', 'nullable', 'string', 'max:500'],
             'mainContentBgImageUrl' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'providerEventReminderHours' => ['sometimes', 'integer', 'min:1', 'max:720'],
         ]);
 
         $allCities = $this->marketplaceCityCatalog();
@@ -386,6 +387,7 @@ class AdminController extends Controller
             'main_content_primary_button_link' => '/servicios/venezuela',
             'main_content_secondary_button_text' => 'Cómo funciona',
             'main_content_secondary_button_link' => '/como-funciona',
+            'provider_event_reminder_hours' => 48,
         ]);
 
         $settings->enabled_cities = $enabledCities;
@@ -457,6 +459,10 @@ class AdminController extends Controller
 
         if (array_key_exists('mainContentBgImageUrl', $validated)) {
             $settings->main_content_bg_image_url = $validated['mainContentBgImageUrl'] ?: null;
+        }
+
+        if (array_key_exists('providerEventReminderHours', $validated)) {
+            $settings->provider_event_reminder_hours = (int) $validated['providerEventReminderHours'];
         }
 
         $settings->save();
@@ -567,6 +573,7 @@ class AdminController extends Controller
             'mainContentBgColor' => $settings?->main_content_bg_color ?: '#0A1F44',
             'mainContentBgGradient' => $settings?->main_content_bg_gradient ?: 'linear-gradient(135deg, #0A1F44 0%, #B8860B 100%)',
             'mainContentBgImageUrl' => $settings?->main_content_bg_image_url ?: null,
+            'providerEventReminderHours' => (int) ($settings?->provider_event_reminder_hours ?: 48),
         ];
     }
 

@@ -32,6 +32,8 @@ class NotificationTypes
 
     public const BILLING_ACCOUNT_SUSPENDED = 'billing_account_suspended';
 
+    public const PROVIDER_EVENT_REMINDER = 'provider_event_reminder';
+
     public const ALL = [
         self::WELCOME,
         self::SERVICE_REQUEST_CREATED,
@@ -47,5 +49,6 @@ class NotificationTypes
         self::BILLING_PAYMENT_APPROVED,
         self::BILLING_PAYMENT_REJECTED,
         self::BILLING_ACCOUNT_SUSPENDED,
+        self::PROVIDER_EVENT_REMINDER,
     ];
 }

@@ -3,11 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\Contract;
+use App\Models\Booking;
+use App\Models\MarketplaceSetting;
 use App\Models\Provider;
 use App\Models\Service;
 use App\Models\User;
 use App\Services\NotificationDispatchService;
 use App\Support\NotificationTypes;
+use Carbon\Carbon;
 use Closure;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -254,5 +257,90 @@ class NotificationGenerationTest extends TestCase
             \Mockery::on(fn (array $data): bool => ($data['ctaUrl'] ?? null) === 'https://frontend.test'),
             \Mockery::type(Closure::class)
         );
+    }
+
+    public function test_provider_event_reminder_command_sends_48h_notification_and_avoids_duplicates(): void
+    {
+        Mail::fake();
+        Carbon::setTestNow(Carbon::create(2026, 6, 8, 12, 0, 0));
+
+        try {
+            $providerUser = User::factory()->create([
+                'role' => 'provider',
+                'is_provider' => true,
+            ]);
+
+            Booking::create([
+                'id' => 'booking-reminder-48h',
+                'artist_user_id' => (string) $providerUser->id,
+                'artist_name' => 'Mariachi',
+                'client_name' => 'Cliente Test',
+                'date' => now()->addHours(48)->format('Y-m-d'),
+                'start_time' => now()->addHours(48)->format('H:i:s'),
+                'location' => 'CDMX',
+                'status' => 'confirmed',
+            ]);
+
+            $this->artisan('notifications:send-provider-event-reminders')->assertExitCode(0);
+
+            $this->assertDatabaseHas('notification_deliveries', [
+                'recipient_user_id' => $providerUser->id,
+                'notification_type' => NotificationTypes::PROVIDER_EVENT_REMINDER,
+                'channel' => 'database',
+                'status' => 'sent',
+            ]);
+
+            $this->assertDatabaseHas('notification_deliveries', [
+                'recipient_user_id' => $providerUser->id,
+                'notification_type' => NotificationTypes::PROVIDER_EVENT_REMINDER,
+                'channel' => 'mail',
+                'status' => 'sent',
+            ]);
+
+            $this->artisan('notifications:send-provider-event-reminders')->assertExitCode(0);
+
+            $this->assertSame(1, $providerUser->notifications()->where('type', NotificationTypes::PROVIDER_EVENT_REMINDER)->count());
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_provider_event_reminder_command_uses_admin_configured_hours(): void
+    {
+        Mail::fake();
+        Carbon::setTestNow(Carbon::create(2026, 6, 8, 12, 0, 0));
+
+        try {
+            MarketplaceSetting::query()->create([
+                'enabled_cities' => ['Caracas'],
+                'provider_event_reminder_hours' => 24,
+            ]);
+
+            $providerUser = User::factory()->create([
+                'role' => 'provider',
+                'is_provider' => true,
+            ]);
+
+            Booking::create([
+                'id' => 'booking-reminder-24h',
+                'artist_user_id' => (string) $providerUser->id,
+                'artist_name' => 'DJ',
+                'client_name' => 'Cliente Config',
+                'date' => now()->addHours(24)->format('Y-m-d'),
+                'start_time' => now()->addHours(24)->format('H:i:s'),
+                'status' => 'confirmed',
+            ]);
+
+            $this->artisan('notifications:send-provider-event-reminders')->assertExitCode(0);
+
+            $this->assertDatabaseHas('notification_deliveries', [
+                'recipient_user_id' => $providerUser->id,
+                'notification_type' => NotificationTypes::PROVIDER_EVENT_REMINDER,
+                'channel' => 'database',
+                'status' => 'sent',
+            ]);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 }
