@@ -16,6 +16,13 @@ class MarketplaceSetting extends Model
         'relevant_services_title',
         'relevant_services_subtitle',
         'relevant_service_ids',
+        'main_content_accent',
+        'main_content_title',
+        'main_content_subtitle',
+        'main_content_primary_button_text',
+        'main_content_primary_button_link',
+        'main_content_secondary_button_text',
+        'main_content_secondary_button_link',
     ];
 
     protected function casts(): array

@@ -348,6 +348,13 @@ class AdminController extends Controller
             'relevantServicesSubtitle' => ['sometimes', 'nullable', 'string', 'max:220'],
             'relevantServiceIds' => ['sometimes', 'array'],
             'relevantServiceIds.*' => ['string', 'max:30'],
+            'mainContentAccent' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'mainContentTitle' => ['sometimes', 'nullable', 'string', 'max:180'],
+            'mainContentSubtitle' => ['sometimes', 'nullable', 'string', 'max:320'],
+            'mainContentPrimaryButtonText' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'mainContentPrimaryButtonLink' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'mainContentSecondaryButtonText' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'mainContentSecondaryButtonLink' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
         $allCities = $this->marketplaceCityCatalog();
@@ -368,6 +375,13 @@ class AdminController extends Controller
             'relevant_services_title' => 'Servicios relevantes',
             'relevant_services_subtitle' => 'Descubre servicios recomendados para tu evento.',
             'relevant_service_ids' => [],
+            'main_content_accent' => 'Promociones y Novedades',
+            'main_content_title' => 'Todo para tu evento, en un solo lugar',
+            'main_content_subtitle' => 'Encuentra ofertas activas, nuevas publicaciones y proveedores listos para ayudarte a crear una celebración inolvidable.',
+            'main_content_primary_button_text' => 'Ver servicios',
+            'main_content_primary_button_link' => '/servicios/venezuela',
+            'main_content_secondary_button_text' => 'Cómo funciona',
+            'main_content_secondary_button_link' => '/como-funciona',
         ]);
 
         $settings->enabled_cities = $enabledCities;
@@ -395,6 +409,34 @@ class AdminController extends Controller
                 ->unique()
                 ->values()
                 ->all();
+        }
+
+        if (array_key_exists('mainContentAccent', $validated)) {
+            $settings->main_content_accent = $validated['mainContentAccent'] ?: null;
+        }
+
+        if (array_key_exists('mainContentTitle', $validated)) {
+            $settings->main_content_title = $validated['mainContentTitle'] ?: null;
+        }
+
+        if (array_key_exists('mainContentSubtitle', $validated)) {
+            $settings->main_content_subtitle = $validated['mainContentSubtitle'] ?: null;
+        }
+
+        if (array_key_exists('mainContentPrimaryButtonText', $validated)) {
+            $settings->main_content_primary_button_text = $validated['mainContentPrimaryButtonText'] ?: null;
+        }
+
+        if (array_key_exists('mainContentPrimaryButtonLink', $validated)) {
+            $settings->main_content_primary_button_link = $validated['mainContentPrimaryButtonLink'] ?: null;
+        }
+
+        if (array_key_exists('mainContentSecondaryButtonText', $validated)) {
+            $settings->main_content_secondary_button_text = $validated['mainContentSecondaryButtonText'] ?: null;
+        }
+
+        if (array_key_exists('mainContentSecondaryButtonLink', $validated)) {
+            $settings->main_content_secondary_button_link = $validated['mainContentSecondaryButtonLink'] ?: null;
         }
 
         $settings->save();
@@ -494,6 +536,13 @@ class AdminController extends Controller
             'relevantServicesTitle' => $settings?->relevant_services_title ?: 'Servicios relevantes',
             'relevantServicesSubtitle' => $settings?->relevant_services_subtitle ?: 'Descubre servicios recomendados para tu evento.',
             'relevantServiceIds' => is_array($settings?->relevant_service_ids) ? array_values($settings->relevant_service_ids) : [],
+            'mainContentAccent' => $settings?->main_content_accent ?: 'Promociones y Novedades',
+            'mainContentTitle' => $settings?->main_content_title ?: 'Todo para tu evento, en un solo lugar',
+            'mainContentSubtitle' => $settings?->main_content_subtitle ?: 'Encuentra ofertas activas, nuevas publicaciones y proveedores listos para ayudarte a crear una celebración inolvidable.',
+            'mainContentPrimaryButtonText' => $settings?->main_content_primary_button_text ?: 'Ver servicios',
+            'mainContentPrimaryButtonLink' => $settings?->main_content_primary_button_link ?: '/servicios/venezuela',
+            'mainContentSecondaryButtonText' => $settings?->main_content_secondary_button_text ?: 'Cómo funciona',
+            'mainContentSecondaryButtonLink' => $settings?->main_content_secondary_button_link ?: '/como-funciona',
         ];
     }
 
