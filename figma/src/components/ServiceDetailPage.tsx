@@ -45,6 +45,7 @@ export function ServiceDetailPage({
   onBack,
   onBookNow,
 }: ServiceDetailPageProps) {
+  const MAX_DESKTOP_GALLERY_IMAGES = 5;
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
 
@@ -54,7 +55,9 @@ export function ServiceDetailPage({
 
   const artistReviews = reviews.filter((r) => r.artistId === artist.id);
   const allImages = [artist.image, ...portfolioImages].filter(Boolean) as string[];
-  const desktopGalleryImages = allImages.length > 5 ? allImages.slice(0, 5) : allImages;
+  const desktopGalleryImages = allImages.length > MAX_DESKTOP_GALLERY_IMAGES
+    ? allImages.slice(0, MAX_DESKTOP_GALLERY_IMAGES)
+    : allImages;
   const desktopGalleryCount = desktopGalleryImages.length;
 
   const desktopGridClassName =
@@ -69,7 +72,7 @@ export function ServiceDetailPage({
   const mainImageSpanClassName =
     desktopGalleryCount === 3
       ? 'md:col-span-1 md:row-span-2'
-      : desktopGalleryCount >= 5
+      : desktopGalleryCount >= MAX_DESKTOP_GALLERY_IMAGES
         ? 'md:col-span-2 md:row-span-2'
         : 'md:col-span-1 md:row-span-1';
 
