@@ -79,6 +79,10 @@ interface AdminDashboardProps {
   mainContentPrimaryButtonLink: string;
   mainContentSecondaryButtonText: string;
   mainContentSecondaryButtonLink: string;
+  mainContentBgType: 'gradient' | 'solid' | 'image';
+  mainContentBgColor: string;
+  mainContentBgGradient: string;
+  mainContentBgImageUrl: string;
   onUpdateMainContentConfig: (config: {
     accent: string;
     title: string;
@@ -87,6 +91,10 @@ interface AdminDashboardProps {
     primaryButtonLink: string;
     secondaryButtonText: string;
     secondaryButtonLink: string;
+    bgType: 'gradient' | 'solid' | 'image';
+    bgColor: string;
+    bgGradient: string;
+    bgImageUrl: string;
   }) => Promise<void>;
 }
 
@@ -144,6 +152,10 @@ export function AdminDashboard({
   mainContentPrimaryButtonLink,
   mainContentSecondaryButtonText,
   mainContentSecondaryButtonLink,
+  mainContentBgType,
+  mainContentBgColor,
+  mainContentBgGradient,
+  mainContentBgImageUrl,
   onUpdateMainContentConfig,
 }: AdminDashboardProps) {
   const ADMIN_TABLE_BATCH_SIZE = 16;
@@ -168,6 +180,10 @@ export function AdminDashboard({
   const [mainContentPrimaryButtonLinkDraft, setMainContentPrimaryButtonLinkDraft] = useState(mainContentPrimaryButtonLink);
   const [mainContentSecondaryButtonTextDraft, setMainContentSecondaryButtonTextDraft] = useState(mainContentSecondaryButtonText);
   const [mainContentSecondaryButtonLinkDraft, setMainContentSecondaryButtonLinkDraft] = useState(mainContentSecondaryButtonLink);
+  const [mainContentBgTypeDraft, setMainContentBgTypeDraft] = useState<'gradient' | 'solid' | 'image'>(mainContentBgType);
+  const [mainContentBgColorDraft, setMainContentBgColorDraft] = useState(mainContentBgColor);
+  const [mainContentBgGradientDraft, setMainContentBgGradientDraft] = useState(mainContentBgGradient);
+  const [mainContentBgImageUrlDraft, setMainContentBgImageUrlDraft] = useState(mainContentBgImageUrl);
   const [savingMainContent, setSavingMainContent] = useState(false);
   const [visibleProvidersCount, setVisibleProvidersCount] = useState(ADMIN_TABLE_BATCH_SIZE);
   const [visibleUsersCount, setVisibleUsersCount] = useState(ADMIN_TABLE_BATCH_SIZE);
@@ -241,6 +257,10 @@ export function AdminDashboard({
     setMainContentPrimaryButtonLinkDraft(mainContentPrimaryButtonLink);
     setMainContentSecondaryButtonTextDraft(mainContentSecondaryButtonText);
     setMainContentSecondaryButtonLinkDraft(mainContentSecondaryButtonLink);
+    setMainContentBgTypeDraft(mainContentBgType);
+    setMainContentBgColorDraft(mainContentBgColor);
+    setMainContentBgGradientDraft(mainContentBgGradient);
+    setMainContentBgImageUrlDraft(mainContentBgImageUrl);
   }, [
     mainContentAccent,
     mainContentTitle,
@@ -249,6 +269,10 @@ export function AdminDashboard({
     mainContentPrimaryButtonLink,
     mainContentSecondaryButtonText,
     mainContentSecondaryButtonLink,
+    mainContentBgType,
+    mainContentBgColor,
+    mainContentBgGradient,
+    mainContentBgImageUrl,
   ]);
 
   useEffect(() => {
@@ -509,7 +533,11 @@ export function AdminDashboard({
       mainContentPrimaryButtonTextDraft.trim() !== mainContentPrimaryButtonText.trim() ||
       mainContentPrimaryButtonLinkDraft.trim() !== mainContentPrimaryButtonLink.trim() ||
       mainContentSecondaryButtonTextDraft.trim() !== mainContentSecondaryButtonText.trim() ||
-      mainContentSecondaryButtonLinkDraft.trim() !== mainContentSecondaryButtonLink.trim()
+      mainContentSecondaryButtonLinkDraft.trim() !== mainContentSecondaryButtonLink.trim() ||
+      mainContentBgTypeDraft !== mainContentBgType ||
+      mainContentBgColorDraft.trim() !== mainContentBgColor.trim() ||
+      mainContentBgGradientDraft.trim() !== mainContentBgGradient.trim() ||
+      mainContentBgImageUrlDraft.trim() !== mainContentBgImageUrl.trim()
     );
   }, [
     mainContentAccentDraft,
@@ -526,6 +554,14 @@ export function AdminDashboard({
     mainContentSecondaryButtonText,
     mainContentSecondaryButtonLinkDraft,
     mainContentSecondaryButtonLink,
+    mainContentBgTypeDraft,
+    mainContentBgType,
+    mainContentBgColorDraft,
+    mainContentBgColor,
+    mainContentBgGradientDraft,
+    mainContentBgGradient,
+    mainContentBgImageUrlDraft,
+    mainContentBgImageUrl,
   ]);
 
   useEffect(() => {
@@ -648,6 +684,10 @@ export function AdminDashboard({
         primaryButtonLink: mainContentPrimaryButtonLinkDraft.trim() || '/servicios/venezuela',
         secondaryButtonText: mainContentSecondaryButtonTextDraft.trim() || 'Cómo funciona',
         secondaryButtonLink: mainContentSecondaryButtonLinkDraft.trim() || '/como-funciona',
+        bgType: mainContentBgTypeDraft,
+        bgColor: mainContentBgColorDraft.trim() || '#0A1F44',
+        bgGradient: mainContentBgGradientDraft.trim() || 'linear-gradient(135deg, #0A1F44 0%, #B8860B 100%)',
+        bgImageUrl: mainContentBgImageUrlDraft.trim(),
       });
     } finally {
       setSavingMainContent(false);
@@ -1221,6 +1261,95 @@ export function AdminDashboard({
                         onChange={(event) => setMainContentSecondaryButtonLinkDraft(event.target.value)}
                       />
                     </div>
+                  </div>
+
+                  {/* Background configuration */}
+                  <div className="space-y-3 border-t pt-4">
+                    <Label className="text-sm font-semibold">Fondo de la sección</Label>
+                    <div className="flex gap-3 flex-wrap">
+                      {(
+                        [
+                          { value: 'gradient', label: 'Degradado' },
+                          { value: 'solid', label: 'Color sólido' },
+                          { value: 'image', label: 'Imagen' },
+                        ] as { value: 'gradient' | 'solid' | 'image'; label: string }[]
+                      ).map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setMainContentBgTypeDraft(option.value)}
+                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                            mainContentBgTypeDraft === option.value
+                              ? 'bg-[#1B2A47] text-white border-[#1B2A47]'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {mainContentBgTypeDraft === 'gradient' && (
+                      <div className="space-y-1.5">
+                        <Label htmlFor="main-content-bg-gradient">CSS de degradado</Label>
+                        <Input
+                          id="main-content-bg-gradient"
+                          value={mainContentBgGradientDraft}
+                          maxLength={500}
+                          placeholder="linear-gradient(135deg, #0A1F44 0%, #B8860B 100%)"
+                          onChange={(event) => setMainContentBgGradientDraft(event.target.value)}
+                        />
+                        <p className="text-xs text-gray-500">Usa sintaxis CSS válida para <code>background</code>, ej.: <code>linear-gradient(135deg, #0A1F44 0%, #B8860B 100%)</code></p>
+                        {mainContentBgGradientDraft.trim() && (
+                          <div
+                            className="h-10 rounded-lg border border-gray-200"
+                            style={{ background: mainContentBgGradientDraft.trim() }}
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    {mainContentBgTypeDraft === 'solid' && (
+                      <div className="space-y-1.5">
+                        <Label htmlFor="main-content-bg-color">Color de fondo</Label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            id="main-content-bg-color"
+                            type="color"
+                            value={mainContentBgColorDraft.startsWith('#') ? mainContentBgColorDraft : '#0A1F44'}
+                            onChange={(event) => setMainContentBgColorDraft(event.target.value)}
+                            className="h-10 w-16 cursor-pointer rounded border border-gray-300 p-0.5"
+                          />
+                          <Input
+                            value={mainContentBgColorDraft}
+                            maxLength={50}
+                            placeholder="#0A1F44"
+                            onChange={(event) => setMainContentBgColorDraft(event.target.value)}
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {mainContentBgTypeDraft === 'image' && (
+                      <div className="space-y-1.5">
+                        <Label htmlFor="main-content-bg-image-url">URL de imagen de fondo</Label>
+                        <Input
+                          id="main-content-bg-image-url"
+                          value={mainContentBgImageUrlDraft}
+                          maxLength={1000}
+                          placeholder="https://example.com/imagen.jpg"
+                          onChange={(event) => setMainContentBgImageUrlDraft(event.target.value)}
+                        />
+                        <p className="text-xs text-gray-500">Usa una imagen de alta resolución (mínimo 1200×400 px). La imagen se ajustará a la sección.</p>
+                        {mainContentBgImageUrlDraft.trim() && /^https?:\/\//i.test(mainContentBgImageUrlDraft.trim()) && (
+                          <div
+                            className="h-20 rounded-lg border border-gray-200 bg-gray-100"
+                            style={{ backgroundImage: `url(${mainContentBgImageUrlDraft.trim()})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                          />
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-end">
