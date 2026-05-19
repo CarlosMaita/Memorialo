@@ -129,7 +129,7 @@ class NotificationGenerationTest extends TestCase
             ->where('type', NotificationTypes::CONTRACT_APPROVED)
             ->first();
 
-        $this->assertSame('/me/reservas', $clientContractApprovedNotification?->data['ctaUrl'] ?? null);
+        $this->assertSame('/me/reservas?contractId=contract-notif-1', $clientContractApprovedNotification?->data['ctaUrl'] ?? null);
 
         $this->putJson('/api/contracts/'.$contract->id, [
             'status' => 'completed',

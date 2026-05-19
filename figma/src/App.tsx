@@ -2246,15 +2246,32 @@ export default function App() {
       return;
     }
 
+    if (normalizedPath.startsWith('/me/')) {
+      if (!currentUser) {
+        setViewMode('client');
+        setShowAuthDialog(true);
+        return;
+      }
+
+      setViewMode('business');
+      setDashboardView('client');
+    }
+
     if (normalizedPath === '/me/reservas') {
+      const queryString = currentRoute.includes('?') ? currentRoute.slice(currentRoute.indexOf('?') + 1) : '';
+      const queryParams = new URLSearchParams(queryString);
+      const focusedContractId = (queryParams.get('contractId') || queryParams.get('contract') || '').trim() || null;
+
       setViewMode('business');
       setDashboardView('client');
       setClientDashboardSection('bookings');
+      setClientFocusedContractId(focusedContractId);
       setNegotiationContractId(null);
     } else if (normalizedPath.startsWith('/me/negociacion/')) {
       const contractId = normalizedPath.slice('/me/negociacion/'.length) || null;
       setViewMode('business');
       setDashboardView('client');
+      setClientFocusedContractId(null);
       setNegotiationContractId(contractId);
     }
   }, [currentRoute, currentUser]);
