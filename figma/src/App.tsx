@@ -28,6 +28,7 @@ import { CancellationPolicy } from './components/legal/CancellationPolicy';
 import { RefundPolicy } from './components/legal/RefundPolicy';
 import { CodeOfConduct } from './components/legal/CodeOfConduct';
 import { ServiceDetailPage } from './components/ServiceDetailPage';
+import { CollectionPage } from './components/CollectionPage';
 import { BookingConfirmation } from './components/BookingConfirmation';
 import { ChatWidget } from './components/ChatWidget';
 import { NegotiationPage } from './components/NegotiationPage';
@@ -152,6 +153,17 @@ type OpenBookingEventDetail = {
   contractId?: string | null;
 };
 
+type ServiceCollection = {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  slug: string;
+  serviceIds: string[];
+  services: Artist[];
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 const searchCriteriaEquals = (left: SearchCriteria, right: SearchCriteria) => {
   return (
     left.query === right.query &&
@@ -232,6 +244,10 @@ export default function App() {
   const [relevantServicesTitle, setRelevantServicesTitle] = useState('Servicios relevantes');
   const [relevantServicesSubtitle, setRelevantServicesSubtitle] = useState('Descubre servicios recomendados para tu evento.');
   const [relevantServiceIds, setRelevantServiceIds] = useState<string[]>([]);
+  const [collections, setCollections] = useState<ServiceCollection[]>([]);
+  const [activeCollection, setActiveCollection] = useState<ServiceCollection | null>(null);
+  const [collectionLoading, setCollectionLoading] = useState(false);
+  const [collectionNotFound, setCollectionNotFound] = useState(false);
   const [mainContentAccent, setMainContentAccent] = useState('Promociones y Novedades');
   const [mainContentTitle, setMainContentTitle] = useState('Todo para tu evento, en un solo lugar');
   const [mainContentSubtitle, setMainContentSubtitle] = useState('Encuentra ofertas activas, nuevas publicaciones y proveedores listos para ayudarte a crear una celebración inolvidable.');
@@ -1344,6 +1360,31 @@ export default function App() {
     return Array.from(artistMap.values());
   };
 
+  const normalizeCollection = (collection: any): ServiceCollection => ({
+    id: String(collection?.id || ''),
+    title: typeof collection?.title === 'string' ? collection.title : '',
+    subtitle: typeof collection?.subtitle === 'string' ? collection.subtitle : '',
+    slug: typeof collection?.slug === 'string' ? collection.slug : '',
+    serviceIds: Array.isArray(collection?.serviceIds) ? collection.serviceIds.map((value: unknown) => String(value)) : [],
+    services: Array.isArray(collection?.services) ? collection.services : [],
+    createdAt: typeof collection?.createdAt === 'string' ? collection.createdAt : undefined,
+    updatedAt: typeof collection?.updatedAt === 'string' ? collection.updatedAt : undefined,
+  });
+
+  const upsertCollection = (existing: ServiceCollection[], incoming: ServiceCollection) => {
+    const nextCollections = existing.filter((collection) => collection.id !== incoming.id);
+    return [incoming, ...nextCollections];
+  };
+
+  const mergeCollectionServices = (collection: ServiceCollection | null) => {
+    if (!collection?.services?.length) {
+      return;
+    }
+
+    setArtists((previous) => mergeArtistsById(previous, collection.services));
+    setMarketplaceArtists((previous) => mergeArtistsById(previous, collection.services));
+  };
+
   const applyReviewAggregates = (sourceArtists: Artist[], sourceReviews: Review[]) => {
     return sourceArtists.map((artist) => {
       const artistReviews = sourceReviews.filter((review) => review.artistId === artist.id);
@@ -1443,8 +1484,26 @@ export default function App() {
       }
     };
 
+    const loadCollections = async () => {
+      try {
+        const collectionsData = await supabase.getCollections();
+        if (!cancelled) {
+          const normalizedCollections = Array.isArray(collectionsData)
+            ? collectionsData.map(normalizeCollection).filter((collection) => collection.id && collection.slug)
+            : [];
+          setCollections(normalizedCollections);
+          normalizedCollections.forEach((collection) => mergeCollectionServices(collection));
+        }
+      } catch {
+        if (!cancelled) {
+          setCollections([]);
+        }
+      }
+    };
+
     void loadMarketplaceConfig();
     void loadBanners();
+    void loadCollections();
 
     return () => {
       cancelled = true;
@@ -1857,6 +1916,16 @@ export default function App() {
     [currentRoute, citySlugLookup, taxonomySlugLookup]
   );
 
+  const collectionRouteSlug = useMemo(() => {
+    const normalizedPath = (currentRoute.split('?')[0] || '/').replace(/\/+$/, '') || '/';
+    if (!normalizedPath.startsWith('/coleccion/')) {
+      return null;
+    }
+
+    const slug = normalizedPath.replace('/coleccion/', '').trim();
+    return slug || null;
+  }, [currentRoute]);
+
   const marketplaceCacheKey = useMemo(() => {
     const isFavorites = currentRoute === '/favoritos';
     const cacheScope = isFavorites ? `favorites:${currentUser?.id || 'anon'}` : 'public';
@@ -1954,6 +2023,55 @@ export default function App() {
   useEffect(() => {
     previousRouteRef.current = currentRoute;
   }, [currentRoute]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!collectionRouteSlug) {
+      setActiveCollection(null);
+      setCollectionLoading(false);
+      setCollectionNotFound(false);
+      return;
+    }
+
+    const cachedCollection = collections.find((collection) => collection.slug === collectionRouteSlug) || null;
+    if (cachedCollection) {
+      setActiveCollection(cachedCollection);
+      mergeCollectionServices(cachedCollection);
+    } else {
+      setActiveCollection(null);
+    }
+
+    const loadCollectionDetail = async () => {
+      try {
+        setCollectionLoading(true);
+        setCollectionNotFound(false);
+        const collection = normalizeCollection(await supabase.getCollectionBySlug(collectionRouteSlug));
+        if (cancelled) {
+          return;
+        }
+
+        setCollections((previous) => upsertCollection(previous, collection));
+        setActiveCollection(collection);
+        mergeCollectionServices(collection);
+      } catch (error: any) {
+        if (!cancelled) {
+          setActiveCollection(null);
+          setCollectionNotFound(error?.message === 'Collection not found');
+        }
+      } finally {
+        if (!cancelled) {
+          setCollectionLoading(false);
+        }
+      }
+    };
+
+    void loadCollectionDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [collectionRouteSlug]);
 
   useEffect(() => {
     const isListingRoute = currentRoute === '/' || currentRoute === '/favoritos' || Boolean(marketplaceRouteContext);
@@ -3403,6 +3521,63 @@ export default function App() {
     }
   };
 
+  const handleCreateCollection = async (collectionData: {
+    title: string;
+    subtitle: string;
+    slug: string;
+    serviceIds: string[];
+  }) => {
+    try {
+      const createdCollection = normalizeCollection(await supabase.createCollection(collectionData));
+      setCollections((previous) => upsertCollection(previous, createdCollection));
+      mergeCollectionServices(createdCollection);
+      toast.success('Colección creada');
+      return createdCollection;
+    } catch (error) {
+      console.error('Error creating collection:', error);
+      toast.error('No se pudo crear la colección');
+      throw error;
+    }
+  };
+
+  const handleUpdateCollection = async (collectionId: string, collectionData: {
+    title: string;
+    subtitle: string;
+    slug: string;
+    serviceIds: string[];
+  }) => {
+    try {
+      const updatedCollection = normalizeCollection(await supabase.updateCollection(collectionId, collectionData));
+      setCollections((previous) => upsertCollection(previous, updatedCollection));
+      if (activeCollection?.id === collectionId || activeCollection?.slug === updatedCollection.slug) {
+        setActiveCollection(updatedCollection);
+      }
+      mergeCollectionServices(updatedCollection);
+      toast.success('Colección actualizada');
+      return updatedCollection;
+    } catch (error) {
+      console.error('Error updating collection:', error);
+      toast.error('No se pudo actualizar la colección');
+      throw error;
+    }
+  };
+
+  const handleDeleteCollection = async (collectionId: string) => {
+    try {
+      await supabase.deleteCollection(collectionId);
+      setCollections((previous) => previous.filter((collection) => collection.id !== collectionId));
+      if (activeCollection?.id === collectionId) {
+        setActiveCollection(null);
+        setCollectionNotFound(collectionRouteSlug !== null);
+      }
+      toast.success('Colección eliminada');
+    } catch (error) {
+      console.error('Error deleting collection:', error);
+      toast.error('No se pudo eliminar la colección');
+      throw error;
+    }
+  };
+
   const handleUpdateMainContentConfig = async (config: {
     accent: string;
     title: string;
@@ -3553,6 +3728,7 @@ export default function App() {
   }, [marketplaceArtists, allUsers, providers, enabledMarketplaceCities]);
 
   const isFavoritesRoute = currentRoute === '/favoritos';
+  const isCollectionRoute = Boolean(collectionRouteSlug);
   const isPrivateSystemRoute = currentRoute.startsWith('/mi-negocio') || currentRoute.startsWith('/me/');
   const isNegotiationWorkspaceRoute =
     currentRoute.startsWith('/mi-negocio/negociacion/') ||
@@ -4443,6 +4619,10 @@ export default function App() {
               relevantServicesSubtitle={relevantServicesSubtitle}
               relevantServiceIds={relevantServiceIds}
               onUpdateRelevantServicesConfig={handleUpdateRelevantServicesConfig}
+              collections={collections}
+              onCreateCollection={handleCreateCollection}
+              onUpdateCollection={handleUpdateCollection}
+              onDeleteCollection={handleDeleteCollection}
               mainContentAccent={mainContentAccent}
               mainContentTitle={mainContentTitle}
               mainContentSubtitle={mainContentSubtitle}
@@ -4610,22 +4790,32 @@ export default function App() {
           </>
         ) : viewMode === 'client' ? (
           <>
-            {/* SEO for marketplace home */}
-            {!serviceArtist && (
-              <SEOHead
-                title={isHomePageRoute ? HOME_SEO_TITLE : undefined}
-                description={isHomePageRoute
-                  ? HOME_SEO_DESCRIPTION
-                  : undefined}
-                canonical={marketplaceCanonical}
-                keywords={isHomePageRoute
-                  ? 'home memorialo, proveedores de eventos, contratar servicios para eventos, bodas venezuela, marketplace eventos'
-                  : marketplaceKeywords}
-                noindex={visibleArtists.length === 0}
-                structuredData={buildMarketplaceStructuredData(visibleArtists)}
+            {isCollectionRoute ? (
+              <CollectionPage
+                collection={activeCollection}
+                isLoading={collectionLoading}
+                notFound={collectionNotFound}
+                onBack={() => navigateTo('/')}
+                onViewProfile={handleViewProfile}
               />
-            )}
-            {isHomePageRoute && (
+            ) : (
+              <>
+                {/* SEO for marketplace home */}
+                {!serviceArtist && (
+                  <SEOHead
+                    title={isHomePageRoute ? HOME_SEO_TITLE : undefined}
+                    description={isHomePageRoute
+                      ? HOME_SEO_DESCRIPTION
+                      : undefined}
+                    canonical={marketplaceCanonical}
+                    keywords={isHomePageRoute
+                      ? 'home memorialo, proveedores de eventos, contratar servicios para eventos, bodas venezuela, marketplace eventos'
+                      : marketplaceKeywords}
+                    noindex={visibleArtists.length === 0}
+                    structuredData={buildMarketplaceStructuredData(visibleArtists)}
+                  />
+                )}
+                {isHomePageRoute && (
               <div className="space-y-8 mb-8">
                 {bannersSectionEnabled && homeBanners.length > 0 && (
                   <section>
@@ -4850,6 +5040,8 @@ export default function App() {
                       Restablecer Filtros
                     </Button>
                   </div>
+                )}
+              </>
                 )}
               </>
             )}

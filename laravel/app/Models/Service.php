@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Service extends Model
 {
@@ -45,5 +46,12 @@ class Service extends Model
     public function provider(): BelongsTo
     {
         return $this->belongsTo(Provider::class);
+    }
+
+    public function collections(): BelongsToMany
+    {
+        return $this->belongsToMany(ServiceCollection::class, 'collection_service', 'service_id', 'collection_id')
+            ->withPivot('position')
+            ->withTimestamps();
     }
 }

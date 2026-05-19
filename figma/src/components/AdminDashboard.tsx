@@ -28,7 +28,11 @@ import {
   MapPin,
   Save,
   Loader2,
-  ImagePlus
+  ImagePlus,
+  Layers3,
+  Pencil,
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Textarea } from './ui/textarea';
@@ -73,6 +77,17 @@ interface AdminDashboardProps {
   relevantServicesSubtitle: string;
   relevantServiceIds: string[];
   onUpdateRelevantServicesConfig: (config: { enabled: boolean; title: string; subtitle: string; serviceIds: string[] }) => Promise<void>;
+  collections: Array<{
+    id: string;
+    title: string;
+    subtitle?: string | null;
+    slug: string;
+    serviceIds: string[];
+    services: Artist[];
+  }>;
+  onCreateCollection: (collection: { title: string; subtitle: string; slug: string; serviceIds: string[] }) => Promise<any>;
+  onUpdateCollection: (collectionId: string, collection: { title: string; subtitle: string; slug: string; serviceIds: string[] }) => Promise<any>;
+  onDeleteCollection: (collectionId: string) => Promise<void>;
   mainContentAccent: string;
   mainContentTitle: string;
   mainContentSubtitle: string;
@@ -99,7 +114,7 @@ interface AdminDashboardProps {
   }) => Promise<void>;
 }
 
-type AdminSection = 'overview' | 'billing' | 'banners' | 'main-content' | 'relevant-services' | 'providers' | 'interested' | 'users' | 'services';
+type AdminSection = 'overview' | 'billing' | 'banners' | 'main-content' | 'relevant-services' | 'collections' | 'providers' | 'interested' | 'users' | 'services';
 
 const API_BASE = backendMode === 'laravel'
   ? laravelApiBaseUrl
@@ -111,6 +126,7 @@ const adminNavItems = [
   { id: 'banners' as const, label: 'Banners', icon: <BookOpen className="w-5 h-5" /> },
   { id: 'main-content' as const, label: 'Contenido principal', icon: <Star className="w-5 h-5" /> },
   { id: 'relevant-services' as const, label: 'Servicios relevantes', icon: <Star className="w-5 h-5" /> },
+  { id: 'collections' as const, label: 'Colecciones', icon: <Layers3 className="w-5 h-5" /> },
   { id: 'providers' as const, label: 'Proveedores', icon: <Briefcase className="w-5 h-5" /> },
   { id: 'interested' as const, label: 'Interesados', icon: <FileText className="w-5 h-5" /> },
   { id: 'users' as const, label: 'Usuarios', icon: <Users className="w-5 h-5" /> },
@@ -146,6 +162,10 @@ export function AdminDashboard({
   relevantServicesSubtitle,
   relevantServiceIds,
   onUpdateRelevantServicesConfig,
+  collections,
+  onCreateCollection,
+  onUpdateCollection,
+  onDeleteCollection,
   mainContentAccent,
   mainContentTitle,
   mainContentSubtitle,
@@ -174,6 +194,13 @@ export function AdminDashboard({
   const [relevantTitleDraft, setRelevantTitleDraft] = useState(relevantServicesTitle);
   const [relevantSubtitleDraft, setRelevantSubtitleDraft] = useState(relevantServicesSubtitle);
   const [savingRelevantServices, setSavingRelevantServices] = useState(false);
+  const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
+  const [collectionTitleDraft, setCollectionTitleDraft] = useState('');
+  const [collectionSubtitleDraft, setCollectionSubtitleDraft] = useState('');
+  const [collectionSlugDraft, setCollectionSlugDraft] = useState('');
+  const [selectedCollectionServiceIds, setSelectedCollectionServiceIds] = useState<string[]>([]);
+  const [collectionServiceSearchQuery, setCollectionServiceSearchQuery] = useState('');
+  const [savingCollection, setSavingCollection] = useState(false);
   const [mainContentAccentDraft, setMainContentAccentDraft] = useState(mainContentAccent);
   const [mainContentTitleDraft, setMainContentTitleDraft] = useState(mainContentTitle);
   const [mainContentSubtitleDraft, setMainContentSubtitleDraft] = useState(mainContentSubtitle);
@@ -253,6 +280,27 @@ export function AdminDashboard({
   }, [relevantServiceIds, relevantServicesSectionEnabled, relevantServicesTitle, relevantServicesSubtitle]);
 
   useEffect(() => {
+    if (!editingCollectionId) {
+      return;
+    }
+
+    const collection = collections.find((item) => item.id === editingCollectionId);
+    if (!collection) {
+      setEditingCollectionId(null);
+      setCollectionTitleDraft('');
+      setCollectionSubtitleDraft('');
+      setCollectionSlugDraft('');
+      setSelectedCollectionServiceIds([]);
+      return;
+    }
+
+    setCollectionTitleDraft(collection.title);
+    setCollectionSubtitleDraft(collection.subtitle || '');
+    setCollectionSlugDraft(collection.slug);
+    setSelectedCollectionServiceIds(Array.isArray(collection.serviceIds) ? collection.serviceIds : []);
+  }, [collections, editingCollectionId]);
+
+  useEffect(() => {
     setMainContentAccentDraft(mainContentAccent);
     setMainContentTitleDraft(mainContentTitle);
     setMainContentSubtitleDraft(mainContentSubtitle);
@@ -277,6 +325,19 @@ export function AdminDashboard({
     mainContentBgGradient,
     mainContentBgImageUrl,
   ]);
+
+  const slugify = (value?: string) => {
+    if (!value) return '';
+
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+  };
 
   useEffect(() => {
     if (!accessToken || currentUser.role !== 'admin') {
@@ -487,6 +548,28 @@ export function AdminDashboard({
     });
   }, [artists, providers, relevantServiceSearchQuery]);
 
+  const filteredCollectionServices = useMemo(() => {
+    const query = collectionServiceSearchQuery.trim().toLowerCase();
+    if (!query) {
+      return artists.filter((service) => !service.isArchived && service.isPublished !== false);
+    }
+
+    return artists.filter((service) => {
+      if (service.isArchived || service.isPublished === false) {
+        return false;
+      }
+
+      const provider = providers.find((candidate) => candidate.userId === service.userId);
+
+      return (
+        service.name.toLowerCase().includes(query) ||
+        (service.category || '').toLowerCase().includes(query) ||
+        (service.subcategory || '').toLowerCase().includes(query) ||
+        (provider?.businessName || '').toLowerCase().includes(query)
+      );
+    });
+  }, [artists, providers, collectionServiceSearchQuery]);
+
   const visibleFilteredProviders = useMemo(
     () => filteredProviders.slice(0, visibleProvidersCount),
     [filteredProviders, visibleProvidersCount]
@@ -527,6 +610,27 @@ export function AdminDashboard({
     relevantSubtitleDraft,
     relevantServicesSubtitle,
   ]);
+
+  const hasCollectionChanges = useMemo(() => {
+    const draftIds = selectedCollectionServiceIds.slice().sort().join('|');
+
+    if (!editingCollectionId) {
+      return collectionTitleDraft.trim() !== '' || collectionSubtitleDraft.trim() !== '' || collectionSlugDraft.trim() !== '' || draftIds !== '';
+    }
+
+    const existingCollection = collections.find((collection) => collection.id === editingCollectionId);
+    if (!existingCollection) {
+      return true;
+    }
+
+    const existingIds = existingCollection.serviceIds.slice().sort().join('|');
+    return (
+      collectionTitleDraft.trim() !== existingCollection.title.trim() ||
+      collectionSubtitleDraft.trim() !== (existingCollection.subtitle || '').trim() ||
+      slugify(collectionSlugDraft) !== existingCollection.slug ||
+      draftIds !== existingIds
+    );
+  }, [collections, editingCollectionId, collectionTitleDraft, collectionSubtitleDraft, collectionSlugDraft, selectedCollectionServiceIds]);
 
   const hasMainContentChanges = useMemo(() => {
     return (
@@ -674,6 +778,83 @@ export function AdminDashboard({
     } finally {
       setSavingRelevantServices(false);
     }
+  };
+
+  const resetCollectionForm = () => {
+    setEditingCollectionId(null);
+    setCollectionTitleDraft('');
+    setCollectionSubtitleDraft('');
+    setCollectionSlugDraft('');
+    setSelectedCollectionServiceIds([]);
+    setCollectionServiceSearchQuery('');
+  };
+
+  const toggleCollectionService = (serviceId: string) => {
+    setSelectedCollectionServiceIds((previous) => (
+      previous.includes(serviceId)
+        ? previous.filter((id) => id !== serviceId)
+        : [...previous, serviceId]
+    ));
+  };
+
+  const handleEditCollection = (collection: AdminDashboardProps['collections'][number]) => {
+    setEditingCollectionId(collection.id);
+    setCollectionTitleDraft(collection.title);
+    setCollectionSubtitleDraft(collection.subtitle || '');
+    setCollectionSlugDraft(collection.slug);
+    setSelectedCollectionServiceIds(Array.isArray(collection.serviceIds) ? collection.serviceIds : []);
+  };
+
+  const handleSaveCollection = async () => {
+    const title = collectionTitleDraft.trim();
+    const slug = slugify(collectionSlugDraft || collectionTitleDraft);
+
+    if (!title) {
+      toast.error('El título de la colección es obligatorio');
+      return;
+    }
+
+    if (!slug) {
+      toast.error('Debes indicar un slug válido');
+      return;
+    }
+
+    try {
+      setSavingCollection(true);
+      const payload = {
+        title,
+        subtitle: collectionSubtitleDraft.trim(),
+        slug,
+        serviceIds: selectedCollectionServiceIds,
+      };
+
+      const savedCollection = editingCollectionId
+        ? await onUpdateCollection(editingCollectionId, payload)
+        : await onCreateCollection(payload);
+
+      if (savedCollection?.id) {
+        handleEditCollection(savedCollection);
+      } else if (!editingCollectionId) {
+        resetCollectionForm();
+      }
+    } finally {
+      setSavingCollection(false);
+    }
+  };
+
+  const handleDeleteCollection = (collection: AdminDashboardProps['collections'][number]) => {
+    openConfirmModal({
+      title: 'Eliminar colección',
+      description: `Se eliminará la colección "${collection.title}" y dejará de estar disponible en /coleccion/${collection.slug}.`,
+      confirmText: 'Eliminar',
+      variant: 'danger',
+      onConfirm: async () => {
+        await onDeleteCollection(collection.id);
+        if (editingCollectionId === collection.id) {
+          resetCollectionForm();
+        }
+      },
+    });
   };
 
   const handleSaveMainContent = async () => {
@@ -1588,6 +1769,169 @@ export function AdminDashboard({
                       )}
                     </Button>
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeSection === 'collections' && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[#1B2A47] mb-1">Colecciones</h2>
+                <p className="text-gray-500 text-sm">Crea páginas SEO en /coleccion/tu-slug agrupando servicios seleccionados.</p>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>{editingCollectionId ? 'Editar colección' : 'Nueva colección'}</CardTitle>
+                  <CardDescription>Define el título, subtítulo, slug y los servicios que formarán parte de la colección.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="collection-title">Título</Label>
+                      <Input
+                        id="collection-title"
+                        value={collectionTitleDraft}
+                        maxLength={160}
+                        onChange={(event) => setCollectionTitleDraft(event.target.value)}
+                        placeholder="Servicios para bodas 2026"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="collection-slug">Slug</Label>
+                      <Input
+                        id="collection-slug"
+                        value={collectionSlugDraft}
+                        maxLength={180}
+                        onChange={(event) => setCollectionSlugDraft(slugify(event.target.value))}
+                        placeholder="servicios-para-bodas-2026"
+                      />
+                      <p className="text-xs text-gray-500">URL pública: /coleccion/{slugify(collectionSlugDraft || collectionTitleDraft) || 'tu-slug'}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="collection-subtitle">Subtítulo</Label>
+                    <Textarea
+                      id="collection-subtitle"
+                      value={collectionSubtitleDraft}
+                      maxLength={320}
+                      onChange={(event) => setCollectionSubtitleDraft(event.target.value)}
+                      placeholder="Agrupa publicaciones ideales para esta intención de búsqueda."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <p className="text-xs text-gray-500">
+                      Servicios seleccionados: {selectedCollectionServiceIds.length}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" onClick={resetCollectionForm}>
+                        {editingCollectionId ? 'Cancelar edición' : 'Limpiar'}
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleSaveCollection}
+                        disabled={savingCollection || !hasCollectionChanges}
+                      >
+                        {savingCollection ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Guardando...
+                          </>
+                        ) : (
+                          <>
+                            {editingCollectionId ? <Pencil className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+                            {editingCollectionId ? 'Guardar colección' : 'Crear colección'}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Servicios de la colección</CardTitle>
+                  <CardDescription>Selecciona los servicios que aparecerán en la landing pública de esta colección.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Buscar servicio, categoría o proveedor..."
+                      value={collectionServiceSearchQuery}
+                      onChange={(event) => setCollectionServiceSearchQuery(event.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <div className="max-h-80 overflow-y-auto rounded-xl border border-gray-200 p-3 space-y-2">
+                    {filteredCollectionServices.length === 0 ? (
+                      <p className="text-sm text-gray-500">No se encontraron servicios para el filtro aplicado.</p>
+                    ) : (
+                      filteredCollectionServices.map((service) => {
+                        const provider = providers.find((candidate) => candidate.userId === service.userId);
+                        const serviceId = String(service.id);
+                        const isSelected = selectedCollectionServiceIds.includes(serviceId);
+
+                        return (
+                          <button
+                            key={serviceId}
+                            type="button"
+                            onClick={() => toggleCollectionService(serviceId)}
+                            className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
+                              isSelected
+                                ? 'border-[#D4AF37] bg-amber-50'
+                                : 'border-gray-200 bg-white hover:border-[#D4AF37]/50'
+                            }`}
+                          >
+                            <p className="text-sm font-medium text-[#1B2A47]">{service.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {provider?.businessName || 'Proveedor sin nombre'} · {service.location || 'Sin ciudad'}
+                            </p>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Colecciones creadas</CardTitle>
+                  <CardDescription>Edita o elimina agrupaciones ya publicadas.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {collections.length === 0 ? (
+                    <p className="text-sm text-gray-500">Aún no hay colecciones creadas.</p>
+                  ) : (
+                    collections.map((collection) => (
+                      <div key={collection.id} className="rounded-xl border border-gray-200 p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="min-w-0">
+                          <p className="font-medium text-[#1B2A47]">{collection.title}</p>
+                          <p className="text-xs text-gray-500 break-all">/coleccion/{collection.slug}</p>
+                          {collection.subtitle ? (
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">{collection.subtitle}</p>
+                          ) : null}
+                          <p className="text-xs text-gray-400 mt-2">{collection.serviceIds.length} servicio{collection.serviceIds.length === 1 ? '' : 's'} seleccionado{collection.serviceIds.length === 1 ? '' : 's'}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button type="button" variant="outline" size="sm" onClick={() => handleEditCollection(collection)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Editar
+                          </Button>
+                          <Button type="button" variant="destructive" size="sm" onClick={() => handleDeleteCollection(collection)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Eliminar
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </CardContent>
               </Card>
             </div>
