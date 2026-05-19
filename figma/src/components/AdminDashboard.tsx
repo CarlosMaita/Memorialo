@@ -84,6 +84,11 @@ interface AdminDashboardProps {
   mainContentBgColor: string;
   mainContentBgGradient: string;
   mainContentBgImageUrl: string;
+  secondaryCtaEnabled: boolean;
+  secondaryCtaTitle: string;
+  secondaryCtaSubtitle: string;
+  secondaryCtaButtonText: string;
+  secondaryCtaButtonLink: string;
   onUpdateMainContentConfig: (config: {
     accent: string;
     title: string;
@@ -96,6 +101,11 @@ interface AdminDashboardProps {
     bgColor: string;
     bgGradient: string;
     bgImageUrl: string;
+    secondaryCtaEnabled: boolean;
+    secondaryCtaTitle: string;
+    secondaryCtaSubtitle: string;
+    secondaryCtaButtonText: string;
+    secondaryCtaButtonLink: string;
   }) => Promise<void>;
 }
 
@@ -157,6 +167,11 @@ export function AdminDashboard({
   mainContentBgColor,
   mainContentBgGradient,
   mainContentBgImageUrl,
+  secondaryCtaEnabled,
+  secondaryCtaTitle,
+  secondaryCtaSubtitle,
+  secondaryCtaButtonText,
+  secondaryCtaButtonLink,
   onUpdateMainContentConfig,
 }: AdminDashboardProps) {
   const ADMIN_TABLE_BATCH_SIZE = 16;
@@ -185,6 +200,11 @@ export function AdminDashboard({
   const [mainContentBgColorDraft, setMainContentBgColorDraft] = useState(mainContentBgColor);
   const [mainContentBgGradientDraft, setMainContentBgGradientDraft] = useState(mainContentBgGradient);
   const [mainContentBgImageUrlDraft, setMainContentBgImageUrlDraft] = useState(mainContentBgImageUrl);
+  const [secondaryCtaEnabledDraft, setSecondaryCtaEnabledDraft] = useState(secondaryCtaEnabled);
+  const [secondaryCtaTitleDraft, setSecondaryCtaTitleDraft] = useState(secondaryCtaTitle);
+  const [secondaryCtaSubtitleDraft, setSecondaryCtaSubtitleDraft] = useState(secondaryCtaSubtitle);
+  const [secondaryCtaButtonTextDraft, setSecondaryCtaButtonTextDraft] = useState(secondaryCtaButtonText);
+  const [secondaryCtaButtonLinkDraft, setSecondaryCtaButtonLinkDraft] = useState(secondaryCtaButtonLink);
   const [savingMainContent, setSavingMainContent] = useState(false);
   const [uploadingMainContentBgImage, setUploadingMainContentBgImage] = useState(false);
   const mainContentBgFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -540,7 +560,12 @@ export function AdminDashboard({
       mainContentBgTypeDraft !== mainContentBgType ||
       mainContentBgColorDraft.trim() !== mainContentBgColor.trim() ||
       mainContentBgGradientDraft.trim() !== mainContentBgGradient.trim() ||
-      mainContentBgImageUrlDraft.trim() !== mainContentBgImageUrl.trim()
+      mainContentBgImageUrlDraft.trim() !== mainContentBgImageUrl.trim() ||
+      secondaryCtaEnabledDraft !== secondaryCtaEnabled ||
+      secondaryCtaTitleDraft.trim() !== secondaryCtaTitle.trim() ||
+      secondaryCtaSubtitleDraft.trim() !== secondaryCtaSubtitle.trim() ||
+      secondaryCtaButtonTextDraft.trim() !== secondaryCtaButtonText.trim() ||
+      secondaryCtaButtonLinkDraft.trim() !== secondaryCtaButtonLink.trim()
     );
   }, [
     mainContentAccentDraft,
@@ -565,6 +590,16 @@ export function AdminDashboard({
     mainContentBgGradient,
     mainContentBgImageUrlDraft,
     mainContentBgImageUrl,
+    secondaryCtaEnabledDraft,
+    secondaryCtaEnabled,
+    secondaryCtaTitleDraft,
+    secondaryCtaTitle,
+    secondaryCtaSubtitleDraft,
+    secondaryCtaSubtitle,
+    secondaryCtaButtonTextDraft,
+    secondaryCtaButtonText,
+    secondaryCtaButtonLinkDraft,
+    secondaryCtaButtonLink,
   ]);
 
   useEffect(() => {
@@ -691,6 +726,11 @@ export function AdminDashboard({
         bgColor: mainContentBgColorDraft.trim() || '#0A1F44',
         bgGradient: mainContentBgGradientDraft.trim() || 'linear-gradient(135deg, #0A1F44 0%, #B8860B 100%)',
         bgImageUrl: mainContentBgImageUrlDraft.trim(),
+        secondaryCtaEnabled: secondaryCtaEnabledDraft,
+        secondaryCtaTitle: secondaryCtaTitleDraft.trim() || 'Únete a la red de proveedores de Memorialo',
+        secondaryCtaSubtitle: secondaryCtaSubtitleDraft.trim() || 'Publica tus servicios, recibe solicitudes y haz crecer tu negocio de eventos.',
+        secondaryCtaButtonText: secondaryCtaButtonTextDraft.trim() || 'Quiero ser proveedor',
+        secondaryCtaButtonLink: secondaryCtaButtonLinkDraft.trim() || '/proveedores',
       });
     } finally {
       setSavingMainContent(false);
@@ -1468,6 +1508,86 @@ export function AdminDashboard({
                         <>
                           <Save className="mr-2 h-4 w-4" />
                           Guardar contenido principal
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Configuración del CTA secundario</CardTitle>
+                  <CardDescription>Banner inferior del home para invitar a proveedores. Habilítalo y define su contenido.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      id="secondary-cta-toggle"
+                      checked={secondaryCtaEnabledDraft}
+                      onCheckedChange={setSecondaryCtaEnabledDraft}
+                    />
+                    <Label htmlFor="secondary-cta-toggle" className="cursor-pointer">
+                      {secondaryCtaEnabledDraft ? 'Sección habilitada' : 'Sección deshabilitada'}
+                    </Label>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="secondary-cta-title">Título</Label>
+                    <Input
+                      id="secondary-cta-title"
+                      value={secondaryCtaTitleDraft}
+                      maxLength={180}
+                      onChange={(event) => setSecondaryCtaTitleDraft(event.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="secondary-cta-subtitle">Subtítulo</Label>
+                    <Textarea
+                      id="secondary-cta-subtitle"
+                      value={secondaryCtaSubtitleDraft}
+                      maxLength={320}
+                      onChange={(event) => setSecondaryCtaSubtitleDraft(event.target.value)}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="secondary-cta-button-text">Botón (texto)</Label>
+                      <Input
+                        id="secondary-cta-button-text"
+                        value={secondaryCtaButtonTextDraft}
+                        maxLength={80}
+                        onChange={(event) => setSecondaryCtaButtonTextDraft(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="secondary-cta-button-link">Botón (link)</Label>
+                      <Input
+                        id="secondary-cta-button-link"
+                        value={secondaryCtaButtonLinkDraft}
+                        maxLength={255}
+                        onChange={(event) => setSecondaryCtaButtonLinkDraft(event.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      onClick={handleSaveMainContent}
+                      disabled={savingMainContent || !hasMainContentChanges}
+                    >
+                      {savingMainContent ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Guardando...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Guardar CTA secundario
                         </>
                       )}
                     </Button>

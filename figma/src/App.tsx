@@ -244,6 +244,11 @@ export default function App() {
   const [mainContentBgColor, setMainContentBgColor] = useState('#0A1F44');
   const [mainContentBgGradient, setMainContentBgGradient] = useState('linear-gradient(135deg, #0A1F44 0%, #B8860B 100%)');
   const [mainContentBgImageUrl, setMainContentBgImageUrl] = useState('');
+  const [secondaryCtaEnabled, setSecondaryCtaEnabled] = useState(true);
+  const [secondaryCtaTitle, setSecondaryCtaTitle] = useState('Únete a la red de proveedores de Memorialo');
+  const [secondaryCtaSubtitle, setSecondaryCtaSubtitle] = useState('Publica tus servicios, recibe solicitudes y haz crecer tu negocio de eventos.');
+  const [secondaryCtaButtonText, setSecondaryCtaButtonText] = useState('Quiero ser proveedor');
+  const [secondaryCtaButtonLink, setSecondaryCtaButtonLink] = useState('/proveedores');
 
   // Notifications (N2)
   const notificationsEnabled = ((import.meta as any).env?.VITE_NOTIFICATIONS_HEADER_ENABLED ?? 'true') !== 'false';
@@ -1424,6 +1429,19 @@ export default function App() {
           setMainContentBgImageUrl(typeof config?.mainContentBgImageUrl === 'string'
             ? config.mainContentBgImageUrl
             : '');
+          setSecondaryCtaEnabled(typeof config?.secondaryCtaEnabled === 'boolean' ? config.secondaryCtaEnabled : true);
+          setSecondaryCtaTitle(typeof config?.secondaryCtaTitle === 'string' && config.secondaryCtaTitle.trim()
+            ? config.secondaryCtaTitle
+            : 'Únete a la red de proveedores de Memorialo');
+          setSecondaryCtaSubtitle(typeof config?.secondaryCtaSubtitle === 'string'
+            ? config.secondaryCtaSubtitle
+            : 'Publica tus servicios, recibe solicitudes y haz crecer tu negocio de eventos.');
+          setSecondaryCtaButtonText(typeof config?.secondaryCtaButtonText === 'string' && config.secondaryCtaButtonText.trim()
+            ? config.secondaryCtaButtonText
+            : 'Quiero ser proveedor');
+          setSecondaryCtaButtonLink(typeof config?.secondaryCtaButtonLink === 'string' && config.secondaryCtaButtonLink.trim()
+            ? config.secondaryCtaButtonLink
+            : '/proveedores');
         }
       } catch {
         if (!cancelled) {
@@ -3416,6 +3434,11 @@ export default function App() {
     bgColor: string;
     bgGradient: string;
     bgImageUrl: string;
+    secondaryCtaEnabled: boolean;
+    secondaryCtaTitle: string;
+    secondaryCtaSubtitle: string;
+    secondaryCtaButtonText: string;
+    secondaryCtaButtonLink: string;
   }) => {
     try {
       await supabase.updateMarketplaceConfig(enabledMarketplaceCities, {
@@ -3430,6 +3453,11 @@ export default function App() {
         mainContentBgColor: config.bgColor,
         mainContentBgGradient: config.bgGradient,
         mainContentBgImageUrl: config.bgImageUrl,
+        secondaryCtaEnabled: config.secondaryCtaEnabled,
+        secondaryCtaTitle: config.secondaryCtaTitle,
+        secondaryCtaSubtitle: config.secondaryCtaSubtitle,
+        secondaryCtaButtonText: config.secondaryCtaButtonText,
+        secondaryCtaButtonLink: config.secondaryCtaButtonLink,
       });
       setMainContentAccent(config.accent);
       setMainContentTitle(config.title);
@@ -3442,6 +3470,11 @@ export default function App() {
       setMainContentBgColor(config.bgColor);
       setMainContentBgGradient(config.bgGradient);
       setMainContentBgImageUrl(config.bgImageUrl);
+      setSecondaryCtaEnabled(config.secondaryCtaEnabled);
+      setSecondaryCtaTitle(config.secondaryCtaTitle);
+      setSecondaryCtaSubtitle(config.secondaryCtaSubtitle);
+      setSecondaryCtaButtonText(config.secondaryCtaButtonText);
+      setSecondaryCtaButtonLink(config.secondaryCtaButtonLink);
       toast.success('Contenido principal actualizado');
     } catch (error) {
       console.error('Error updating main content config:', error);
@@ -4442,6 +4475,11 @@ export default function App() {
               mainContentBgColor={mainContentBgColor}
               mainContentBgGradient={mainContentBgGradient}
               mainContentBgImageUrl={mainContentBgImageUrl}
+              secondaryCtaEnabled={secondaryCtaEnabled}
+              secondaryCtaTitle={secondaryCtaTitle}
+              secondaryCtaSubtitle={secondaryCtaSubtitle}
+              secondaryCtaButtonText={secondaryCtaButtonText}
+              secondaryCtaButtonLink={secondaryCtaButtonLink}
               onUpdateMainContentConfig={handleUpdateMainContentConfig}
             />
           ) : (
@@ -4740,18 +4778,20 @@ export default function App() {
                   </div>
                 </section>
 
+                {secondaryCtaEnabled && (
                 <section
                   className="rounded-2xl border p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
                   style={{ borderColor: 'rgba(247, 178, 103, 0.45)', backgroundColor: 'rgba(247, 178, 103, 0.1)' }}
                 >
                   <div>
-                    <h2 className="text-xl font-semibold mb-1" style={{ color: 'var(--navy-blue)' }}>Únete a la red de proveedores de Memorialo</h2>
-                    <p className="text-sm text-gray-700">Publica tus servicios, recibe solicitudes y haz crecer tu negocio de eventos.</p>
+                    <h2 className="text-xl font-semibold mb-1" style={{ color: 'var(--navy-blue)' }}>{secondaryCtaTitle}</h2>
+                    <p className="text-sm text-gray-700">{secondaryCtaSubtitle}</p>
                   </div>
-                  <Button onClick={() => navigateTo('/proveedores')}>
-                    Quiero ser proveedor
+                  <Button onClick={() => handleMainContentButtonClick(secondaryCtaButtonLink)}>
+                    {secondaryCtaButtonText}
                   </Button>
                 </section>
+                )}
               </div>
             )}
             {!isHomePageRoute && (

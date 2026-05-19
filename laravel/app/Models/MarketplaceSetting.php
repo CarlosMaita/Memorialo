@@ -27,6 +27,11 @@ class MarketplaceSetting extends Model
         'main_content_bg_color',
         'main_content_bg_gradient',
         'main_content_bg_image_url',
+        'secondary_cta_enabled',
+        'secondary_cta_title',
+        'secondary_cta_subtitle',
+        'secondary_cta_button_text',
+        'secondary_cta_button_link',
         'provider_event_reminder_hours',
     ];
 
@@ -37,6 +42,7 @@ class MarketplaceSetting extends Model
             'banners_section_enabled' => 'boolean',
             'relevant_services_section_enabled' => 'boolean',
             'relevant_service_ids' => 'array',
+            'secondary_cta_enabled' => 'boolean',
         ];
     }
 }
