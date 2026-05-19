@@ -1029,8 +1029,8 @@ export function ChatWidget({ user, bookings, api, hideLauncher = false, onNaviga
               {totalUnreadCount > 0 && (
                 <>
                   <span className="absolute -right-0.5 -top-0.5 flex size-3.5" aria-hidden="true">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#D4AF37]/70" />
-                    <span className="relative inline-flex size-3.5 rounded-full border-2 border-[#1B2A47] bg-[#D4AF37]" />
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/70" />
+                    <span className="relative inline-flex size-3.5 rounded-full border-2 border-[#1B2A47] bg-red-500" />
                   </span>
                   <span className="sr-only">
                     {`Tienes ${totalUnreadCount} mensaje${totalUnreadCount === 1 ? '' : 's'} sin leer`}
