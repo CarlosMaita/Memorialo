@@ -414,10 +414,10 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
               <Button 
                 size="lg"
                 variant="outline"
-                className="border-white text-white hover:bg-white/10"
+                className="border-white bg-white text-[var(--navy-blue)] hover:bg-white/90"
                 onClick={onGetStarted}
               >
-                Explorar Artistas
+                Explorar Servicios
               </Button>
             </div>
           </div>
