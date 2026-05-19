@@ -729,6 +729,11 @@ export function useSupabase() {
         mainContentBgColor: typeof data?.mainContentBgColor === 'string' ? data.mainContentBgColor : '#0A1F44',
         mainContentBgGradient: typeof data?.mainContentBgGradient === 'string' ? data.mainContentBgGradient : 'linear-gradient(135deg, #0A1F44 0%, #B8860B 100%)',
         mainContentBgImageUrl: typeof data?.mainContentBgImageUrl === 'string' ? data.mainContentBgImageUrl : '',
+        secondaryCtaEnabled: typeof data?.secondaryCtaEnabled === 'boolean' ? data.secondaryCtaEnabled : true,
+        secondaryCtaTitle: typeof data?.secondaryCtaTitle === 'string' ? data.secondaryCtaTitle : 'Únete a la red de proveedores de Memorialo',
+        secondaryCtaSubtitle: typeof data?.secondaryCtaSubtitle === 'string' ? data.secondaryCtaSubtitle : 'Publica tus servicios, recibe solicitudes y haz crecer tu negocio de eventos.',
+        secondaryCtaButtonText: typeof data?.secondaryCtaButtonText === 'string' ? data.secondaryCtaButtonText : 'Quiero ser proveedor',
+        secondaryCtaButtonLink: typeof data?.secondaryCtaButtonLink === 'string' ? data.secondaryCtaButtonLink : '/proveedores',
       };
     } catch (error) {
       console.error('Get marketplace config error:', error);
@@ -755,6 +760,11 @@ export function useSupabase() {
       mainContentBgColor?: string;
       mainContentBgGradient?: string;
       mainContentBgImageUrl?: string;
+      secondaryCtaEnabled?: boolean;
+      secondaryCtaTitle?: string;
+      secondaryCtaSubtitle?: string;
+      secondaryCtaButtonText?: string;
+      secondaryCtaButtonLink?: string;
     },
   ) => {
     try {
@@ -806,6 +816,21 @@ export function useSupabase() {
       }
       if (typeof options?.mainContentBgImageUrl === 'string') {
         payload.mainContentBgImageUrl = options.mainContentBgImageUrl;
+      }
+      if (typeof options?.secondaryCtaEnabled === 'boolean') {
+        payload.secondaryCtaEnabled = options.secondaryCtaEnabled;
+      }
+      if (typeof options?.secondaryCtaTitle === 'string') {
+        payload.secondaryCtaTitle = options.secondaryCtaTitle;
+      }
+      if (typeof options?.secondaryCtaSubtitle === 'string') {
+        payload.secondaryCtaSubtitle = options.secondaryCtaSubtitle;
+      }
+      if (typeof options?.secondaryCtaButtonText === 'string') {
+        payload.secondaryCtaButtonText = options.secondaryCtaButtonText;
+      }
+      if (typeof options?.secondaryCtaButtonLink === 'string') {
+        payload.secondaryCtaButtonLink = options.secondaryCtaButtonLink;
       }
       return await apiRequest('/admin/marketplace-config', 'PATCH', payload, accessToken || undefined);
     } catch (error) {

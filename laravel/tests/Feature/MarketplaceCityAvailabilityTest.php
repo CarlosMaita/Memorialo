@@ -53,6 +53,11 @@ class MarketplaceCityAvailabilityTest extends TestCase
             'mainContentPrimaryButtonLink' => '/servicios',
             'mainContentSecondaryButtonText' => 'Ver guía',
             'mainContentSecondaryButtonLink' => '/como-funciona',
+            'secondaryCtaEnabled' => true,
+            'secondaryCtaTitle' => 'Únete como proveedor',
+            'secondaryCtaSubtitle' => 'Haz crecer tu negocio.',
+            'secondaryCtaButtonText' => 'Registrarme',
+            'secondaryCtaButtonLink' => '/proveedores',
             'providerEventReminderHours' => 24,
         ])
             ->assertOk()
@@ -60,6 +65,9 @@ class MarketplaceCityAvailabilityTest extends TestCase
             ->assertJsonPath('mainContentTitle', 'Encuentra todo para tu evento')
             ->assertJsonPath('mainContentPrimaryButtonText', 'Explorar')
             ->assertJsonPath('mainContentSecondaryButtonLink', '/como-funciona')
+            ->assertJsonPath('secondaryCtaEnabled', true)
+            ->assertJsonPath('secondaryCtaTitle', 'Únete como proveedor')
+            ->assertJsonPath('secondaryCtaButtonText', 'Registrarme')
             ->assertJsonPath('providerEventReminderHours', 24);
 
         $this->getJson('/api/marketplace/config')
@@ -71,6 +79,11 @@ class MarketplaceCityAvailabilityTest extends TestCase
             ->assertJsonPath('mainContentPrimaryButtonLink', '/servicios')
             ->assertJsonPath('mainContentSecondaryButtonText', 'Ver guía')
             ->assertJsonPath('mainContentSecondaryButtonLink', '/como-funciona')
+            ->assertJsonPath('secondaryCtaEnabled', true)
+            ->assertJsonPath('secondaryCtaTitle', 'Únete como proveedor')
+            ->assertJsonPath('secondaryCtaSubtitle', 'Haz crecer tu negocio.')
+            ->assertJsonPath('secondaryCtaButtonText', 'Registrarme')
+            ->assertJsonPath('secondaryCtaButtonLink', '/proveedores')
             ->assertJsonPath('providerEventReminderHours', 24);
     }
 

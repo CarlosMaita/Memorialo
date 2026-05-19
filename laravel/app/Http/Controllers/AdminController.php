@@ -359,6 +359,11 @@ class AdminController extends Controller
             'mainContentBgColor' => ['sometimes', 'nullable', 'string', 'max:50'],
             'mainContentBgGradient' => ['sometimes', 'nullable', 'string', 'max:500'],
             'mainContentBgImageUrl' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'secondaryCtaEnabled' => ['sometimes', 'boolean'],
+            'secondaryCtaTitle' => ['sometimes', 'nullable', 'string', 'max:180'],
+            'secondaryCtaSubtitle' => ['sometimes', 'nullable', 'string', 'max:320'],
+            'secondaryCtaButtonText' => ['sometimes', 'nullable', 'string', 'max:80'],
+            'secondaryCtaButtonLink' => ['sometimes', 'nullable', 'string', 'max:255'],
             'providerEventReminderHours' => ['sometimes', 'integer', 'min:1', 'max:720'],
         ]);
 
@@ -459,6 +464,26 @@ class AdminController extends Controller
 
         if (array_key_exists('mainContentBgImageUrl', $validated)) {
             $settings->main_content_bg_image_url = $validated['mainContentBgImageUrl'] ?: null;
+        }
+
+        if (array_key_exists('secondaryCtaEnabled', $validated)) {
+            $settings->secondary_cta_enabled = (bool) $validated['secondaryCtaEnabled'];
+        }
+
+        if (array_key_exists('secondaryCtaTitle', $validated)) {
+            $settings->secondary_cta_title = $validated['secondaryCtaTitle'] ?: null;
+        }
+
+        if (array_key_exists('secondaryCtaSubtitle', $validated)) {
+            $settings->secondary_cta_subtitle = $validated['secondaryCtaSubtitle'] ?: null;
+        }
+
+        if (array_key_exists('secondaryCtaButtonText', $validated)) {
+            $settings->secondary_cta_button_text = $validated['secondaryCtaButtonText'] ?: null;
+        }
+
+        if (array_key_exists('secondaryCtaButtonLink', $validated)) {
+            $settings->secondary_cta_button_link = $validated['secondaryCtaButtonLink'] ?: null;
         }
 
         if (array_key_exists('providerEventReminderHours', $validated)) {
@@ -573,6 +598,11 @@ class AdminController extends Controller
             'mainContentBgColor' => $settings?->main_content_bg_color ?: '#0A1F44',
             'mainContentBgGradient' => $settings?->main_content_bg_gradient ?: 'linear-gradient(135deg, #0A1F44 0%, #B8860B 100%)',
             'mainContentBgImageUrl' => $settings?->main_content_bg_image_url ?: null,
+            'secondaryCtaEnabled' => $settings?->secondary_cta_enabled !== false,
+            'secondaryCtaTitle' => $settings?->secondary_cta_title ?: 'Únete a la red de proveedores de Memorialo',
+            'secondaryCtaSubtitle' => $settings?->secondary_cta_subtitle ?: 'Publica tus servicios, recibe solicitudes y haz crecer tu negocio de eventos.',
+            'secondaryCtaButtonText' => $settings?->secondary_cta_button_text ?: 'Quiero ser proveedor',
+            'secondaryCtaButtonLink' => $settings?->secondary_cta_button_link ?: '/proveedores',
             'providerEventReminderHours' => (int) ($settings?->provider_event_reminder_hours ?: 48),
         ];
     }
