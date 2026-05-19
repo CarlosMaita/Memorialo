@@ -73,13 +73,17 @@ class BookingController extends Controller
             $clientName = $payload['client_name'] ?? $payload['clientName'] ?? ($authUser?->name ?? 'Un usuario');
             $serviceName = $payload['artist_name'] ?? $payload['artistName'] ?? 'tu servicio';
 
+            $negotiationPath = $booking->contract_id
+                ? '/mi-negocio/negociacion/'.rawurlencode((string) $booking->contract_id)
+                : '/mi-negocio/negociaciones';
+
             $this->notifications->dispatchToUser($providerUser, NotificationTypes::SERVICE_REQUEST_CREATED, [
                 'channels' => ['database', 'mail'],
                 'title' => 'Nueva solicitud de servicio',
                 'body' => $clientName.' solicito '.$serviceName.' para el '.$booking->date.'.',
                 'mailSubject' => 'Nueva solicitud de servicio',
                 'mailBody' => "Has recibido una nueva solicitud de servicio.\n\nCliente: {$clientName}\nServicio: {$serviceName}\nFecha: {$booking->date}\nUbicacion: ".($booking->location ?? 'No definida')."\n",
-                'ctaUrl' => '/mi-negocio/negociaciones',
+                'ctaUrl' => $negotiationPath,
                 'entity' => ['type' => 'booking', 'id' => (string) $booking->id],
                 'dedupeKey' => NotificationTypes::SERVICE_REQUEST_CREATED.':'.$booking->id,
             ]);
