@@ -725,6 +725,10 @@ export function useSupabase() {
         mainContentPrimaryButtonLink: typeof data?.mainContentPrimaryButtonLink === 'string' ? data.mainContentPrimaryButtonLink : '/servicios/venezuela',
         mainContentSecondaryButtonText: typeof data?.mainContentSecondaryButtonText === 'string' ? data.mainContentSecondaryButtonText : 'Cómo funciona',
         mainContentSecondaryButtonLink: typeof data?.mainContentSecondaryButtonLink === 'string' ? data.mainContentSecondaryButtonLink : '/como-funciona',
+        mainContentBgType: data?.mainContentBgType === 'solid' || data?.mainContentBgType === 'image' ? data.mainContentBgType : 'gradient',
+        mainContentBgColor: typeof data?.mainContentBgColor === 'string' ? data.mainContentBgColor : '#0A1F44',
+        mainContentBgGradient: typeof data?.mainContentBgGradient === 'string' ? data.mainContentBgGradient : 'linear-gradient(135deg, #0A1F44 0%, #B8860B 100%)',
+        mainContentBgImageUrl: typeof data?.mainContentBgImageUrl === 'string' ? data.mainContentBgImageUrl : '',
       };
     } catch (error) {
       console.error('Get marketplace config error:', error);
