@@ -318,6 +318,39 @@ class ServiceController extends Controller
         return response()->json(['message' => 'Service deleted']);
     }
 
+    public function suggestions(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        if ($q === '') {
+            return response()->json([]);
+        }
+
+        // Escape special LIKE wildcards to prevent unintended matches
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q);
+
+        $services = Service::query()
+            ->where('is_active', true)
+            ->where(function (Builder $builder) use ($escaped) {
+                $builder
+                    ->where('title', 'like', "%{$escaped}%")
+                    ->orWhere('category', 'like', "%{$escaped}%")
+                    ->orWhere('subcategory', 'like', "%{$escaped}%");
+            })
+            ->orderByRaw("CASE WHEN title LIKE ? THEN 0 ELSE 1 END", ["{$escaped}%"])
+            ->orderByDesc('rating')
+            ->limit(6)
+            ->get(['id', 'title', 'category', 'subcategory']);
+
+        $results = $services->map(fn (Service $service) => [
+            'id' => (string) $service->id,
+            'name' => $service->title,
+            'category' => $service->subcategory ?: $service->category,
+        ])->values();
+
+        return response()->json($results);
+    }
+
     private function formatService(Service $service, string $view = 'detail'): array
     {
         $service->loadMissing(['provider.user']);

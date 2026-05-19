@@ -18,6 +18,7 @@ import { AuthDialog } from './components/AuthDialog';
 import { UserProfile } from './components/UserProfile';
 import { ReviewDialog } from './components/ReviewDialog';
 import { Footer } from './components/Footer';
+import { SmartSearchBar } from './components/SmartSearchBar';
 import { AboutPage } from './components/AboutPage';
 import { HowItWorksPage } from './components/HowItWorksPage';
 import { ForProvidersPage } from './components/ForProvidersPage';
@@ -3954,49 +3955,36 @@ export default function App() {
             {/* Header Search Bar */}
             <div className="flex-1 max-w-2xl mx-2">
               {/* Desktop Search */}
-              <div className="hidden md:block relative">
-                <input
-                  type="text"
-                  placeholder="Buscar proveedores de servicio..."
-                  className="w-full h-10 px-4 pr-12 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500 bg-white"
-                  style={{ borderRadius: '2px' }}
+              <div className="hidden md:block">
+                <SmartSearchBar
                   value={headerSearchInput}
-                  onChange={(e) => setHeaderSearchInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleHeaderSearchSubmit();
-                    }
+                  onChange={setHeaderSearchInput}
+                  onSubmit={(query) => {
+                    handleSearchCriteriaChange({ ...searchCriteria, query: query.trim() });
+                    setHeaderSearchInput('');
                   }}
+                  placeholder="Buscar proveedores de servicio..."
+                  inputClassName="w-full h-10 px-4 pr-12 rounded-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-500 bg-white"
+                  inputStyle={{ borderRadius: '2px' }}
+                  showSearchButton
                 />
-                <button
-                  type="button"
-                  onClick={handleHeaderSearchSubmit}
-                  className="absolute right-0 top-0 h-10 w-12 flex items-center justify-center border-l border-gray-300 bg-white hover:bg-gray-50"
-                  aria-label="Buscar"
-                >
-                  <Search className="w-5 h-5 text-gray-500" />
-                </button>
               </div>
 
               {/* Mobile Search */}
               <div className="md:hidden relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10">
                   <Search className="w-4 h-4" />
                 </div>
-                <input
-                  type="text"
-                  placeholder="Estoy buscando..."
-                  className="w-full h-9 pl-10 pr-4 rounded-sm text-sm focus:outline-none text-gray-900 placeholder:text-gray-400 bg-white"
-                  style={{ borderRadius: '4px' }}
+                <SmartSearchBar
                   value={headerSearchInput}
-                  onChange={(e) => setHeaderSearchInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleHeaderSearchSubmit();
-                    }
+                  onChange={setHeaderSearchInput}
+                  onSubmit={(query) => {
+                    handleSearchCriteriaChange({ ...searchCriteria, query: query.trim() });
+                    setHeaderSearchInput('');
                   }}
+                  placeholder="Estoy buscando..."
+                  inputClassName="w-full h-9 pl-10 pr-4 rounded-sm text-sm focus:outline-none text-gray-900 placeholder:text-gray-400 bg-white"
+                  inputStyle={{ borderRadius: '4px' }}
                 />
               </div>
             </div>
