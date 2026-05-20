@@ -280,6 +280,12 @@ export default function App() {
   const [secondaryCtaSubtitle, setSecondaryCtaSubtitle] = useState('Publica tus servicios, recibe solicitudes y haz crecer tu negocio de eventos.');
   const [secondaryCtaButtonText, setSecondaryCtaButtonText] = useState('Quiero ser proveedor');
   const [secondaryCtaButtonLink, setSecondaryCtaButtonLink] = useState('/proveedores');
+  const [secondaryCtaAccent, setSecondaryCtaAccent] = useState('');
+  const [secondaryCtaBgType, setSecondaryCtaBgType] = useState<'gradient' | 'solid' | 'image'>('gradient');
+  const [secondaryCtaBgColor, setSecondaryCtaBgColor] = useState('#F7B267');
+  const [secondaryCtaBgGradient, setSecondaryCtaBgGradient] = useState('linear-gradient(135deg, #F7B267 0%, #F4A261 100%)');
+  const [secondaryCtaBgImageUrl, setSecondaryCtaBgImageUrl] = useState('');
+  const [secondaryCtaButtonColor, setSecondaryCtaButtonColor] = useState<'blue' | 'yellow'>('blue');
 
   // Notifications (N2)
   const notificationsEnabled = ((import.meta as any).env?.VITE_NOTIFICATIONS_HEADER_ENABLED ?? 'true') !== 'false';
@@ -1499,6 +1505,20 @@ export default function App() {
           setSecondaryCtaButtonLink(typeof config?.secondaryCtaButtonLink === 'string' && config.secondaryCtaButtonLink.trim()
             ? config.secondaryCtaButtonLink
             : '/proveedores');
+          setSecondaryCtaAccent(typeof config?.secondaryCtaAccent === 'string' ? config.secondaryCtaAccent : '');
+          setSecondaryCtaBgType(
+            config?.secondaryCtaBgType === 'solid' || config?.secondaryCtaBgType === 'image'
+              ? config.secondaryCtaBgType
+              : 'gradient',
+          );
+          setSecondaryCtaBgColor(typeof config?.secondaryCtaBgColor === 'string' && config.secondaryCtaBgColor.trim()
+            ? config.secondaryCtaBgColor
+            : '#F7B267');
+          setSecondaryCtaBgGradient(typeof config?.secondaryCtaBgGradient === 'string' && config.secondaryCtaBgGradient.trim()
+            ? config.secondaryCtaBgGradient
+            : 'linear-gradient(135deg, #F7B267 0%, #F4A261 100%)');
+          setSecondaryCtaBgImageUrl(typeof config?.secondaryCtaBgImageUrl === 'string' ? config.secondaryCtaBgImageUrl : '');
+          setSecondaryCtaButtonColor(config?.secondaryCtaButtonColor === 'yellow' ? 'yellow' : 'blue');
         }
       } catch {
         if (!cancelled) {
@@ -3720,6 +3740,12 @@ export default function App() {
     secondaryCtaSubtitle: string;
     secondaryCtaButtonText: string;
     secondaryCtaButtonLink: string;
+    secondaryCtaAccent: string;
+    secondaryCtaBgType: 'gradient' | 'solid' | 'image';
+    secondaryCtaBgColor: string;
+    secondaryCtaBgGradient: string;
+    secondaryCtaBgImageUrl: string;
+    secondaryCtaButtonColor: 'blue' | 'yellow';
   }) => {
     try {
       await supabase.updateMarketplaceConfig(enabledMarketplaceCities, {
@@ -3739,6 +3765,12 @@ export default function App() {
         secondaryCtaSubtitle: config.secondaryCtaSubtitle,
         secondaryCtaButtonText: config.secondaryCtaButtonText,
         secondaryCtaButtonLink: config.secondaryCtaButtonLink,
+        secondaryCtaAccent: config.secondaryCtaAccent,
+        secondaryCtaBgType: config.secondaryCtaBgType,
+        secondaryCtaBgColor: config.secondaryCtaBgColor,
+        secondaryCtaBgGradient: config.secondaryCtaBgGradient,
+        secondaryCtaBgImageUrl: config.secondaryCtaBgImageUrl,
+        secondaryCtaButtonColor: config.secondaryCtaButtonColor,
       });
       setMainContentAccent(config.accent);
       setMainContentTitle(config.title);
@@ -3756,6 +3788,12 @@ export default function App() {
       setSecondaryCtaSubtitle(config.secondaryCtaSubtitle);
       setSecondaryCtaButtonText(config.secondaryCtaButtonText);
       setSecondaryCtaButtonLink(config.secondaryCtaButtonLink);
+      setSecondaryCtaAccent(config.secondaryCtaAccent);
+      setSecondaryCtaBgType(config.secondaryCtaBgType);
+      setSecondaryCtaBgColor(config.secondaryCtaBgColor);
+      setSecondaryCtaBgGradient(config.secondaryCtaBgGradient);
+      setSecondaryCtaBgImageUrl(config.secondaryCtaBgImageUrl);
+      setSecondaryCtaButtonColor(config.secondaryCtaButtonColor);
       toast.success('Contenido principal actualizado');
     } catch (error) {
       console.error('Error updating main content config:', error);
@@ -4768,6 +4806,12 @@ export default function App() {
               secondaryCtaSubtitle={secondaryCtaSubtitle}
               secondaryCtaButtonText={secondaryCtaButtonText}
               secondaryCtaButtonLink={secondaryCtaButtonLink}
+              secondaryCtaAccent={secondaryCtaAccent}
+              secondaryCtaBgType={secondaryCtaBgType}
+              secondaryCtaBgColor={secondaryCtaBgColor}
+              secondaryCtaBgGradient={secondaryCtaBgGradient}
+              secondaryCtaBgImageUrl={secondaryCtaBgImageUrl}
+              secondaryCtaButtonColor={secondaryCtaButtonColor}
               onUpdateMainContentConfig={handleUpdateMainContentConfig}
             />
           ) : (
@@ -5141,16 +5185,37 @@ export default function App() {
 
                 {secondaryCtaEnabled && (
                 <section
-                  className="rounded-2xl border p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
-                  style={{ borderColor: 'rgba(247, 178, 103, 0.45)', backgroundColor: 'rgba(247, 178, 103, 0.1)' }}
+                  className="rounded-2xl p-6 text-white"
+                  style={
+                    secondaryCtaBgType === 'solid'
+                      ? { backgroundColor: secondaryCtaBgColor }
+                      : secondaryCtaBgType === 'image' && /^https?:\/\//i.test(secondaryCtaBgImageUrl)
+                        ? { backgroundImage: `url(${secondaryCtaBgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
+                        : { background: secondaryCtaBgGradient || 'linear-gradient(135deg, #F7B267 0%, #F4A261 100%)' }
+                  }
                 >
-                  <div>
-                    <h2 className="text-xl font-semibold mb-1" style={{ color: 'var(--navy-blue)' }}>{secondaryCtaTitle}</h2>
-                    <p className="text-sm text-gray-700">{secondaryCtaSubtitle}</p>
+                  {secondaryCtaAccent && (
+                    <Badge asChild className="mb-3 bg-white/20 text-white border-white/30">
+                      <span>{secondaryCtaAccent}</span>
+                    </Badge>
+                  )}
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                      <h2 className="text-xl font-semibold mb-1 text-white">{secondaryCtaTitle}</h2>
+                      <p className="text-sm text-white/90">{secondaryCtaSubtitle}</p>
+                    </div>
+                    <Button
+                      onClick={() => handleMainContentButtonClick(secondaryCtaButtonLink)}
+                      style={
+                        secondaryCtaButtonColor === 'yellow'
+                          ? { backgroundColor: '#F7B267', color: '#0A1F44', borderColor: '#F7B267' }
+                          : { backgroundColor: '#0A1F44', color: '#ffffff', borderColor: '#0A1F44' }
+                      }
+                      className="shrink-0"
+                    >
+                      {secondaryCtaButtonText}
+                    </Button>
                   </div>
-                  <Button onClick={() => handleMainContentButtonClick(secondaryCtaButtonLink)}>
-                    {secondaryCtaButtonText}
-                  </Button>
                 </section>
                 )}
               </div>

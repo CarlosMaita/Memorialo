@@ -364,6 +364,12 @@ class AdminController extends Controller
             'secondaryCtaSubtitle' => ['sometimes', 'nullable', 'string', 'max:320'],
             'secondaryCtaButtonText' => ['sometimes', 'nullable', 'string', 'max:80'],
             'secondaryCtaButtonLink' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'secondaryCtaAccent' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'secondaryCtaBgType' => ['sometimes', 'nullable', 'string', 'in:gradient,solid,image'],
+            'secondaryCtaBgColor' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'secondaryCtaBgGradient' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'secondaryCtaBgImageUrl' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'secondaryCtaButtonColor' => ['sometimes', 'nullable', 'string', 'in:blue,yellow'],
             'providerEventReminderHours' => ['sometimes', 'integer', 'min:1', 'max:720'],
         ]);
 
@@ -486,6 +492,30 @@ class AdminController extends Controller
             $settings->secondary_cta_button_link = $validated['secondaryCtaButtonLink'] ?: null;
         }
 
+        if (array_key_exists('secondaryCtaAccent', $validated)) {
+            $settings->secondary_cta_accent = $validated['secondaryCtaAccent'] ?: null;
+        }
+
+        if (array_key_exists('secondaryCtaBgType', $validated)) {
+            $settings->secondary_cta_bg_type = $validated['secondaryCtaBgType'] ?: 'gradient';
+        }
+
+        if (array_key_exists('secondaryCtaBgColor', $validated)) {
+            $settings->secondary_cta_bg_color = $validated['secondaryCtaBgColor'] ?: null;
+        }
+
+        if (array_key_exists('secondaryCtaBgGradient', $validated)) {
+            $settings->secondary_cta_bg_gradient = $validated['secondaryCtaBgGradient'] ?: null;
+        }
+
+        if (array_key_exists('secondaryCtaBgImageUrl', $validated)) {
+            $settings->secondary_cta_bg_image_url = $validated['secondaryCtaBgImageUrl'] ?: null;
+        }
+
+        if (array_key_exists('secondaryCtaButtonColor', $validated)) {
+            $settings->secondary_cta_button_color = $validated['secondaryCtaButtonColor'] ?: 'blue';
+        }
+
         if (array_key_exists('providerEventReminderHours', $validated)) {
             $settings->provider_event_reminder_hours = (int) $validated['providerEventReminderHours'];
         }
@@ -603,6 +633,12 @@ class AdminController extends Controller
             'secondaryCtaSubtitle' => $settings?->secondary_cta_subtitle ?: 'Publica tus servicios, recibe solicitudes y haz crecer tu negocio de eventos.',
             'secondaryCtaButtonText' => $settings?->secondary_cta_button_text ?: 'Quiero ser proveedor',
             'secondaryCtaButtonLink' => $settings?->secondary_cta_button_link ?: '/proveedores',
+            'secondaryCtaAccent' => $settings?->secondary_cta_accent ?: '',
+            'secondaryCtaBgType' => $settings?->secondary_cta_bg_type ?: 'gradient',
+            'secondaryCtaBgColor' => $settings?->secondary_cta_bg_color ?: '#F7B267',
+            'secondaryCtaBgGradient' => $settings?->secondary_cta_bg_gradient ?: 'linear-gradient(135deg, #F7B267 0%, #F4A261 100%)',
+            'secondaryCtaBgImageUrl' => $settings?->secondary_cta_bg_image_url ?: null,
+            'secondaryCtaButtonColor' => $settings?->secondary_cta_button_color ?: 'blue',
             'providerEventReminderHours' => (int) ($settings?->provider_event_reminder_hours ?: 48),
         ];
     }

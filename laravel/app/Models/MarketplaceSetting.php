@@ -32,6 +32,12 @@ class MarketplaceSetting extends Model
         'secondary_cta_subtitle',
         'secondary_cta_button_text',
         'secondary_cta_button_link',
+        'secondary_cta_accent',
+        'secondary_cta_bg_type',
+        'secondary_cta_bg_color',
+        'secondary_cta_bg_gradient',
+        'secondary_cta_bg_image_url',
+        'secondary_cta_button_color',
         'provider_event_reminder_hours',
     ];
 
