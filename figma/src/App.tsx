@@ -246,6 +246,21 @@ export default function App() {
   const [relevantServicesSubtitle, setRelevantServicesSubtitle] = useState('Descubre servicios recomendados para tu evento.');
   const [relevantServiceIds, setRelevantServiceIds] = useState<string[]>([]);
   const [collections, setCollections] = useState<ServiceCollection[]>([]);
+  const [homeCollectionSections, setHomeCollectionSections] = useState<Array<{
+    id: string;
+    title: string;
+    subtitle?: string | null;
+    collectionId: string;
+    sortOrder: number;
+    visible: boolean;
+    collection?: {
+      id: string;
+      title: string;
+      subtitle?: string | null;
+      slug: string;
+      serviceIds: string[];
+    } | null;
+  }>>([]);
   const [activeCollection, setActiveCollection] = useState<ServiceCollection | null>(null);
   const [collectionLoading, setCollectionLoading] = useState(false);
   const [collectionNotFound, setCollectionNotFound] = useState(false);
@@ -284,6 +299,7 @@ export default function App() {
   const [homeVisibleCount, setHomeVisibleCount] = useState(HOME_INITIAL_ITEMS);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const relevantServicesCarouselRef = useRef<HTMLDivElement | null>(null);
+  const homeCollSectionCarouselRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const previousRouteRef = useRef(window.location.pathname);
   const lastMarketplaceCriteriaKeyRef = useRef('');
   const marketplaceCacheRef = useRef<Record<string, MarketplaceCacheEntry>>({});
@@ -1520,9 +1536,31 @@ export default function App() {
       }
     };
 
+    const loadHomeCollectionSections = async () => {
+      try {
+        const sectionsData = await supabase.getHomeCollectionSections();
+        if (!cancelled) {
+          setHomeCollectionSections(Array.isArray(sectionsData) ? sectionsData.map((s: any) => ({
+            id: String(s.id),
+            title: String(s.title || ''),
+            subtitle: s.subtitle ?? null,
+            collectionId: String(s.collectionId),
+            sortOrder: Number(s.sortOrder ?? 0),
+            visible: Boolean(s.visible),
+            collection: s.collection ?? null,
+          })) : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setHomeCollectionSections([]);
+        }
+      }
+    };
+
     void loadMarketplaceConfig();
     void loadBanners();
     void loadCollections();
+    void loadHomeCollectionSections();
 
     return () => {
       cancelled = true;
@@ -3597,6 +3635,74 @@ export default function App() {
     }
   };
 
+  const handleCreateHomeCollectionSection = async (sectionData: {
+    title: string;
+    subtitle: string;
+    collectionId: string;
+    sortOrder: number;
+    visible: boolean;
+  }) => {
+    try {
+      const result = await supabase.createHomeCollectionSection(sectionData);
+      const normalized = {
+        id: String(result.id),
+        title: String(result.title || sectionData.title),
+        subtitle: result.subtitle ?? null,
+        collectionId: String(result.collectionId || sectionData.collectionId),
+        sortOrder: Number(result.sortOrder ?? sectionData.sortOrder),
+        visible: Boolean(result.visible ?? sectionData.visible),
+        collection: result.collection ?? null,
+      };
+      setHomeCollectionSections((prev) => [...prev, normalized]);
+      toast.success('Sección de colección creada');
+      return result;
+    } catch (error) {
+      console.error('Error creating home collection section:', error);
+      toast.error('No se pudo crear la sección de colección');
+      throw error;
+    }
+  };
+
+  const handleUpdateHomeCollectionSection = async (sectionId: string, sectionData: {
+    title: string;
+    subtitle: string;
+    collectionId: string;
+    sortOrder: number;
+    visible: boolean;
+  }) => {
+    try {
+      const result = await supabase.updateHomeCollectionSection(sectionId, sectionData);
+      const normalized = {
+        id: sectionId,
+        title: String(result.title || sectionData.title),
+        subtitle: result.subtitle ?? null,
+        collectionId: String(result.collectionId || sectionData.collectionId),
+        sortOrder: Number(result.sortOrder ?? sectionData.sortOrder),
+        visible: Boolean(result.visible ?? sectionData.visible),
+        collection: result.collection ?? null,
+      };
+      setHomeCollectionSections((prev) => prev.map((s) => s.id === sectionId ? normalized : s));
+      toast.success('Sección de colección actualizada');
+      return result;
+    } catch (error) {
+      console.error('Error updating home collection section:', error);
+      toast.error('No se pudo actualizar la sección de colección');
+      throw error;
+    }
+  };
+
+  const handleDeleteHomeCollectionSection = async (sectionId: string) => {
+    try {
+      await supabase.deleteHomeCollectionSection(sectionId);
+      setHomeCollectionSections((prev) => prev.filter((s) => s.id !== sectionId));
+      toast.success('Sección de colección eliminada');
+    } catch (error) {
+      console.error('Error deleting home collection section:', error);
+      toast.error('No se pudo eliminar la sección de colección');
+      throw error;
+    }
+  };
+
   const handleUpdateMainContentConfig = async (config: {
     accent: string;
     title: string;
@@ -4644,6 +4750,10 @@ export default function App() {
               onCreateCollection={handleCreateCollection}
               onUpdateCollection={handleUpdateCollection}
               onDeleteCollection={handleDeleteCollection}
+              homeCollectionSections={homeCollectionSections}
+              onCreateHomeCollectionSection={handleCreateHomeCollectionSection}
+              onUpdateHomeCollectionSection={handleUpdateHomeCollectionSection}
+              onDeleteHomeCollectionSection={handleDeleteHomeCollectionSection}
               mainContentAccent={mainContentAccent}
               mainContentTitle={mainContentTitle}
               mainContentSubtitle={mainContentSubtitle}
@@ -4967,6 +5077,69 @@ export default function App() {
                     ))}
                   </div>
                 </section>
+
+                {homeCollectionSections.filter((s) => s.visible).sort((a, b) => a.sortOrder - b.sortOrder).map((section) => {
+                  const collectionFromState = collections.find((col) => col.id === section.collectionId);
+                  const collectionFromEmbed = section.collection
+                    ? { ...section.collection, services: [], serviceIds: section.collection.serviceIds || [] } as any
+                    : null;
+                  const sectionCollection = collectionFromState || collectionFromEmbed;
+                  if (!sectionCollection) return null;
+                  const sectionServices = sectionCollection.serviceIds
+                    .map((sid: string) => filteredArtists.find((a) => String(a.id) === sid) || null)
+                    .filter(Boolean) as typeof filteredArtists;
+                  if (sectionServices.length === 0) return null;
+                  return (
+                    <section key={section.id}>
+                      <div className="mb-3 flex items-start justify-between gap-2">
+                        <div>
+                          <h2 className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--navy-blue)' }}>
+                            {section.title}
+                          </h2>
+                          {section.subtitle ? (
+                            <p className="text-sm text-gray-600">{section.subtitle}</p>
+                          ) : null}
+                        </div>
+                        <div className="hidden md:flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => homeCollSectionCarouselRefs.current.get(section.id)?.scrollBy({ left: -420, behavior: 'smooth' })}
+                            aria-label="Anterior"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => homeCollSectionCarouselRefs.current.get(section.id)?.scrollBy({ left: 420, behavior: 'smooth' })}
+                            aria-label="Siguiente"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div
+                        ref={(el) => {
+                          if (el) homeCollSectionCarouselRefs.current.set(section.id, el);
+                          else homeCollSectionCarouselRefs.current.delete(section.id);
+                        }}
+                        className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth"
+                      >
+                        {sectionServices.map((artist) => (
+                          <div key={artist.id} className="shrink-0 snap-start w-full md:w-[calc((100%-0.75rem)/2)] xl:w-[calc((100%-2.25rem)/4)]">
+                            <ArtistCard
+                              artist={artist}
+                              onViewProfile={handleViewProfile}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
 
                 {secondaryCtaEnabled && (
                 <section

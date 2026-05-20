@@ -89,6 +89,17 @@ interface AdminDashboardProps {
   onCreateCollection: (collection: { title: string; subtitle: string; slug: string; serviceIds: string[] }) => Promise<any>;
   onUpdateCollection: (collectionId: string, collection: { title: string; subtitle: string; slug: string; serviceIds: string[] }) => Promise<any>;
   onDeleteCollection: (collectionId: string) => Promise<void>;
+  homeCollectionSections: Array<{
+    id: string;
+    title: string;
+    subtitle?: string | null;
+    collectionId: string;
+    sortOrder: number;
+    visible: boolean;
+  }>;
+  onCreateHomeCollectionSection: (section: { title: string; subtitle: string; collectionId: string; sortOrder: number; visible: boolean }) => Promise<any>;
+  onUpdateHomeCollectionSection: (sectionId: string, section: { title: string; subtitle: string; collectionId: string; sortOrder: number; visible: boolean }) => Promise<any>;
+  onDeleteHomeCollectionSection: (sectionId: string) => Promise<void>;
   mainContentAccent: string;
   mainContentTitle: string;
   mainContentSubtitle: string;
@@ -177,6 +188,10 @@ export function AdminDashboard({
   onCreateCollection,
   onUpdateCollection,
   onDeleteCollection,
+  homeCollectionSections,
+  onCreateHomeCollectionSection,
+  onUpdateHomeCollectionSection,
+  onDeleteHomeCollectionSection,
   mainContentAccent,
   mainContentTitle,
   mainContentSubtitle,
@@ -218,6 +233,15 @@ export function AdminDashboard({
   const [collectionServiceSearchQuery, setCollectionServiceSearchQuery] = useState('');
   const [savingCollection, setSavingCollection] = useState(false);
   const [showCollectionForm, setShowCollectionForm] = useState(false);
+  const [homeCollSections, setHomeCollSections] = useState(homeCollectionSections);
+  const [editingHomeCollSectionId, setEditingHomeCollSectionId] = useState<string | null>(null);
+  const [homeCollSectionTitleDraft, setHomeCollSectionTitleDraft] = useState('');
+  const [homeCollSectionSubtitleDraft, setHomeCollSectionSubtitleDraft] = useState('');
+  const [homeCollSectionCollectionIdDraft, setHomeCollSectionCollectionIdDraft] = useState('');
+  const [homeCollSectionSortOrderDraft, setHomeCollSectionSortOrderDraft] = useState(0);
+  const [homeCollSectionVisibleDraft, setHomeCollSectionVisibleDraft] = useState(true);
+  const [savingHomeCollSection, setSavingHomeCollSection] = useState(false);
+  const [showHomeCollSectionForm, setShowHomeCollSectionForm] = useState(false);
   const [mainContentAccentDraft, setMainContentAccentDraft] = useState(mainContentAccent);
   const [mainContentTitleDraft, setMainContentTitleDraft] = useState(mainContentTitle);
   const [mainContentSubtitleDraft, setMainContentSubtitleDraft] = useState(mainContentSubtitle);
@@ -293,6 +317,10 @@ export function AdminDashboard({
   useEffect(() => {
     setSelectedEnabledCities(enabledCities);
   }, [enabledCities]);
+
+  useEffect(() => {
+    setHomeCollSections(homeCollectionSections);
+  }, [homeCollectionSections]);
 
   useEffect(() => {
     setSelectedRelevantServiceIds(relevantServiceIds);
@@ -844,6 +872,71 @@ export function AdminDashboard({
   const closeCollectionForm = () => {
     resetCollectionForm();
     setShowCollectionForm(false);
+  };
+
+  const resetHomeCollSectionForm = () => {
+    setEditingHomeCollSectionId(null);
+    setHomeCollSectionTitleDraft('');
+    setHomeCollSectionSubtitleDraft('');
+    setHomeCollSectionCollectionIdDraft('');
+    setHomeCollSectionSortOrderDraft(0);
+    setHomeCollSectionVisibleDraft(true);
+  };
+
+  const openCreateHomeCollSectionForm = () => {
+    resetHomeCollSectionForm();
+    setShowHomeCollSectionForm(true);
+  };
+
+  const openEditHomeCollSectionForm = (section: { id: string; title: string; subtitle?: string | null; collectionId: string; sortOrder: number; visible: boolean }) => {
+    setEditingHomeCollSectionId(section.id);
+    setHomeCollSectionTitleDraft(section.title);
+    setHomeCollSectionSubtitleDraft(section.subtitle || '');
+    setHomeCollSectionCollectionIdDraft(section.collectionId);
+    setHomeCollSectionSortOrderDraft(section.sortOrder);
+    setHomeCollSectionVisibleDraft(section.visible);
+    setShowHomeCollSectionForm(true);
+  };
+
+  const closeHomeCollSectionForm = () => {
+    resetHomeCollSectionForm();
+    setShowHomeCollSectionForm(false);
+  };
+
+  const handleSaveHomeCollSection = async () => {
+    if (!homeCollSectionTitleDraft.trim() || !homeCollSectionCollectionIdDraft) return;
+    setSavingHomeCollSection(true);
+    try {
+      const payload = {
+        title: homeCollSectionTitleDraft.trim(),
+        subtitle: homeCollSectionSubtitleDraft.trim(),
+        collectionId: homeCollSectionCollectionIdDraft,
+        sortOrder: homeCollSectionSortOrderDraft,
+        visible: homeCollSectionVisibleDraft,
+      };
+      let result;
+      if (editingHomeCollSectionId) {
+        result = await onUpdateHomeCollectionSection(editingHomeCollSectionId, payload);
+        setHomeCollSections((prev) => prev.map((s) => s.id === editingHomeCollSectionId ? { ...s, ...payload, id: editingHomeCollSectionId } : s));
+      } else {
+        result = await onCreateHomeCollectionSection(payload);
+        if (result?.id) {
+          setHomeCollSections((prev) => [...prev, { ...payload, id: String(result.id) }]);
+        }
+      }
+      closeHomeCollSectionForm();
+    } finally {
+      setSavingHomeCollSection(false);
+    }
+  };
+
+  const handleDeleteHomeCollSection = async (sectionId: string) => {
+    try {
+      await onDeleteHomeCollectionSection(sectionId);
+      setHomeCollSections((prev) => prev.filter((s) => s.id !== sectionId));
+    } catch {
+      // handled in parent
+    }
   };
 
   const toggleCollectionService = (serviceId: string) => {
@@ -1809,6 +1902,167 @@ export function AdminDashboard({
                   </div>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Secciones de colecciones ({homeCollSections.length})</CardTitle>
+                    <CardDescription>Gestiona las secciones de colecciones visibles en el Home, entre los pasos y el CTA secundario.</CardDescription>
+                  </div>
+                  <Button type="button" size="sm" onClick={openCreateHomeCollSectionForm}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Agregar sección
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {homeCollSections.length === 0 ? (
+                    <p className="text-sm text-gray-500">No hay secciones de colecciones configuradas.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Título</TableHead>
+                            <TableHead>Colección</TableHead>
+                            <TableHead>Orden</TableHead>
+                            <TableHead>Visible</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {[...homeCollSections].sort((a, b) => a.sortOrder - b.sortOrder).map((section) => {
+                            const linkedCollection = collections.find((c) => c.id === section.collectionId);
+                            return (
+                              <TableRow key={section.id}>
+                                <TableCell>
+                                  <p className="font-medium text-[#1B2A47]">{section.title}</p>
+                                  {section.subtitle ? (
+                                    <p className="text-xs text-gray-500 mt-0.5 max-w-xs truncate">{section.subtitle}</p>
+                                  ) : null}
+                                </TableCell>
+                                <TableCell className="text-sm text-gray-600">
+                                  {linkedCollection?.title || section.collectionId}
+                                </TableCell>
+                                <TableCell className="text-sm text-gray-600">{section.sortOrder}</TableCell>
+                                <TableCell>
+                                  <Badge variant={section.visible ? 'default' : 'secondary'}>
+                                    {section.visible ? 'Visible' : 'Oculto'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => openEditHomeCollSectionForm(section)}
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleDeleteHomeCollSection(section.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4 text-red-500" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {showHomeCollSectionForm && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{editingHomeCollSectionId ? 'Editar sección' : 'Nueva sección de colección'}</CardTitle>
+                    <CardDescription>Configura el título, colección asociada, orden y visibilidad.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="hcs-title">Título</Label>
+                      <Input
+                        id="hcs-title"
+                        value={homeCollSectionTitleDraft}
+                        maxLength={160}
+                        onChange={(event) => setHomeCollSectionTitleDraft(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="hcs-subtitle">Subtítulo</Label>
+                      <Input
+                        id="hcs-subtitle"
+                        value={homeCollSectionSubtitleDraft}
+                        maxLength={320}
+                        onChange={(event) => setHomeCollSectionSubtitleDraft(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="hcs-collection">Colección asociada</Label>
+                      <Select value={homeCollSectionCollectionIdDraft} onValueChange={setHomeCollSectionCollectionIdDraft}>
+                        <SelectTrigger id="hcs-collection">
+                          <SelectValue placeholder="Selecciona una colección" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {collections.map((col) => (
+                            <SelectItem key={col.id} value={col.id}>{col.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="hcs-sort-order">Orden</Label>
+                      <Input
+                        id="hcs-sort-order"
+                        type="number"
+                        min={0}
+                        max={9999}
+                        value={homeCollSectionSortOrderDraft}
+                        onChange={(event) => setHomeCollSectionSortOrderDraft(Number(event.target.value))}
+                      />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        id="hcs-visible"
+                        checked={homeCollSectionVisibleDraft}
+                        onCheckedChange={setHomeCollSectionVisibleDraft}
+                      />
+                      <Label htmlFor="hcs-visible" className="cursor-pointer">
+                        {homeCollSectionVisibleDraft ? 'Visible en el Home' : 'Oculto'}
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-3 justify-end">
+                      <Button type="button" variant="outline" onClick={closeHomeCollSectionForm}>
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleSaveHomeCollSection}
+                        disabled={savingHomeCollSection || !homeCollSectionTitleDraft.trim() || !homeCollSectionCollectionIdDraft}
+                      >
+                        {savingHomeCollSection ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Guardando...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            {editingHomeCollSectionId ? 'Guardar cambios' : 'Crear sección'}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
 

@@ -797,6 +797,65 @@ export function useSupabase() {
     }
   };
 
+  const getHomeCollectionSections = async () => {
+    try {
+      const data = await apiRequest('/home-collection-sections', 'GET');
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Get home collection sections error:', error);
+      throw error;
+    }
+  };
+
+  const adminGetHomeCollectionSections = async () => {
+    try {
+      const data = await apiRequest('/admin/home-collection-sections', 'GET', undefined, accessToken || undefined);
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Admin get home collection sections error:', error);
+      throw error;
+    }
+  };
+
+  const createHomeCollectionSection = async (payload: {
+    title: string;
+    subtitle?: string | null;
+    collectionId: string;
+    sortOrder: number;
+    visible: boolean;
+  }) => {
+    try {
+      return await apiRequest('/admin/home-collection-sections', 'POST', payload, accessToken || undefined);
+    } catch (error) {
+      console.error('Create home collection section error:', error);
+      throw error;
+    }
+  };
+
+  const updateHomeCollectionSection = async (sectionId: string, payload: {
+    title: string;
+    subtitle?: string | null;
+    collectionId: string;
+    sortOrder: number;
+    visible: boolean;
+  }) => {
+    try {
+      return await apiRequest(`/admin/home-collection-sections/${sectionId}`, 'PUT', payload, accessToken || undefined);
+    } catch (error) {
+      console.error('Update home collection section error:', error);
+      throw error;
+    }
+  };
+
+  const deleteHomeCollectionSection = async (sectionId: string) => {
+    try {
+      return await apiRequest(`/admin/home-collection-sections/${sectionId}`, 'DELETE', undefined, accessToken || undefined);
+    } catch (error) {
+      console.error('Delete home collection section error:', error);
+      throw error;
+    }
+  };
+
   const updateMarketplaceConfig = async (
     enabledCities: string[],
     options?: {
@@ -1605,6 +1664,11 @@ export function useSupabase() {
     createCollection,
     updateCollection,
     deleteCollection,
+    getHomeCollectionSections,
+    adminGetHomeCollectionSections,
+    createHomeCollectionSection,
+    updateHomeCollectionSection,
+    deleteHomeCollectionSection,
     getMarketplaceConfig,
     updateMarketplaceConfig,
     getPublicBanners,
