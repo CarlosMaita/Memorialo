@@ -5011,10 +5011,10 @@ export default function App() {
                   }
                 >
                   <Badge asChild className="mb-3 bg-white/20 text-white border-white/30">
-                    <h1>
+                    <h2>
                       <span className="mr-1" aria-hidden="true">📢</span>
                       {mainContentAccent}
-                    </h1>
+                    </h2>
                   </Badge>
                   <p className="text-2xl md:text-3xl font-semibold mb-2">{mainContentTitle}</p>
                   <p className="text-sm md:text-base text-white/90 mb-4">
@@ -5208,8 +5208,8 @@ export default function App() {
                       onClick={() => handleMainContentButtonClick(secondaryCtaButtonLink)}
                       style={
                         secondaryCtaButtonColor === 'yellow'
-                          ? { backgroundColor: '#F7B267', color: '#0A1F44', borderColor: '#F7B267' }
-                          : { backgroundColor: '#0A1F44', color: '#ffffff', borderColor: '#0A1F44' }
+                          ? { backgroundColor: '#d4af37', color: '#0a1f44', borderColor: '#d4af37' }
+                          : { backgroundColor: '#0a1f44', color: '#ffffff', borderColor: '#0a1f44' }
                       }
                       className="shrink-0"
                     >

@@ -1665,7 +1665,7 @@ export function AdminDashboard({
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="main-content-accent">Acentuación (h1)</Label>
+                    <Label htmlFor="main-content-accent">Acentuación (h2)</Label>
                     <Input
                       id="main-content-accent"
                       value={mainContentAccentDraft}
@@ -1888,6 +1888,18 @@ export function AdminDashboard({
                     </Label>
                   </div>
 
+                  {/* Accent */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="secondary-cta-accent">Acentuación (badge superior, opcional)</Label>
+                    <Input
+                      id="secondary-cta-accent"
+                      value={secondaryCtaAccentDraft}
+                      maxLength={120}
+                      placeholder="Ej.: ¡Únete ahora!"
+                      onChange={(event) => setSecondaryCtaAccentDraft(event.target.value)}
+                    />
+                  </div>
+
                   <div className="space-y-1.5">
                     <Label htmlFor="secondary-cta-title">Título</Label>
                     <Input
@@ -1927,44 +1939,6 @@ export function AdminDashboard({
                         onChange={(event) => setSecondaryCtaButtonLinkDraft(event.target.value)}
                       />
                     </div>
-                  </div>
-
-                  {/* Button color */}
-                  <div className="space-y-1.5">
-                    <Label>Color del botón</Label>
-                    <div className="flex gap-3">
-                      {(
-                        [
-                          { value: 'blue', label: 'Azul (texto blanco)' },
-                          { value: 'yellow', label: 'Amarillo (texto azul)' },
-                        ] as { value: 'blue' | 'yellow'; label: string }[]
-                      ).map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => setSecondaryCtaButtonColorDraft(option.value)}
-                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
-                            secondaryCtaButtonColorDraft === option.value
-                              ? 'bg-[#1B2A47] text-white border-[#1B2A47]'
-                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Accent */}
-                  <div className="space-y-1.5">
-                    <Label htmlFor="secondary-cta-accent">Acentuación (badge superior, opcional)</Label>
-                    <Input
-                      id="secondary-cta-accent"
-                      value={secondaryCtaAccentDraft}
-                      maxLength={120}
-                      placeholder="Ej.: ¡Únete ahora!"
-                      onChange={(event) => setSecondaryCtaAccentDraft(event.target.value)}
-                    />
                   </div>
 
                   {/* Background configuration */}
@@ -2054,6 +2028,39 @@ export function AdminDashboard({
                         )}
                       </div>
                     )}
+                  </div>
+
+                  {/* Button color */}
+                  <div className="space-y-1.5">
+                    <Label>Color del botón</Label>
+                    <div className="flex gap-3">
+                      {(
+                        [
+                          { value: 'blue', label: 'Azul (texto blanco)' },
+                          { value: 'yellow', label: 'Amarillo (texto azul)' },
+                        ] as { value: 'blue' | 'yellow'; label: string }[]
+                      ).map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setSecondaryCtaButtonColorDraft(option.value)}
+                          style={
+                            secondaryCtaButtonColorDraft === option.value
+                              ? option.value === 'yellow'
+                                ? { backgroundColor: '#d4af37', color: '#0a1f44', borderColor: '#d4af37' }
+                                : { backgroundColor: '#0a1f44', color: '#ffffff', borderColor: '#0a1f44' }
+                              : {}
+                          }
+                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                            secondaryCtaButtonColorDraft === option.value
+                              ? ''
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="flex justify-end">
