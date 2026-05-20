@@ -172,12 +172,16 @@ class BillingController extends Controller
         $validated = $request->validate([
             'closureDay' => ['required', 'integer', 'min:1', 'max:28'],
             'moduleEnabled' => ['sometimes', 'boolean'],
+            'commissionRate' => ['sometimes', 'numeric', 'min:0', 'max:100'],
         ]);
 
         $settings = $this->billingCycles->getSettings();
         $settings->closure_day = (int) $validated['closureDay'];
         if (array_key_exists('moduleEnabled', $validated)) {
             $settings->module_enabled = (bool) $validated['moduleEnabled'];
+        }
+        if (array_key_exists('commissionRate', $validated)) {
+            $settings->commission_rate = (float) $validated['commissionRate'];
         }
         $settings->save();
 
