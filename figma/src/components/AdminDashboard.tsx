@@ -116,6 +116,12 @@ interface AdminDashboardProps {
   secondaryCtaSubtitle: string;
   secondaryCtaButtonText: string;
   secondaryCtaButtonLink: string;
+  secondaryCtaAccent: string;
+  secondaryCtaBgType: 'gradient' | 'solid' | 'image';
+  secondaryCtaBgColor: string;
+  secondaryCtaBgGradient: string;
+  secondaryCtaBgImageUrl: string;
+  secondaryCtaButtonColor: 'blue' | 'yellow';
   onUpdateMainContentConfig: (config: {
     accent: string;
     title: string;
@@ -133,6 +139,12 @@ interface AdminDashboardProps {
     secondaryCtaSubtitle: string;
     secondaryCtaButtonText: string;
     secondaryCtaButtonLink: string;
+    secondaryCtaAccent: string;
+    secondaryCtaBgType: 'gradient' | 'solid' | 'image';
+    secondaryCtaBgColor: string;
+    secondaryCtaBgGradient: string;
+    secondaryCtaBgImageUrl: string;
+    secondaryCtaButtonColor: 'blue' | 'yellow';
   }) => Promise<void>;
 }
 
@@ -208,6 +220,12 @@ export function AdminDashboard({
   secondaryCtaSubtitle,
   secondaryCtaButtonText,
   secondaryCtaButtonLink,
+  secondaryCtaAccent,
+  secondaryCtaBgType,
+  secondaryCtaBgColor,
+  secondaryCtaBgGradient,
+  secondaryCtaBgImageUrl,
+  secondaryCtaButtonColor,
   onUpdateMainContentConfig,
 }: AdminDashboardProps) {
   const ADMIN_TABLE_BATCH_SIZE = 16;
@@ -258,6 +276,12 @@ export function AdminDashboard({
   const [secondaryCtaSubtitleDraft, setSecondaryCtaSubtitleDraft] = useState(secondaryCtaSubtitle);
   const [secondaryCtaButtonTextDraft, setSecondaryCtaButtonTextDraft] = useState(secondaryCtaButtonText);
   const [secondaryCtaButtonLinkDraft, setSecondaryCtaButtonLinkDraft] = useState(secondaryCtaButtonLink);
+  const [secondaryCtaAccentDraft, setSecondaryCtaAccentDraft] = useState(secondaryCtaAccent);
+  const [secondaryCtaBgTypeDraft, setSecondaryCtaBgTypeDraft] = useState<'gradient' | 'solid' | 'image'>(secondaryCtaBgType);
+  const [secondaryCtaBgColorDraft, setSecondaryCtaBgColorDraft] = useState(secondaryCtaBgColor);
+  const [secondaryCtaBgGradientDraft, setSecondaryCtaBgGradientDraft] = useState(secondaryCtaBgGradient);
+  const [secondaryCtaBgImageUrlDraft, setSecondaryCtaBgImageUrlDraft] = useState(secondaryCtaBgImageUrl);
+  const [secondaryCtaButtonColorDraft, setSecondaryCtaButtonColorDraft] = useState<'blue' | 'yellow'>(secondaryCtaButtonColor);
   const [savingMainContent, setSavingMainContent] = useState(false);
   const [uploadingMainContentBgImage, setUploadingMainContentBgImage] = useState(false);
   const mainContentBgFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -709,7 +733,13 @@ export function AdminDashboard({
       secondaryCtaTitleDraft.trim() !== secondaryCtaTitle.trim() ||
       secondaryCtaSubtitleDraft.trim() !== secondaryCtaSubtitle.trim() ||
       secondaryCtaButtonTextDraft.trim() !== secondaryCtaButtonText.trim() ||
-      secondaryCtaButtonLinkDraft.trim() !== secondaryCtaButtonLink.trim()
+      secondaryCtaButtonLinkDraft.trim() !== secondaryCtaButtonLink.trim() ||
+      secondaryCtaAccentDraft.trim() !== secondaryCtaAccent.trim() ||
+      secondaryCtaBgTypeDraft !== secondaryCtaBgType ||
+      secondaryCtaBgColorDraft.trim() !== secondaryCtaBgColor.trim() ||
+      secondaryCtaBgGradientDraft.trim() !== secondaryCtaBgGradient.trim() ||
+      secondaryCtaBgImageUrlDraft.trim() !== secondaryCtaBgImageUrl.trim() ||
+      secondaryCtaButtonColorDraft !== secondaryCtaButtonColor
     );
   }, [
     mainContentAccentDraft,
@@ -744,6 +774,18 @@ export function AdminDashboard({
     secondaryCtaButtonText,
     secondaryCtaButtonLinkDraft,
     secondaryCtaButtonLink,
+    secondaryCtaAccentDraft,
+    secondaryCtaAccent,
+    secondaryCtaBgTypeDraft,
+    secondaryCtaBgType,
+    secondaryCtaBgColorDraft,
+    secondaryCtaBgColor,
+    secondaryCtaBgGradientDraft,
+    secondaryCtaBgGradient,
+    secondaryCtaBgImageUrlDraft,
+    secondaryCtaBgImageUrl,
+    secondaryCtaButtonColorDraft,
+    secondaryCtaButtonColor,
   ]);
 
   useEffect(() => {
@@ -1039,6 +1081,12 @@ export function AdminDashboard({
         secondaryCtaSubtitle: secondaryCtaSubtitleDraft.trim() || 'Publica tus servicios, recibe solicitudes y haz crecer tu negocio de eventos.',
         secondaryCtaButtonText: secondaryCtaButtonTextDraft.trim() || 'Quiero ser proveedor',
         secondaryCtaButtonLink: secondaryCtaButtonLinkDraft.trim() || '/proveedores',
+        secondaryCtaAccent: secondaryCtaAccentDraft.trim(),
+        secondaryCtaBgType: secondaryCtaBgTypeDraft,
+        secondaryCtaBgColor: secondaryCtaBgColorDraft.trim() || '#F7B267',
+        secondaryCtaBgGradient: secondaryCtaBgGradientDraft.trim() || 'linear-gradient(135deg, #F7B267 0%, #F4A261 100%)',
+        secondaryCtaBgImageUrl: secondaryCtaBgImageUrlDraft.trim(),
+        secondaryCtaButtonColor: secondaryCtaButtonColorDraft,
       });
     } finally {
       setSavingMainContent(false);
@@ -1879,6 +1927,133 @@ export function AdminDashboard({
                         onChange={(event) => setSecondaryCtaButtonLinkDraft(event.target.value)}
                       />
                     </div>
+                  </div>
+
+                  {/* Button color */}
+                  <div className="space-y-1.5">
+                    <Label>Color del botón</Label>
+                    <div className="flex gap-3">
+                      {(
+                        [
+                          { value: 'blue', label: 'Azul (texto blanco)' },
+                          { value: 'yellow', label: 'Amarillo (texto azul)' },
+                        ] as { value: 'blue' | 'yellow'; label: string }[]
+                      ).map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setSecondaryCtaButtonColorDraft(option.value)}
+                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                            secondaryCtaButtonColorDraft === option.value
+                              ? 'bg-[#1B2A47] text-white border-[#1B2A47]'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Accent */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="secondary-cta-accent">Acentuación (badge superior, opcional)</Label>
+                    <Input
+                      id="secondary-cta-accent"
+                      value={secondaryCtaAccentDraft}
+                      maxLength={120}
+                      placeholder="Ej.: ¡Únete ahora!"
+                      onChange={(event) => setSecondaryCtaAccentDraft(event.target.value)}
+                    />
+                  </div>
+
+                  {/* Background configuration */}
+                  <div className="space-y-3 border-t pt-4">
+                    <Label className="text-sm font-semibold">Fondo de la sección</Label>
+                    <div className="flex gap-3 flex-wrap">
+                      {(
+                        [
+                          { value: 'gradient', label: 'Degradado' },
+                          { value: 'solid', label: 'Color sólido' },
+                          { value: 'image', label: 'Imagen' },
+                        ] as { value: 'gradient' | 'solid' | 'image'; label: string }[]
+                      ).map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setSecondaryCtaBgTypeDraft(option.value)}
+                          className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+                            secondaryCtaBgTypeDraft === option.value
+                              ? 'bg-[#1B2A47] text-white border-[#1B2A47]'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {secondaryCtaBgTypeDraft === 'gradient' && (
+                      <div className="space-y-1.5">
+                        <Label htmlFor="secondary-cta-bg-gradient">CSS de degradado</Label>
+                        <Input
+                          id="secondary-cta-bg-gradient"
+                          value={secondaryCtaBgGradientDraft}
+                          maxLength={500}
+                          placeholder="linear-gradient(135deg, #F7B267 0%, #F4A261 100%)"
+                          onChange={(event) => setSecondaryCtaBgGradientDraft(event.target.value)}
+                        />
+                        <p className="text-xs text-gray-500">Usa sintaxis CSS válida para <code>background</code>, ej.: <code>linear-gradient(135deg, #F7B267 0%, #F4A261 100%)</code></p>
+                        {secondaryCtaBgGradientDraft.trim() && (
+                          <div
+                            className="h-10 rounded-lg border border-gray-200"
+                            style={{ background: secondaryCtaBgGradientDraft.trim() }}
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    {secondaryCtaBgTypeDraft === 'solid' && (
+                      <div className="space-y-1.5">
+                        <Label htmlFor="secondary-cta-bg-color">Color de fondo</Label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            id="secondary-cta-bg-color"
+                            type="color"
+                            value={secondaryCtaBgColorDraft.startsWith('#') ? secondaryCtaBgColorDraft : '#F7B267'}
+                            onChange={(event) => setSecondaryCtaBgColorDraft(event.target.value)}
+                            className="h-10 w-16 cursor-pointer rounded border border-gray-300 p-0.5"
+                          />
+                          <Input
+                            value={secondaryCtaBgColorDraft}
+                            maxLength={50}
+                            placeholder="#F7B267"
+                            onChange={(event) => setSecondaryCtaBgColorDraft(event.target.value)}
+                            className="flex-1"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {secondaryCtaBgTypeDraft === 'image' && (
+                      <div className="space-y-1.5">
+                        <Label htmlFor="secondary-cta-bg-image-url">URL de imagen de fondo</Label>
+                        <Input
+                          id="secondary-cta-bg-image-url"
+                          value={secondaryCtaBgImageUrlDraft}
+                          maxLength={1000}
+                          placeholder="https://example.com/imagen.jpg"
+                          onChange={(event) => setSecondaryCtaBgImageUrlDraft(event.target.value)}
+                        />
+                        <p className="text-xs text-gray-500">Usa una imagen de alta resolución. La imagen se ajustará a la sección.</p>
+                        {secondaryCtaBgImageUrlDraft.trim() && /^https?:\/\//i.test(secondaryCtaBgImageUrlDraft.trim()) && (
+                          <div
+                            className="h-20 rounded-lg border border-gray-200 bg-gray-100"
+                            style={{ backgroundImage: `url(${secondaryCtaBgImageUrlDraft.trim()})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                          />
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-end">

@@ -734,6 +734,12 @@ export function useSupabase() {
         secondaryCtaSubtitle: typeof data?.secondaryCtaSubtitle === 'string' ? data.secondaryCtaSubtitle : 'Publica tus servicios, recibe solicitudes y haz crecer tu negocio de eventos.',
         secondaryCtaButtonText: typeof data?.secondaryCtaButtonText === 'string' ? data.secondaryCtaButtonText : 'Quiero ser proveedor',
         secondaryCtaButtonLink: typeof data?.secondaryCtaButtonLink === 'string' ? data.secondaryCtaButtonLink : '/proveedores',
+        secondaryCtaAccent: typeof data?.secondaryCtaAccent === 'string' ? data.secondaryCtaAccent : '',
+        secondaryCtaBgType: data?.secondaryCtaBgType === 'solid' || data?.secondaryCtaBgType === 'image' ? data.secondaryCtaBgType : 'gradient',
+        secondaryCtaBgColor: typeof data?.secondaryCtaBgColor === 'string' ? data.secondaryCtaBgColor : '#F7B267',
+        secondaryCtaBgGradient: typeof data?.secondaryCtaBgGradient === 'string' ? data.secondaryCtaBgGradient : 'linear-gradient(135deg, #F7B267 0%, #F4A261 100%)',
+        secondaryCtaBgImageUrl: typeof data?.secondaryCtaBgImageUrl === 'string' ? data.secondaryCtaBgImageUrl : '',
+        secondaryCtaButtonColor: data?.secondaryCtaButtonColor === 'yellow' ? 'yellow' : 'blue',
       };
     } catch (error) {
       console.error('Get marketplace config error:', error);
@@ -880,6 +886,12 @@ export function useSupabase() {
       secondaryCtaSubtitle?: string;
       secondaryCtaButtonText?: string;
       secondaryCtaButtonLink?: string;
+      secondaryCtaAccent?: string;
+      secondaryCtaBgType?: string;
+      secondaryCtaBgColor?: string;
+      secondaryCtaBgGradient?: string;
+      secondaryCtaBgImageUrl?: string;
+      secondaryCtaButtonColor?: string;
     },
   ) => {
     try {
@@ -946,6 +958,24 @@ export function useSupabase() {
       }
       if (typeof options?.secondaryCtaButtonLink === 'string') {
         payload.secondaryCtaButtonLink = options.secondaryCtaButtonLink;
+      }
+      if (typeof options?.secondaryCtaAccent === 'string') {
+        payload.secondaryCtaAccent = options.secondaryCtaAccent;
+      }
+      if (typeof options?.secondaryCtaBgType === 'string') {
+        payload.secondaryCtaBgType = options.secondaryCtaBgType;
+      }
+      if (typeof options?.secondaryCtaBgColor === 'string') {
+        payload.secondaryCtaBgColor = options.secondaryCtaBgColor;
+      }
+      if (typeof options?.secondaryCtaBgGradient === 'string') {
+        payload.secondaryCtaBgGradient = options.secondaryCtaBgGradient;
+      }
+      if (typeof options?.secondaryCtaBgImageUrl === 'string') {
+        payload.secondaryCtaBgImageUrl = options.secondaryCtaBgImageUrl;
+      }
+      if (typeof options?.secondaryCtaButtonColor === 'string') {
+        payload.secondaryCtaButtonColor = options.secondaryCtaButtonColor;
       }
       return await apiRequest('/admin/marketplace-config', 'PATCH', payload, accessToken || undefined);
     } catch (error) {
