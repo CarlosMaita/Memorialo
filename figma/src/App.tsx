@@ -3770,8 +3770,6 @@ export default function App() {
   const HOME_SEO_TITLE = 'Inicio de servicios para eventos en Venezuela';
   const HOME_SEO_DESCRIPTION =
     'Conecta con proveedores confiables para bodas, fiestas y eventos corporativos. Explora categorías, servicios destacados y contrata en pocos pasos con Memorialo.';
-  const buildHomeCategoryDescription = (subcategoryCount: number) =>
-    `Descubre ${subcategoryCount} tipos de servicios para tu evento.`;
   const isHomePageRoute = currentRoute === '/' && !isFavoritesRoute && !marketplaceRouteContext;
   const homeCategoryHighlights = Object.entries(SERVICE_CATEGORIES).slice(0, 5).map(([categoryName, categoryConfig]) => {
     const firstSubcategory = categoryConfig.subcategories[0] || categoryName;
@@ -3779,7 +3777,7 @@ export default function App() {
     return {
       categoryName,
       icon: categoryConfig.icon,
-      description: buildHomeCategoryDescription(categoryConfig.subcategories.length),
+      description: categoryConfig.description,
       path: `/servicios/venezuela/${slugify(firstSubcategory)}`,
     };
   });
