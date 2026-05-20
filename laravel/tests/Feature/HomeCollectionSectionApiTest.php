@@ -131,6 +131,48 @@ class HomeCollectionSectionApiTest extends TestCase
             ->assertJsonCount(2);
     }
 
+    public function test_public_endpoint_includes_services_in_collection_summary(): void
+    {
+        $user = User::factory()->create(['role' => 'client']);
+        $collection = $this->makeCollection('Colección con servicios', 'coleccion-con-servicios');
+
+        $service = Service::query()->create([
+            'user_id' => $user->id,
+            'title' => 'Servicio de prueba',
+            'is_active' => true,
+            'price' => 100.00,
+        ]);
+
+        $collection->services()->attach($service->id, ['position' => 0]);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        Sanctum::actingAs($admin);
+
+        $this->postJson('/api/admin/home-collection-sections', [
+            'title' => 'Sección con servicios',
+            'collectionId' => $collection->id,
+            'sortOrder' => 0,
+            'visible' => true,
+        ])->assertCreated();
+
+        $response = $this->getJson('/api/home-collection-sections');
+        $response->assertOk()->assertJsonCount(1);
+        $response->assertJsonPath('0.title', 'Sección con servicios');
+        $response->assertJsonPath('0.collection.id', (string) $collection->id);
+
+        // The collection summary must include a 'services' array with the full service data
+        // so the frontend can render sections independently of marketplace pagination state.
+        $services = $response->json('0.collection.services');
+        $this->assertIsArray($services);
+        $this->assertCount(1, $services);
+        $this->assertEquals((string) $service->id, $services[0]['id']);
+        $this->assertEquals('Servicio de prueba', $services[0]['title']);
+        $this->assertArrayHasKey('userId', $services[0]);
+        $this->assertArrayHasKey('price', $services[0]);
+        $this->assertArrayHasKey('isPublished', $services[0]);
+        $this->assertArrayHasKey('providerRepresentative', $services[0]);
+    }
+
     public function test_non_admin_cannot_manage_home_collection_sections(): void
     {
         $user = User::factory()->create(['role' => 'client']);
