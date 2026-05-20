@@ -1,8 +1,7 @@
-import { ArrowLeft, Link2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Artist } from '../types';
 import { buildMarketplaceStructuredData, SEOHead } from './SEOHead';
 import { ArtistCard } from './ArtistCard';
-import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 
 type ServiceCollection = {
@@ -91,10 +90,6 @@ export function CollectionPage({
         </Button>
 
         <div className="space-y-3">
-          <Badge variant="outline" className="border-[#D4AF37]/40 bg-amber-50 text-[#8A6116]">
-            <Link2 className="w-3 h-3 mr-1" />
-            /coleccion/{collection.slug}
-          </Badge>
           <div>
             <h1 className="text-3xl md:text-4xl font-semibold text-[#1B2A47]">{collection.title}</h1>
             <p className="mt-2 max-w-3xl text-sm md:text-base text-gray-600">{subtitle}</p>
