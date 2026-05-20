@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\HomeCollectionSection;
+use App\Models\Provider;
+use App\Models\Service;
 use App\Models\ServiceCollection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -165,7 +167,7 @@ class HomeCollectionSectionController extends Controller
 
     private function formatCollectionSummary(ServiceCollection $collection): array
     {
-        $collection->loadMissing('services');
+        $collection->loadMissing(['services.provider.user']);
         $services = $collection->services->values();
 
         return [
@@ -174,6 +176,73 @@ class HomeCollectionSectionController extends Controller
             'subtitle' => $collection->subtitle,
             'slug' => $collection->slug,
             'serviceIds' => $services->pluck('id')->map(fn (mixed $id) => (string) $id)->values()->all(),
+            'services' => $services->map(fn (Service $service) => $this->formatServiceSummary($service))->values()->all(),
+        ];
+    }
+
+    private function formatServiceSummary(Service $service): array
+    {
+        $service->loadMissing(['provider.user']);
+
+        $metadata = is_array($service->metadata) ? $service->metadata : [];
+        $provider = $service->provider ?: Provider::query()->with('user')->where('user_id', $service->user_id)->first();
+        $providerRepresentative = is_array($provider?->representative) ? $provider->representative : [];
+        $providerType = data_get($providerRepresentative, 'type', $provider?->legal_entity_type === 'company' ? 'company' : 'person');
+        $providerType = $providerType === 'company' ? 'company' : 'person';
+        $providerRepresentativeName = data_get(
+            $providerRepresentative,
+            'name',
+            $providerType === 'company'
+                ? ($provider?->business_name ?: $provider?->user?->name ?: $service->title)
+                : ($provider?->user?->name ?: $provider?->business_name ?: $service->title)
+        );
+        $providerDocumentType = data_get($providerRepresentative, 'documentType', $providerType === 'company' ? 'RIF' : 'CI');
+        $providerDocumentNumber = data_get($providerRepresentative, 'documentNumber', $provider?->identification_number);
+
+        return [
+            'id' => (string) $service->id,
+            'userId' => (string) $service->user_id,
+            'providerId' => $service->provider_id ? (string) $service->provider_id : null,
+            'title' => $service->title,
+            'name' => $service->title,
+            'description' => null,
+            'bio' => '',
+            'category' => $service->category,
+            'subcategory' => $service->subcategory,
+            'city' => $service->city,
+            'location' => $service->city,
+            'price' => (float) $service->price,
+            'pricePerHour' => (float) $service->price,
+            'rating' => (float) $service->rating,
+            'reviews' => (int) $service->reviews_count,
+            'bookingsCompleted' => (int) $service->bookings_completed,
+            'isActive' => (bool) $service->is_active,
+            'isPublished' => (bool) $service->is_active,
+            'responseTime' => $metadata['responseTime'] ?? null,
+            'specialties' => $metadata['specialties'] ?? [],
+            'availability' => [],
+            'servicePlans' => $metadata['servicePlans'] ?? [],
+            'allowCustomHourly' => (bool) ($metadata['allowCustomHourly'] ?? true),
+            'image' => $metadata['image'] ?? null,
+            'portfolio' => [],
+            'whatsappNumber' => $metadata['whatsappNumber'] ?? null,
+            'email' => $metadata['email'] ?? null,
+            'customTerms' => null,
+            'isArchived' => (bool) ($metadata['isArchived'] ?? false),
+            'publicCode' => $metadata['publicCode'] ?? null,
+            'providerBusinessName' => $provider?->business_name,
+            'providerRepresentative' => [
+                'type' => $providerType,
+                'name' => $providerRepresentativeName,
+                'documentType' => $providerDocumentType,
+                'documentNumber' => $providerDocumentNumber,
+            ],
+            'providerRepresentativeName' => $providerRepresentativeName,
+            'providerLegalEntityType' => $providerType,
+            'providerIdentificationNumber' => $providerDocumentNumber,
+            'metadata' => null,
+            'detailLoaded' => false,
+            'createdAt' => optional($service->created_at)?->toISOString(),
         ];
     }
 }

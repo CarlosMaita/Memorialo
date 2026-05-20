@@ -1560,7 +1560,7 @@ export default function App() {
       try {
         const sectionsData = await supabase.getHomeCollectionSections();
         if (!cancelled) {
-          setHomeCollectionSections(Array.isArray(sectionsData) ? sectionsData.map((s: any) => ({
+          const normalized = Array.isArray(sectionsData) ? sectionsData.map((s: any) => ({
             id: String(s.id),
             title: String(s.title || ''),
             subtitle: s.subtitle ?? null,
@@ -1568,7 +1568,16 @@ export default function App() {
             sortOrder: Number(s.sortOrder ?? 0),
             visible: Boolean(s.visible),
             collection: s.collection ?? null,
-          })) : []);
+          })) : [];
+          setHomeCollectionSections(normalized);
+          // Merge embedded services into artists state so they remain available
+          // even after marketplace state resets (e.g. on user login/logout).
+          const embeddedServices = normalized.flatMap((section) =>
+            Array.isArray(section.collection?.services) ? section.collection.services : []
+          );
+          if (embeddedServices.length > 0) {
+            setArtists((prev) => mergeArtistsById(prev, embeddedServices));
+          }
         }
       } catch {
         if (!cancelled) {
@@ -5123,12 +5132,30 @@ export default function App() {
                 {homeCollectionSections.filter((s) => s.visible).sort((a, b) => a.sortOrder - b.sortOrder).map((section) => {
                   const collectionFromState = collections.find((col) => col.id === section.collectionId);
                   const collectionFromEmbed = section.collection
-                    ? { ...section.collection, services: [], serviceIds: section.collection.serviceIds || [] } as any
+                    ? { ...section.collection, services: section.collection.services || [], serviceIds: section.collection.serviceIds || [] } as any
                     : null;
                   const sectionCollection = collectionFromState || collectionFromEmbed;
                   if (!sectionCollection) return null;
                   const sectionServices = sectionCollection.serviceIds
-                    .map((sid: string) => filteredArtists.find((a) => String(a.id) === sid) || null)
+                    .map((sid: string) => {
+                      // Primary: find in filtered marketplace artists (already moderation-checked)
+                      const fromMarketplace = filteredArtists.find((a) => String(a.id) === sid);
+                      if (fromMarketplace) return fromMarketplace;
+                      // Secondary: find in the embedded collection services (loaded with sections)
+                      const fromEmbed = sectionCollection.services?.find((s: any) => String(s.id) === sid);
+                      if (fromEmbed) return fromEmbed;
+                      // Fallback: find in full artists state (never reset, accumulates all loaded services)
+                      // Apply basic moderation checks; city filter is intentionally skipped for curated sections.
+                      const fromArtists = artists.find((a) => String(a.id) === sid);
+                      if (!fromArtists || fromArtists.isArchived || fromArtists.isPublished === false) return null;
+                      if (fromArtists.userId) {
+                        const serviceUser = allUsers.find((u) => u.id === fromArtists.userId);
+                        if (serviceUser?.banned || serviceUser?.archived) return null;
+                        const serviceProvider = providers.find((p) => p.userId === fromArtists.userId);
+                        if (serviceProvider?.banned) return null;
+                      }
+                      return fromArtists;
+                    })
                     .filter(Boolean) as typeof filteredArtists;
                   if (sectionServices.length === 0) return null;
                   return (
