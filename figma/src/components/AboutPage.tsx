@@ -21,6 +21,7 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
         title="Sobre Nosotros | Memorialo: Red de Proveedores de Eventos"
         description="Conoce Memorialo, la red de proveedores de eventos en Venezuela. Conectamos talento local con clientes para planificar celebraciones de forma fácil y segura."
         canonical="/sobre-nosotros"
+        rawTitle
       />
       {/* Hero Section */}
       <section className="relative overflow-hidden" style={{ backgroundColor: 'var(--navy-blue)' }}>

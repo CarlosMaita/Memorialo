@@ -9,6 +9,8 @@ interface SEOHeadProps {
   noindex?: boolean;
   structuredData?: object | object[];
   keywords?: string;
+  /** When true, use `title` as-is without appending ` | Memorialo` */
+  rawTitle?: boolean;
 }
 
 const SITE_NAME = 'Memorialo';
@@ -31,9 +33,17 @@ export function SEOHead({
   noindex = false,
   structuredData,
   keywords,
+  rawTitle = false,
 }: SEOHeadProps) {
   const effectiveNoindex = noindex || forceNoindexByEnv;
-  const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} - Marketplace de Servicios para Eventos`;
+  let fullTitle: string;
+  if (!title) {
+    fullTitle = `${SITE_NAME} - Marketplace de Servicios para Eventos`;
+  } else if (rawTitle) {
+    fullTitle = title;
+  } else {
+    fullTitle = `${title} | ${SITE_NAME}`;
+  }
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const canonicalUrl = canonical ? `${origin}${canonical}` : `${origin}${window.location.pathname}`;
 
