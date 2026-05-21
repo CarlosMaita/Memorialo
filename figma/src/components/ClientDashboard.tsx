@@ -114,7 +114,17 @@ export function ClientDashboard({
       return createdAt;
     }
 
-    return new Date(`${booking.date}T${booking.startTime || '00:00'}`).getTime();
+    const eventDate = new Date(`${booking.date}T${booking.startTime || '00:00'}`).getTime();
+    return Number.isNaN(eventDate) ? 0 : eventDate;
+  };
+
+  const formatBookingDate = (value: string, options: Intl.DateTimeFormatOptions) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return 'N/A';
+    }
+
+    return date.toLocaleDateString('es-ES', options);
   };
 
   const getBookingFilterStatus = (booking: any): 'en_negociacion' | 'pending' | 'confirmed' | 'completed' | 'cancelled' => {
@@ -440,7 +450,7 @@ export function ClientDashboard({
     const contractCode = booking.contractId ? String(booking.contractId).trim() : '';
     const compactContractCode = contractCode.length > 18 ? `${contractCode.slice(0, 8)}…${contractCode.slice(-4)}` : contractCode;
     const createdAtRaw = booking.createdAt || `${booking.date}T${booking.startTime || '00:00'}`;
-    const createdAtLabel = new Date(createdAtRaw).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    const createdAtLabel = formatBookingDate(createdAtRaw, { day: 'numeric', month: 'short', year: 'numeric' });
 
     return (
       <Card key={booking.id} className={`shadow-sm border-[#1B2A47] bg-white ${isFocused ? 'ring-2 ring-[#1B2A47]/20' : ''}`}>
@@ -480,7 +490,7 @@ export function ClientDashboard({
             <div className="text-xs text-gray-600">
               <p className="flex items-center gap-1 font-medium text-gray-700">
                 <Calendar className="w-3 h-3" />
-                {new Date(booking.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                {formatBookingDate(booking.date, { day: 'numeric', month: 'short' })}
               </p>
               <p className="mt-0.5 flex items-center gap-1">
                 <Clock className="w-3 h-3" />
