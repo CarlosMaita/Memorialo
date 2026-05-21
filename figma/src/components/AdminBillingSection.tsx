@@ -115,6 +115,7 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [closureDay, setClosureDay] = useState('1');
+  const [commissionRate, setCommissionRate] = useState('');
   const [billingModuleEnabled, setBillingModuleEnabled] = useState(true);
   const [savingConfig, setSavingConfig] = useState(false);
   const [savingModuleToggle, setSavingModuleToggle] = useState(false);
@@ -151,6 +152,7 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
       const data = await response.json() as BillingOverviewResponse;
       setOverview(data);
       setClosureDay(String(data.settings?.closureDay || 1));
+      setCommissionRate(String(data.settings?.commissionRate ?? ''));
       setBillingModuleEnabled(data.settings?.moduleEnabled !== false);
     } catch (err: any) {
       setError(err.message || 'No se pudo cargar la facturación administrativa');
@@ -187,8 +189,18 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
       return;
     }
 
+    const numericCommissionRate = Number(commissionRate);
+    if (commissionRate !== '' && (isNaN(numericCommissionRate) || numericCommissionRate < 0 || numericCommissionRate > 100)) {
+      toast.error('El porcentaje de facturación debe estar entre 0 y 100');
+      return;
+    }
+
     setSavingConfig(true);
     try {
+      const body: Record<string, unknown> = { closureDay: numericClosureDay };
+      if (commissionRate !== '') {
+        body.commissionRate = numericCommissionRate;
+      }
       const response = await fetch(`${API_BASE}/billing/admin/config`, {
         method: 'PATCH',
         headers: {
@@ -196,7 +208,7 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
           Authorization: `Bearer ${accessToken}`,
           Accept: 'application/json',
         },
-        body: JSON.stringify({ closureDay: numericClosureDay }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -204,7 +216,7 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
         throw new Error(data.error || `Error ${response.status}`);
       }
 
-      toast.success('Fecha de cierre actualizada');
+      toast.success('Configuración de facturación actualizada');
       await fetchOverview(selectedMonth === 'all' ? undefined : selectedMonth);
     } catch (err: any) {
       toast.error(err.message || 'No se pudo actualizar la configuración');
@@ -400,12 +412,16 @@ export function AdminBillingSection({ accessToken }: AdminBillingSectionProps) {
             <Label htmlFor="closureDay">Día de cierre</Label>
             <Input id="closureDay" type="number" min="1" max="28" value={closureDay} onChange={(event) => setClosureDay(event.target.value)} />
           </div>
+          <div className="w-full md:w-56 space-y-2">
+            <Label htmlFor="commissionRate">Porcentaje de facturación (%)</Label>
+            <Input id="commissionRate" type="number" min="0" max="100" step="0.01" placeholder="Ej. 10" value={commissionRate} onChange={(event) => setCommissionRate(event.target.value)} />
+          </div>
           <div className="text-sm text-gray-500 md:pb-2">
             Último mes cerrado: <span className="font-medium text-[#1B2A47]">{formatMonth(overview?.settings?.lastClosedMonth)}</span>
           </div>
           <Button onClick={handleSaveConfig} disabled={savingConfig} className="md:ml-auto">
             {savingConfig ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-            Guardar fecha de corte
+            Guardar configuración
           </Button>
         </CardContent>
       </Card>
