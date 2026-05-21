@@ -298,6 +298,7 @@ export function BusinessDashboard({
     allProviderServiceIds.has(contract.artistId) ||
     (contract.artistUserId && contract.artistUserId === user.id)
   );
+  const providerContractsById = new Map(providerContracts.map((contract) => [contract.id, contract]));
 
   // Get bookings for provider's services (robust matching)
   const providerBookings = bookings.filter(booking =>
@@ -374,7 +375,7 @@ export function BusinessDashboard({
 
   const filteredBookings = providerBookings
     .filter((booking) => {
-      const linkedContract = booking.contractId ? providerContracts.find((contract) => contract.id === booking.contractId) : null;
+      const linkedContract = booking.contractId ? providerContractsById.get(booking.contractId) : null;
       const bookingStatus = linkedContract?.status === 'en_negociacion'
         ? 'en_negociacion'
         : linkedContract?.status === 'pending_artist'
@@ -660,7 +661,7 @@ export function BusinessDashboard({
     onBookingUpdate(updatedBooking);
     
     if (status === 'completed' && booking.contractId) {
-      const contract = providerContracts.find(c => c.id === booking.contractId);
+      const contract = providerContractsById.get(booking.contractId);
       if (contract) {
         const updatedContract = { ...contract, status: 'completed' as const };
         onContractUpdate(updatedContract);
@@ -727,7 +728,7 @@ export function BusinessDashboard({
     onBookingUpdate(updatedBooking);
 
     if (editingBooking.contractId) {
-      const contract = providerContracts.find(c => c.id === editingBooking.contractId);
+      const contract = providerContractsById.get(editingBooking.contractId);
       if (contract) {
         const updatedContract: Contract = {
           ...contract,
@@ -748,13 +749,13 @@ export function BusinessDashboard({
 
   const hasContractPendingProvider = (booking: Booking) => {
     if (!booking.contractId) return false;
-    const contract = providerContracts.find(c => c.id === booking.contractId);
+    const contract = providerContractsById.get(booking.contractId);
     return contract?.status === 'pending_artist';
   };
 
   const getBookingContract = (booking: Booking) => {
     if (!booking.contractId) return null;
-    return providerContracts.find(c => c.id === booking.contractId) || null;
+    return providerContractsById.get(booking.contractId) || null;
   };
 
   const getStatusBadge = (status: string) => {
@@ -1678,7 +1679,7 @@ export function BusinessDashboard({
                   </div>
 
                   {visibleFilteredBookings.map((booking) => {
-                    const linkedContract = booking.contractId ? providerContracts.find((contract) => contract.id === booking.contractId) : null;
+                    const linkedContract = booking.contractId ? providerContractsById.get(booking.contractId) : null;
                     const isPendingProviderSignature = hasContractPendingProvider(booking);
                     const displayStatus = linkedContract?.status === 'en_negociacion'
                       ? 'en_negociacion'
@@ -1760,7 +1761,7 @@ export function BusinessDashboard({
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => {
-                                    const c = providerContracts.find(c => c.id === booking.contractId);
+                                    const c = booking.contractId ? providerContractsById.get(booking.contractId) : null;
                                     if (c) handleViewContract(c);
                                   }}
                                   className="h-7 w-7 p-0"
@@ -1774,7 +1775,7 @@ export function BusinessDashboard({
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => {
-                                    const c = providerContracts.find(c => c.id === booking.contractId);
+                                    const c = booking.contractId ? providerContractsById.get(booking.contractId) : null;
                                     if (c) handleDownloadContractPDF(c, booking.eventType);
                                   }}
                                   className="h-7 w-7 p-0"

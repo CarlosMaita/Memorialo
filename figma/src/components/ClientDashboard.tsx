@@ -138,7 +138,7 @@ export function ClientDashboard({
     return booking.status;
   };
 
-  const filteredUserBookings = userBookings.filter((booking: any) => {
+  const filteredUserBookingsBySearchAndStatus = userBookings.filter((booking: any) => {
     const status = getBookingFilterStatus(booking);
     if (bookingStatusFilter !== 'all' && status !== bookingStatusFilter) {
       return false;
@@ -152,7 +152,9 @@ export function ClientDashboard({
       .join(' ')
       .toLowerCase()
       .includes(q);
-  }).sort((a: any, b: any) => {
+  });
+
+  const filteredUserBookings = filteredUserBookingsBySearchAndStatus.sort((a: any, b: any) => {
     const aDate = getBookingTimestamp(a);
     const bDate = getBookingTimestamp(b);
     return bookingOrder === 'newest' ? bDate - aDate : aDate - bDate;
