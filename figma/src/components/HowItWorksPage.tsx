@@ -114,7 +114,7 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
                   <Search className="w-8 h-8" />
                 </div>
                 <div className="text-center">
-                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>1. Busca</h3>
+                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Paso 1: Busca por ciudad y categoría</h3>
                   <p className="text-sm text-gray-600">
                     Usa nuestros filtros por ubicación, categoría y presupuesto para encontrar el proveedor ideal.
                   </p>
@@ -131,7 +131,7 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
                   <Eye className="w-8 h-8" />
                 </div>
                 <div className="text-center">
-                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>2. Elige</h3>
+                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Paso 2: Compara perfiles y valoraciones</h3>
                   <p className="text-sm text-gray-600">
                     Revisa perfiles, precios, portafolios y reseñas de clientes anteriores para tomar la mejor decisión.
                   </p>
@@ -148,7 +148,7 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
                   <FileText className="w-8 h-8" />
                 </div>
                 <div className="text-center">
-                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>3. Contrata</h3>
+                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Paso 3: Solicita tu reserva con detalles</h3>
                   <p className="text-sm text-gray-600">
                     Completa el formulario de reserva y firma el contrato digital con todos los detalles del servicio.
                   </p>
@@ -165,7 +165,7 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
                   <CheckCircle className="w-8 h-8" />
                 </div>
                 <div className="text-center">
-                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>4. Confirma</h3>
+                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Paso 4: Confirma y coordina con el proveedor</h3>
                   <p className="text-sm text-gray-600">
                     El proveedor revisa y firma el contrato. ¡Tu reserva está confirmada y lista!
                   </p>
@@ -184,22 +184,22 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
                 <div className="flex gap-3">
                   <Calendar className="w-5 h-5 flex-shrink-0 mt-1" style={{ color: 'var(--gold)' }} />
                   <div>
-                    <h4 className="text-sm mb-1" style={{ color: 'var(--navy-blue)' }}>Organiza tus Eventos</h4>
-                    <p className="text-sm text-gray-600">Crea eventos y asigna múltiples servicios a cada uno</p>
+                    <h4 className="text-sm mb-1" style={{ color: 'var(--navy-blue)' }}>Chat interno unificado</h4>
+                    <p className="text-sm text-gray-600">Mantén toda la coordinación de tu reserva en un solo canal con el proveedor.</p>
                   </div>
                 </div>
                 <div className="flex gap-3">
                   <Shield className="w-5 h-5 flex-shrink-0 mt-1" style={{ color: 'var(--gold)' }} />
                   <div>
-                    <h4 className="text-sm mb-1" style={{ color: 'var(--navy-blue)' }}>Contratos Seguros</h4>
-                    <p className="text-sm text-gray-600">Todos los acuerdos quedan documentados y firmados digitalmente</p>
+                    <h4 className="text-sm mb-1" style={{ color: 'var(--navy-blue)' }}>Contratos digitales seguros</h4>
+                    <p className="text-sm text-gray-600">Todos los acuerdos quedan documentados y firmados digitalmente.</p>
                   </div>
                 </div>
                 <div className="flex gap-3">
                   <Star className="w-5 h-5 flex-shrink-0 mt-1" style={{ color: 'var(--gold)' }} />
                   <div>
-                    <h4 className="text-sm mb-1" style={{ color: 'var(--navy-blue)' }}>Reseñas Verificadas</h4>
-                    <p className="text-sm text-gray-600">Lee opiniones reales de otros clientes</p>
+                    <h4 className="text-sm mb-1" style={{ color: 'var(--navy-blue)' }}>Notificaciones en tiempo real</h4>
+                    <p className="text-sm text-gray-600">Recibe alertas al instante sobre respuestas, firmas y cambios en tu reserva.</p>
                   </div>
                 </div>
               </div>
