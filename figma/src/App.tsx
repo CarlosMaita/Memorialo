@@ -1660,17 +1660,8 @@ export default function App() {
     const register = (rawValue: string | undefined, target: TaxonomyTarget) => {
       const key = slugify(rawValue);
       if (!key) return;
-      if (!lookup.has(key)) {
-        lookup.set(key, target);
-      }
+      lookup.set(key, target);
     };
-
-    Object.entries(SERVICE_CATEGORIES).forEach(([category, entry]) => {
-      register(category, { label: entry.title, filterBy: 'category' });
-      entry.subcategories.forEach((subcategory) => {
-        register(subcategory, { label: subcategory, filterBy: 'subcategory' });
-      });
-    });
 
     artists.forEach((artist) => {
       if (artist.category) {
@@ -1681,6 +1672,13 @@ export default function App() {
       }
       artist.specialties?.forEach((specialty) => {
         register(specialty, { label: specialty, filterBy: 'subcategory' });
+      });
+    });
+
+    Object.entries(SERVICE_CATEGORIES).forEach(([category, entry]) => {
+      register(category, { label: entry.title, filterBy: 'category' });
+      entry.subcategories.forEach((subcategory) => {
+        register(subcategory, { label: subcategory, filterBy: 'subcategory' });
       });
     });
 
@@ -3970,8 +3968,8 @@ export default function App() {
   const matchedMainCategory = marketplaceRouteContext?.taxonomy?.filterBy === 'category'
     ? getMainCategoryConfig(marketplaceRouteContext.taxonomy.label)
     : null;
-  const homeCategoryHighlights = Object.entries(SERVICE_CATEGORIES).slice(0, 5).map(([categoryName, categoryConfig]) => {
-    const categoryLabel = categoryConfig.title || categoryName;
+  const homeCategoryHighlights = Object.entries(SERVICE_CATEGORIES).slice(0, 5).map(([, categoryConfig]) => {
+    const categoryLabel = categoryConfig.title;
 
     return {
       categoryName: categoryLabel,
