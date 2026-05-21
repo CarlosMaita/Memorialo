@@ -2420,6 +2420,7 @@ export default function App() {
 
     if (normalizedPath.startsWith('/mi-negocio')) {
       if (!currentUser) {
+        if (supabase.loading) return;
         setViewMode('client');
         setShowAuthDialog(true);
         return;
@@ -2462,6 +2463,7 @@ export default function App() {
 
     if (normalizedPath.startsWith('/me/')) {
       if (!currentUser) {
+        if (supabase.loading) return;
         setViewMode('client');
         setShowAuthDialog(true);
         return;
@@ -2492,7 +2494,7 @@ export default function App() {
 
       return;
     }
-  }, [currentRoute, currentUser]);
+  }, [currentRoute, currentUser, supabase.loading]);
 
   useEffect(() => {
     const normalizedPath = (currentRoute.split('?')[0] || '/').replace(/\/+$/, '') || '/';
