@@ -214,7 +214,7 @@ const searchCriteriaEquals = (left: SearchCriteria, right: SearchCriteria) => {
 };
 
 const buildLocalSeoDescription = (secondaryCategory: string) => {
-  return `¿Buscas ${secondaryCategory} para tu fiesta? Encuentra las mejores opciones y proveedores verificados en Venezuela a través de Memorialo. ¡Cotiza ya!`;
+  return `¿Buscas ${secondaryCategory} para tu evento? Encuentra las mejores opciones y proveedores verificados en Venezuela a través de Memorialo. ¡Cotiza ya!`;
 };
 
 export default function App() {
