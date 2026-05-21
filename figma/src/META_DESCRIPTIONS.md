@@ -37,7 +37,7 @@ Convierte tu evento en una experiencia inolvidable. Memorialo conecta clientes c
 
 ### Para Clientes (/para-clientes)
 ```
-Busca, compara y contrata proveedores para tu evento en un solo lugar. Músicos, fotógrafos, DJs, animadores y más. Precios transparentes y reseñas verificadas.
+Planifica tu celebración sin estrés. Encuentra espacios, banquetes, música y decoración en Venezuela. Compara presupuestos y contrata con total seguridad.
 ```
 
 ### Sobre Nosotros (/sobre-nosotros)
