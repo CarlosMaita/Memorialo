@@ -558,7 +558,7 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
                   </div>
                   <h4 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Soporte Continuo</h4>
                   <p className="text-sm text-gray-600">
-                    Nuestro equipo está disponible de 9:00 a.m. a 6:00 p.m. para ayudarte en cada paso
+                    Nuestro equipo está disponible de 9:00 a.m. a 6:00 p.m. (hora Venezuela, VET) para ayudarte en cada paso
                   </p>
                 </div>
               </div>
