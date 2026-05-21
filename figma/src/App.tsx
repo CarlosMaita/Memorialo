@@ -286,6 +286,7 @@ export default function App() {
   const [secondaryCtaBgGradient, setSecondaryCtaBgGradient] = useState('linear-gradient(135deg, #F7B267 0%, #F4A261 100%)');
   const [secondaryCtaBgImageUrl, setSecondaryCtaBgImageUrl] = useState('');
   const [secondaryCtaButtonColor, setSecondaryCtaButtonColor] = useState<'blue' | 'yellow'>('blue');
+  const [marketplaceConfigLoaded, setMarketplaceConfigLoaded] = useState(false);
 
   // Notifications (N2)
   const notificationsEnabled = ((import.meta as any).env?.VITE_NOTIFICATIONS_HEADER_ENABLED ?? 'true') !== 'false';
@@ -1524,6 +1525,10 @@ export default function App() {
         if (!cancelled) {
           setAllMarketplaceCities(VENEZUELAN_CITIES);
           setEnabledMarketplaceCities(VENEZUELAN_CITIES);
+        }
+      } finally {
+        if (!cancelled) {
+          setMarketplaceConfigLoaded(true);
         }
       }
     };
@@ -5210,40 +5215,40 @@ export default function App() {
                   );
                 })}
 
-                {secondaryCtaEnabled && (
-                <section
-                  className="rounded-2xl p-6 text-white"
-                  style={
-                    secondaryCtaBgType === 'solid'
-                      ? { backgroundColor: secondaryCtaBgColor }
-                      : secondaryCtaBgType === 'image' && /^https?:\/\//i.test(secondaryCtaBgImageUrl)
-                        ? { backgroundImage: `url(${secondaryCtaBgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
-                        : { background: secondaryCtaBgGradient || 'linear-gradient(135deg, #F7B267 0%, #F4A261 100%)' }
-                  }
-                >
-                  {secondaryCtaAccent && (
-                    <Badge asChild className="mb-3 bg-white/20 text-white border-white/30">
-                      <span>{secondaryCtaAccent}</span>
-                    </Badge>
-                  )}
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div>
-                      <h2 className="text-xl font-semibold mb-1 text-white">{secondaryCtaTitle}</h2>
-                      <p className="text-sm text-white/90">{secondaryCtaSubtitle}</p>
+                {marketplaceConfigLoaded && secondaryCtaEnabled && (
+                  <section
+                    className="rounded-2xl p-6 text-white"
+                    style={
+                      secondaryCtaBgType === 'solid'
+                        ? { backgroundColor: secondaryCtaBgColor }
+                        : secondaryCtaBgType === 'image' && /^https?:\/\//i.test(secondaryCtaBgImageUrl)
+                          ? { backgroundImage: `url(${secondaryCtaBgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
+                          : { background: secondaryCtaBgGradient || 'linear-gradient(135deg, #F7B267 0%, #F4A261 100%)' }
+                    }
+                  >
+                    {secondaryCtaAccent && (
+                      <Badge asChild className="mb-3 bg-white/20 text-white border-white/30">
+                        <span>{secondaryCtaAccent}</span>
+                      </Badge>
+                    )}
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                      <div>
+                        <h2 className="text-xl font-semibold mb-1 text-white">{secondaryCtaTitle}</h2>
+                        <p className="text-sm text-white/90">{secondaryCtaSubtitle}</p>
+                      </div>
+                      <Button
+                        onClick={() => handleMainContentButtonClick(secondaryCtaButtonLink)}
+                        style={
+                          secondaryCtaButtonColor === 'yellow'
+                            ? { backgroundColor: '#d4af37', color: '#0a1f44', borderColor: '#d4af37' }
+                            : { backgroundColor: '#0a1f44', color: '#ffffff', borderColor: '#0a1f44' }
+                        }
+                        className="shrink-0"
+                      >
+                        {secondaryCtaButtonText}
+                      </Button>
                     </div>
-                    <Button
-                      onClick={() => handleMainContentButtonClick(secondaryCtaButtonLink)}
-                      style={
-                        secondaryCtaButtonColor === 'yellow'
-                          ? { backgroundColor: '#d4af37', color: '#0a1f44', borderColor: '#d4af37' }
-                          : { backgroundColor: '#0a1f44', color: '#ffffff', borderColor: '#0a1f44' }
-                      }
-                      className="shrink-0"
-                    >
-                      {secondaryCtaButtonText}
-                    </Button>
-                  </div>
-                </section>
+                  </section>
                 )}
               </div>
             )}
