@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle, Users, TrendingUp, Shield, Clock, Star, Briefcase, Calendar, BarChart3, DollarSign, HeartHandshake, Music, X } from 'lucide-react';
+import { ArrowRight, CheckCircle, Users, Star, Briefcase, Calendar, BarChart3, HeartHandshake, Music, X, ClipboardCheck } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
@@ -98,32 +98,9 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
                 }}
                 onClick={onGetStarted}
               >
-                Comenzar Ahora Gratis
+                Solicitar ser Proveedor
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
-              <Button 
-                size="lg"
-                variant="outline"
-                className="border-white text-white hover:bg-white/10"
-              >
-                Ver Demo
-              </Button>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-8 mt-16 max-w-2xl mx-auto">
-              <div className="text-center">
-                <div className="text-white mb-2" style={{ fontSize: '2rem' }}>500+</div>
-                <div className="text-white/60 text-sm">Proveedores Activos</div>
-              </div>
-              <div className="text-center">
-                <div className="text-white mb-2" style={{ fontSize: '2rem' }}>2,000+</div>
-                <div className="text-white/60 text-sm">Eventos Realizados</div>
-              </div>
-              <div className="text-center">
-                <div className="text-white mb-2" style={{ fontSize: '2rem' }}>4.8★</div>
-                <div className="text-white/60 text-sm">Calificación Promedio</div>
-              </div>
             </div>
           </div>
         </div>
@@ -210,23 +187,6 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
               </CardContent>
             </Card>
 
-            {/* Benefit 5 */}
-            <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="p-6">
-                <div 
-                  className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
-                  style={{ backgroundColor: 'rgba(212, 175, 55, 0.15)' }}
-                >
-                  <DollarSign className="w-6 h-6" style={{ color: 'var(--gold)' }} />
-                </div>
-                <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Pagos Seguros</h3>
-                <p className="text-gray-600 text-sm">
-                  Recibe pagos de forma segura y rápida. Sistema de facturación 
-                  integrado y transparente.
-                </p>
-              </CardContent>
-            </Card>
-
             {/* Benefit 6 */}
             <Card className="border-0 shadow-lg hover:shadow-xl transition-shadow">
               <CardContent className="p-6">
@@ -277,10 +237,6 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
                     <li className="flex items-start gap-3">
                       <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
                       <span className="text-gray-700">Múltiples planes y paquetes de servicio</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: 'var(--gold)' }} />
-                      <span className="text-gray-700">Especialidades y certificaciones</span>
                     </li>
                   </ul>
                 </div>
@@ -346,10 +302,10 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
               Sencillo. Transparente. Diseñado para que crezcas.
             </h2>
             <p className="text-center text-gray-600 mb-12 text-lg">
-              Comenzar es fácil y rápido. En menos de 10 minutos estarás listo.
+              Para ser proveedor en Memorialo debes pasar por un proceso de revisión. Queremos garantizar la calidad de nuestra plataforma.
             </p>
 
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               <div className="text-center">
                 <div 
                   className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
@@ -359,7 +315,7 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
                 </div>
                 <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Regístrate</h3>
                 <p className="text-gray-600 text-sm">
-                  Crea tu cuenta gratis en minutos. Solo necesitas tu email.
+                  Crea tu cuenta gratuita con tu email.
                 </p>
               </div>
 
@@ -370,9 +326,9 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
                 >
                   <span className="text-2xl">2</span>
                 </div>
-                <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Configura tu Perfil</h3>
+                <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Solicita ser Proveedor</h3>
                 <p className="text-gray-600 text-sm">
-                  Añade fotos, servicios y precios. Muestra lo mejor de tu trabajo.
+                  En <strong>Mi Perfil</strong>, envía tu solicitud para ser proveedor con la información de tu negocio.
                 </p>
               </div>
 
@@ -383,11 +339,31 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
                 >
                   <span className="text-2xl">3</span>
                 </div>
-                <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Recibe Reservas</h3>
+                <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Proceso de Revisión</h3>
                 <p className="text-gray-600 text-sm">
-                  Los clientes te encuentran y reservan. Tú solo gestiona las solicitudes.
+                  Nuestro equipo revisará tu solicitud y realizará un proceso de conocimiento de tu negocio para aprobar tu cuenta.
                 </p>
               </div>
+
+              <div className="text-center">
+                <div 
+                  className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                  style={{ backgroundColor: 'var(--navy-blue)', color: 'white' }}
+                >
+                  <span className="text-2xl">4</span>
+                </div>
+                <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Recibe Reservas</h3>
+                <p className="text-gray-600 text-sm">
+                  Una vez aprobado, configura tu perfil y empieza a recibir clientes.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-10 rounded-lg p-6 text-center" style={{ backgroundColor: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.3)' }}>
+              <ClipboardCheck className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--gold)' }} />
+              <p className="text-gray-700 font-medium">
+                El proceso de aprobación puede tomar algunos días hábiles. Nos aseguramos de conocer tu negocio antes de darte acceso como proveedor.
+              </p>
             </div>
           </div>
         </div>
@@ -440,7 +416,7 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
               ¿Listo para hacer crecer tu negocio?
             </h2>
             <p className="text-xl text-white/80 mb-8">
-              Únete a cientos de proveedores que ya están aumentando sus ingresos con Memorialo
+              Regístrate, envía tu solicitud desde <strong className="text-white">Mi Perfil</strong> y nuestro equipo estará en contacto contigo para conocer tu negocio.
             </p>
             <Button 
               size="lg"
@@ -450,11 +426,11 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
               }}
               onClick={onGetStarted}
             >
-              Comenzar Ahora - Es Gratis
+              Solicitar ser Proveedor
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
             <p className="text-white/60 text-sm mt-4">
-              Sin costos iniciales • Sin comisiones ocultas • Cancela cuando quieras
+              Sin costos iniciales • Sujeto a proceso de aprobación
             </p>
           </div>
         </div>
