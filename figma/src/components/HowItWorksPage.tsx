@@ -2,6 +2,7 @@ import { ArrowRight, Search, FileText, CheckCircle, Calendar, Users, CreditCard,
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
+import { SEOHead } from './SEOHead';
 
 interface HowItWorksPageProps {
   onClose: () => void;
@@ -10,9 +11,15 @@ interface HowItWorksPageProps {
 
 export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: 'var(--cream-white)' }}>
-      {/* Header */}
-      <div className="sticky top-0 z-10 shadow-sm" style={{ backgroundColor: 'var(--navy-blue)' }}>
+    <>
+      <SEOHead
+        title="Cómo Funciona Memorialo | Contrata Servicios para Eventos"
+        description="Descubre cómo reservar proveedores para tu evento en 4 pasos simples. Busca, compara perfiles, solicita tu presupuesto y coordina de forma segura."
+        canonical="/como-funciona"
+      />
+      <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: 'var(--cream-white)' }}>
+        {/* Header */}
+        <div className="sticky top-0 z-10 shadow-sm" style={{ backgroundColor: 'var(--navy-blue)' }}>
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -588,7 +595,8 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
             </Button>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
