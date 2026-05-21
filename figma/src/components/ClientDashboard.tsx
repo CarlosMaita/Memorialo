@@ -78,6 +78,8 @@ export function ClientDashboard({
   const [searchBooking, setSearchBooking] = useState('');
   const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
   const [showEventBookings, setShowEventBookings] = useState(false);
+  const [bookingStatusFilter, setBookingStatusFilter] = useState<'all' | 'en_negociacion' | 'pending' | 'confirmed' | 'completed'>('all');
+  const [bookingOrder, setBookingOrder] = useState<'newest' | 'oldest'>('newest');
 
   const getMeasureType = (contract: any): 'time' | 'unit' => {
     if (contract?.metadata?.saleType === 'unit' || contract?.terms?.measureType === 'unit') {
@@ -106,20 +108,56 @@ export function ClientDashboard({
   // Filter contracts for current user
   const userContracts = contracts.filter(c => c.clientId === user.id);
   const userBookings = bookings.filter((booking: any) => booking.userId === user.id);
-  const sortedUserBookings = [...userBookings].sort((a: any, b: any) => {
-    const aDate = new Date(`${a.date}T${a.startTime || '00:00'}`).getTime();
-    const bDate = new Date(`${b.date}T${b.startTime || '00:00'}`).getTime();
-    return bDate - aDate;
-  });
-  const filteredUserBookings = sortedUserBookings.filter((booking: any) => {
+  const getBookingTimestamp = (booking: any) => {
+    const createdAt = booking.createdAt ? new Date(booking.createdAt).getTime() : NaN;
+    if (!Number.isNaN(createdAt)) {
+      return createdAt;
+    }
+
+    const eventDate = new Date(`${booking.date}T${booking.startTime || '00:00'}`).getTime();
+    return Number.isNaN(eventDate) ? 0 : eventDate;
+  };
+
+  const formatBookingDate = (value: string, options: Intl.DateTimeFormatOptions) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return 'N/A';
+    }
+
+    return date.toLocaleDateString('es-ES', options);
+  };
+
+  const getBookingFilterStatus = (booking: any): 'en_negociacion' | 'pending' | 'confirmed' | 'completed' | 'cancelled' => {
+    const linkedContract = booking.contractId
+      ? userContracts.find((contract) => contract.id === booking.contractId)
+      : null;
+    if (linkedContract?.status === 'en_negociacion') {
+      return 'en_negociacion';
+    }
+
+    return booking.status;
+  };
+
+  const filteredUserBookingsBySearchAndStatus = userBookings.filter((booking: any) => {
+    const status = getBookingFilterStatus(booking);
+    if (bookingStatusFilter !== 'all' && status !== bookingStatusFilter) {
+      return false;
+    }
+
     const q = searchBooking.trim().toLowerCase();
     if (!q) return true;
 
-    return [booking.artistName, booking.eventType, booking.location]
+    return [booking.artistName, booking.eventType, booking.location, booking.contractId]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()
       .includes(q);
+  });
+
+  const filteredUserBookings = filteredUserBookingsBySearchAndStatus.sort((a: any, b: any) => {
+    const aDate = getBookingTimestamp(a);
+    const bDate = getBookingTimestamp(b);
+    return bookingOrder === 'newest' ? bDate - aDate : aDate - bDate;
   });
   const allUserEvents = events.filter(e => e.userId === user.id);
   const userEvents = showArchived
@@ -302,8 +340,14 @@ export function ClientDashboard({
     }));
   };
 
+  const handleRequestBookingDateEdit = (booking: any) => {
+    handleStartChatFromBooking(booking.id);
+  };
+
   const getBookingStatusText = (status: string) => {
     switch (status) {
+      case 'en_negociacion':
+        return 'En negociación';
       case 'pending':
         return 'Pendiente';
       case 'confirmed':
@@ -319,6 +363,8 @@ export function ClientDashboard({
 
   const getBookingStatusBadgeClass = (status: string) => {
     switch (status) {
+      case 'en_negociacion':
+        return 'bg-blue-50 text-blue-700 border-blue-300';
       case 'pending':
         return 'bg-yellow-50 text-yellow-700 border-yellow-300';
       case 'confirmed':
@@ -334,6 +380,8 @@ export function ClientDashboard({
 
   const getBookingStatusIcon = (status: string) => {
     switch (status) {
+      case 'en_negociacion':
+        return <Clock className="w-3 h-3" />;
       case 'pending':
         return <Clock className="w-3 h-3" />;
       case 'confirmed':
@@ -396,15 +444,18 @@ export function ClientDashboard({
   };
 
   const renderBookingRow = (booking: any) => {
-    const isExpanded = expandedBookingId === booking.id;
+    const isFocused = expandedBookingId === booking.id;
     const linkedContract = getBookingContract(booking);
+    const displayStatus = linkedContract?.status === 'en_negociacion' ? 'en_negociacion' : booking.status;
     const canLeaveReview = Boolean(linkedContract && canReview(linkedContract) && !hasReviewed(linkedContract.id));
     const canDownloadContract = Boolean(linkedContract && booking.contractId);
     const contractCode = booking.contractId ? String(booking.contractId).trim() : '';
     const compactContractCode = contractCode.length > 18 ? `${contractCode.slice(0, 8)}…${contractCode.slice(-4)}` : contractCode;
+    const createdAtRaw = booking.createdAt || `${booking.date}T${booking.startTime || '00:00'}`;
+    const createdAtLabel = formatBookingDate(createdAtRaw, { day: 'numeric', month: 'short', year: 'numeric' });
 
     return (
-      <Card key={booking.id} className={`shadow-sm ${booking.status === 'pending' ? 'border-yellow-200 bg-yellow-50/40' : 'border-slate-200'}`}>
+      <Card key={booking.id} className={`shadow-sm border-[#1B2A47] bg-white ${isFocused ? 'ring-2 ring-[#1B2A47]/20' : ''}`}>
         <CardContent className="px-3 py-2.5">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_130px_140px_90px_auto] md:items-center">
             <div className="min-w-0">
@@ -420,6 +471,7 @@ export function ClientDashboard({
                 {booking.eventType || 'Evento'}
                 {booking.location ? ` · ${booking.location}` : ''}
               </p>
+              <p className="mt-0.5 text-[11px] text-gray-400">Creada: {createdAtLabel}</p>
             </div>
 
             <div className="min-w-0">
@@ -440,7 +492,7 @@ export function ClientDashboard({
             <div className="text-xs text-gray-600">
               <p className="flex items-center gap-1 font-medium text-gray-700">
                 <Calendar className="w-3 h-3" />
-                {new Date(booking.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                {formatBookingDate(booking.date, { day: 'numeric', month: 'short' })}
               </p>
               <p className="mt-0.5 flex items-center gap-1">
                 <Clock className="w-3 h-3" />
@@ -450,8 +502,8 @@ export function ClientDashboard({
 
             <div>
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400 md:hidden">Estado</p>
-              <Badge variant="outline" className={`${getBookingStatusBadgeClass(booking.status)} text-xs`}>
-                <span className="flex items-center gap-1">{getBookingStatusIcon(booking.status)}{getBookingStatusText(booking.status)}</span>
+              <Badge variant="outline" className={`${getBookingStatusBadgeClass(displayStatus)} text-xs`}>
+                <span className="flex items-center gap-1">{getBookingStatusIcon(displayStatus)}{getBookingStatusText(displayStatus)}</span>
               </Badge>
             </div>
 
@@ -492,6 +544,17 @@ export function ClientDashboard({
               >
                 <MessageCircle className="w-4 h-4 text-gray-700" />
               </Button>
+              {(displayStatus === 'pending' || displayStatus === 'en_negociacion') && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleRequestBookingDateEdit(booking)}
+                  className="h-7 w-7 p-0"
+                  title="Negociar fecha/hora"
+                >
+                  <Edit2 className="w-4 h-4 text-gray-700" />
+                </Button>
+              )}
               {canLeaveReview && linkedContract && (
                 <Button
                   size="sm"
@@ -503,57 +566,8 @@ export function ClientDashboard({
                   <Star className="w-4 h-4" />
                 </Button>
               )}
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setExpandedBookingId(isExpanded ? null : booking.id)}
-                className="h-7 w-7 p-0"
-                title={isExpanded ? 'Ocultar detalles' : 'Mostrar detalles'}
-              >
-                {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-700" /> : <ChevronDown className="w-4 h-4 text-gray-700" />}
-              </Button>
             </div>
           </div>
-
-          {isExpanded && (
-            <div className="mt-3 space-y-3 border-t border-slate-100 pt-3">
-              <div className="grid grid-cols-2 gap-2 text-xs md:grid-cols-3">
-                <div><p className="text-gray-400">Fecha</p><p className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(booking.date).toLocaleDateString('es-ES')}</p></div>
-                <div><p className="text-gray-400">Hora</p><p className="flex items-center gap-1"><Clock className="w-3 h-3" />{booking.startTime || 'N/A'}</p></div>
-                <div><p className="text-gray-400">Duración</p><p>{getMeasureLabel(booking, booking.duration)}</p></div>
-                <div><p className="text-gray-400">Ubicación</p><p className="truncate">{booking.location}</p></div>
-                <div><p className="text-gray-400">Precio</p><p className="text-green-600">${booking.totalPrice}</p></div>
-                <div><p className="text-gray-400">Contrato</p><p className="truncate">{contractCode || 'Sin contrato'}</p></div>
-              </div>
-
-              {linkedContract && (
-                <div>
-                  <Label className="mb-1 block text-xs text-gray-500">Asignar a Evento</Label>
-                  <Select
-                    value={linkedContract.eventId || 'none'}
-                    onValueChange={(value) => onAssignContractToEvent(linkedContract.id, value === 'none' ? null : value)}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Sin asignar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sin asignar</SelectItem>
-                      {userEvents.map(event => (
-                        <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {booking.specialRequests && (
-                <div>
-                  <p className="mb-1 text-xs text-gray-400">Solicitud adicional</p>
-                  <p className="text-sm text-gray-700">{booking.specialRequests}</p>
-                </div>
-              )}
-            </div>
-          )}
         </CardContent>
       </Card>
     );
@@ -1056,12 +1070,33 @@ export function ClientDashboard({
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#D4AF37' }} />
                     <Input
                       type="text"
-                      placeholder="Buscar por nombre de proveedor..."
+                      placeholder="Buscar por proveedor o contrato..."
                       value={searchBooking}
                       onChange={(e) => setSearchBooking(e.target.value)}
                       className="h-10 pl-10 border-2 border-gray-200 focus:border-[#D4AF37]"
                     />
                   </div>
+                  <Select value={bookingStatusFilter} onValueChange={(value: 'all' | 'en_negociacion' | 'pending' | 'confirmed' | 'completed') => setBookingStatusFilter(value)}>
+                    <SelectTrigger className="w-full md:w-[210px]">
+                      <SelectValue placeholder="Filtrar por estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="en_negociacion">En negociación</SelectItem>
+                      <SelectItem value="pending">Pendientes</SelectItem>
+                      <SelectItem value="confirmed">Aprobados</SelectItem>
+                      <SelectItem value="completed">Completados</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={bookingOrder} onValueChange={(value: 'newest' | 'oldest') => setBookingOrder(value)}>
+                    <SelectTrigger className="w-full md:w-[210px]">
+                      <SelectValue placeholder="Ordenar por creación" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">Creación: más recientes</SelectItem>
+                      <SelectItem value="oldest">Creación: menos recientes</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <div className="flex items-center gap-3 bg-white border rounded-lg px-3 py-2">
                     <span className="text-xs text-gray-600">Sin evento</span>
                     <Switch checked={showEventBookings} onCheckedChange={setShowEventBookings} />
@@ -1105,7 +1140,7 @@ export function ClientDashboard({
                   <div className="hidden md:grid grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_130px_140px_90px_auto] gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                     <span>Proveedor / detalle</span>
                     <span>Contrato</span>
-                    <span>Fecha</span>
+                    <span>Fecha de evento</span>
                     <span>Estado</span>
                     <span>Total</span>
                     <span className="text-right">Opciones</span>
