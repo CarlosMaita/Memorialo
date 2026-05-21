@@ -795,6 +795,18 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
                     )}
                     {!loading && messages.map(message => {
                       const mine = message.authorUserId === String(user.id);
+                      const isSystem = !!message.body && CONTRACT_CHAT_LINK_TOKEN_REGEX.test(message.body);
+
+                      if (isSystem) {
+                        return (
+                          <div key={message.id} className="flex justify-center py-0.5 lg:py-1">
+                            <div className="max-w-[85%] rounded-2xl bg-gray-100 px-3 py-1.5 text-center text-[10px] text-gray-500 lg:max-w-[75%] lg:px-4 lg:py-2 lg:text-[12px]">
+                              {message.body && renderMessageBody(message.body, false)}
+                            </div>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div key={message.id} className={`flex min-w-0 ${mine ? 'justify-end' : 'justify-start'}`}>
                           <div className={`max-w-[88%] overflow-hidden rounded-xl px-2.5 py-1.5 text-[12px] lg:max-w-[78%] lg:rounded-2xl lg:px-4 lg:py-3 lg:text-[15px] ${mine ? 'bg-[#1B2A47] text-white' : 'bg-gray-100 text-gray-800'}`}>
