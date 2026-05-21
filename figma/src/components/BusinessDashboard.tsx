@@ -78,11 +78,11 @@ interface BusinessDashboardProps {
 }
 
 const categories = [
-  'Espacios y Locaciones',
-  'Talento y Entretenimiento',
-  'Gastronomía y Servicios',
-  'Ambientación y Decoración',
-  'Detalles y Logística'
+  'Espacios Y Locaciones',
+  'Talento Y Entretenimiento',
+  'Gastronomía Y Servicios',
+  'Ambientación Y Decoración',
+  'Detalles Y Logística'
 ];
 
 type SidebarSection = 'dashboard' | 'settings' | 'services' | 'contracts' | 'bookings' | 'billing';

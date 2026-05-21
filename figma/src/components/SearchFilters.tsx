@@ -20,11 +20,11 @@ interface SearchFiltersProps {
 
 const categories = [
   'Todos',
-  'Espacios y Locaciones',
-  'Talento y Entretenimiento',
-  'Gastronomía y Servicios',
-  'Ambientación y Decoración',
-  'Detalles y Logística'
+  'Espacios Y Locaciones',
+  'Talento Y Entretenimiento',
+  'Gastronomía Y Servicios',
+  'Ambientación Y Decoración',
+  'Detalles Y Logística'
 ];
 
 export function SearchFilters({
