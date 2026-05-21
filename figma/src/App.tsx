@@ -37,6 +37,7 @@ import { ProviderNegotiationPage } from './components/ProviderNegotiationPage';
 import { BannerCarousel } from './components/BannerCarousel';
 import { SEOHead, buildMarketplaceStructuredData } from './components/SEOHead';
 import { Button } from './components/ui/button';
+import { Skeleton } from './components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
 import { Badge } from './components/ui/badge';
 import { Toaster } from './components/ui/sonner';
@@ -3990,6 +3991,7 @@ export default function App() {
   const displayedArtists = useMemo(() => {
     return visibleArtists.slice(0, homeVisibleCount);
   }, [visibleArtists, homeVisibleCount]);
+  const shouldShowMarketplaceSkeleton = !isHomePageRoute && !isFavoritesRoute && marketplaceLoading && marketplacePage === 1 && marketplaceArtists.length === 0;
 
   useEffect(() => {
     setHomeVisibleCount(HOME_INITIAL_ITEMS);
@@ -5300,80 +5302,109 @@ export default function App() {
                     </h2>
                   </div>
 
-                  <AirbnbSearchBar
-                    onSearch={handleSearchCriteriaChange}
-                    searchCriteria={searchCriteria}
-                    availableCities={enabledMarketplaceCities}
-                  />
+                  {shouldShowMarketplaceSkeleton ? (
+                    <div className="bg-white rounded-full shadow-lg border border-gray-100 p-2 md:p-0 md:grid md:grid-cols-[1fr_1fr_1fr_auto]">
+                      <Skeleton className="h-14 rounded-full md:rounded-none md:rounded-l-full" />
+                      <Skeleton className="hidden md:block h-14 rounded-none" />
+                      <Skeleton className="hidden md:block h-14 rounded-none" />
+                      <Skeleton className="hidden md:block h-14 w-14 rounded-full m-2" />
+                    </div>
+                  ) : (
+                    <AirbnbSearchBar
+                      onSearch={handleSearchCriteriaChange}
+                      searchCriteria={searchCriteria}
+                      availableCities={enabledMarketplaceCities}
+                    />
+                  )}
                 </div>
 
                 {/* Results & Sort */}
-                <div className="mb-3 md:mb-4 flex flex-col-reverse md:flex-row items-start md:items-center justify-between gap-2 md:gap-3">
-                  <p className="text-gray-600 text-xs md:text-base leading-tight">
-                    Mostrando {displayedArtists.length} de {(isFavoritesRoute ? visibleArtists.length : Math.max(marketplaceTotal, visibleArtists.length))} servicio{(isFavoritesRoute ? visibleArtists.length : Math.max(marketplaceTotal, visibleArtists.length)) !== 1 ? 's' : ''} encontrado{(isFavoritesRoute ? visibleArtists.length : Math.max(marketplaceTotal, visibleArtists.length)) !== 1 ? 's' : ''}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Ordenar por:</span>
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gold/50"
-                    >
-                      <option value="rating">Mejor Calificación</option>
-                      <option value="price-low">Menor Precio</option>
-                      <option value="price-high">Mayor Precio</option>
-                      <option value="reviews">Más Reseñas</option>
-                    </select>
-                  </div>
-                </div>
-
-                {isFavoritesRoute && !currentUser && (
-                  <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 text-sm">
-                    Debes iniciar sesión para ver tus favoritos.
-                  </div>
-                )}
-
-                {/* Artist Grid */}
-                {visibleArtists.length > 0 ? (
+                {shouldShowMarketplaceSkeleton ? (
                   <>
+                    <div className="mb-3 md:mb-4 flex flex-col-reverse md:flex-row items-start md:items-center justify-between gap-2 md:gap-3">
+                      <Skeleton className="h-4 w-56" />
+                      <Skeleton className="h-9 w-44 rounded-lg" />
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-2 md:gap-y-3">
-                      {displayedArtists.map((artist) => (
-                        <ArtistCard
-                          key={artist.id}
-                          artist={artist}
-                          onViewProfile={handleViewProfile}
-                        />
+                      {Array.from({ length: 8 }).map((_, index) => (
+                        <div key={`marketplace-service-skeleton-${index}`} className="rounded-[12px] bg-white border border-gray-200 shadow-sm overflow-hidden">
+                          <Skeleton className="h-44 w-full rounded-none" />
+                          <div className="p-3 space-y-2">
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-3 w-1/2" />
+                          </div>
+                        </div>
                       ))}
                     </div>
-                    {(displayedArtists.length < visibleArtists.length || (!isFavoritesRoute && marketplaceHasMore)) && (
-                      <div ref={loadMoreSentinelRef} className="h-14 flex items-center justify-center text-sm text-gray-500">
-                        {marketplaceLoading ? 'Cargando más servicios...' : 'Desplázate para cargar más servicios'}
-                      </div>
-                    )}
                   </>
                 ) : (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500">
-                      {isFavoritesRoute
-                        ? 'No tienes servicios favoritos que coincidan con tus criterios'
-                        : 'No se encontraron proveedores que coincidan con tus criterios'}
+                  <div className="mb-3 md:mb-4 flex flex-col-reverse md:flex-row items-start md:items-center justify-between gap-2 md:gap-3">
+                    <p className="text-gray-600 text-xs md:text-base leading-tight">
+                      Mostrando {displayedArtists.length} de {(isFavoritesRoute ? visibleArtists.length : Math.max(marketplaceTotal, visibleArtists.length))} servicio{(isFavoritesRoute ? visibleArtists.length : Math.max(marketplaceTotal, visibleArtists.length)) !== 1 ? 's' : ''} encontrado{(isFavoritesRoute ? visibleArtists.length : Math.max(marketplaceTotal, visibleArtists.length)) !== 1 ? 's' : ''}
                     </p>
-                    <Button
-                      variant="outline"
-                      className="mt-4"
-                      onClick={() => {
-                        handleSearchCriteriaChange({
-                          query: '',
-                          city: '',
-                          category: '',
-                          subcategory: '',
-                          priceRange: [0, 5000]
-                        });
-                      }}
-                    >
-                      Restablecer Filtros
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Ordenar por:</span>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gold/50"
+                      >
+                        <option value="rating">Mejor Calificación</option>
+                        <option value="price-low">Menor Precio</option>
+                        <option value="price-high">Mayor Precio</option>
+                        <option value="reviews">Más Reseñas</option>
+                      </select>
+                    </div>
                   </div>
+
+                  {isFavoritesRoute && !currentUser && (
+                    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 text-sm">
+                      Debes iniciar sesión para ver tus favoritos.
+                    </div>
+                  )}
+
+                  {/* Artist Grid */}
+                  {visibleArtists.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-2 md:gap-y-3">
+                        {displayedArtists.map((artist) => (
+                          <ArtistCard
+                            key={artist.id}
+                            artist={artist}
+                            onViewProfile={handleViewProfile}
+                          />
+                        ))}
+                      </div>
+                      {(displayedArtists.length < visibleArtists.length || (!isFavoritesRoute && marketplaceHasMore)) && (
+                        <div ref={loadMoreSentinelRef} className="h-14 flex items-center justify-center text-sm text-gray-500">
+                          {marketplaceLoading ? 'Cargando más servicios...' : 'Desplázate para cargar más servicios'}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500">
+                        {isFavoritesRoute
+                          ? 'No tienes servicios favoritos que coincidan con tus criterios'
+                          : 'No se encontraron proveedores que coincidan con tus criterios'}
+                      </p>
+                      <Button
+                        variant="outline"
+                        className="mt-4"
+                        onClick={() => {
+                          handleSearchCriteriaChange({
+                            query: '',
+                            city: '',
+                            category: '',
+                            subcategory: '',
+                            priceRange: [0, 5000]
+                          });
+                        }}
+                      >
+                        Restablecer Filtros
+                      </Button>
+                    </div>
+                  )}
                 )}
               </>
                 )}
