@@ -107,6 +107,8 @@ type MarketplaceRouteContext = {
   canonicalPath: string;
 };
 
+const SEO_LOCALE = 'es-VE';
+
 type HomeListingSnapshot = {
   path: string;
   searchCriteria: SearchCriteria;
@@ -164,14 +166,14 @@ const getMainCategoryTitleBySubcategory = (label?: string | null) => {
   ))?.title ?? null;
 };
 
-const ucfirst = (value?: string | null) => {
+const capitalizeFirst = (value?: string | null) => {
   const normalized = (value || '').trim();
 
   if (!normalized) {
     return '';
   }
 
-  return normalized.charAt(0).toLocaleUpperCase('es-VE') + normalized.slice(1);
+  return normalized.charAt(0).toLocaleUpperCase(SEO_LOCALE) + normalized.slice(1);
 };
 
 type BookingConfirmationState = {
@@ -221,6 +223,10 @@ const searchCriteriaEquals = (left: SearchCriteria, right: SearchCriteria) => {
     left.priceRange[0] === right.priceRange[0] &&
     left.priceRange[1] === right.priceRange[1]
   );
+};
+
+const buildLocalSeoDescription = (secondaryCategory: string, city: string, mainCategory: string) => {
+  return `¿Buscas ${secondaryCategory.toLocaleLowerCase(SEO_LOCALE)} en ${city}? Encuentra las mejores opciones de ${mainCategory.toLocaleLowerCase(SEO_LOCALE)} para tu fiesta o evento. ¡Cotiza y reserva de forma segura!`;
 };
 
 export default function App() {
@@ -4038,26 +4044,28 @@ export default function App() {
         ? `Proveedores en ${marketplaceRouteContext.city}`
         : `Proveedores de ${marketplaceRouteContext.taxonomy?.label}`
     : (isFavoritesRoute ? 'Tus Favoritos' : 'Tu Evento Inolvidable Empieza Aquí');
-  const seoCity = ucfirst(marketplaceRouteContext?.city);
+  const seoCity = capitalizeFirst(marketplaceRouteContext?.city);
   const seoSecondaryCategory = marketplaceRouteContext?.taxonomy?.filterBy === 'subcategory'
-    ? ucfirst(marketplaceRouteContext.taxonomy.label)
+    ? capitalizeFirst(marketplaceRouteContext.taxonomy.label)
     : '';
   const seoMainCategory = seoSecondaryCategory
     ? getMainCategoryTitleBySubcategory(marketplaceRouteContext?.taxonomy?.label)
     : null;
   const hasSecondaryCategorySeoTemplate = Boolean(seoSecondaryCategory && seoCity && seoMainCategory);
+  const localSeoDescription = hasSecondaryCategorySeoTemplate && seoMainCategory
+    ? buildLocalSeoDescription(seoSecondaryCategory, seoCity, seoMainCategory)
+    : null;
   const marketplaceSeoTitle = marketplaceRouteContext
     ? hasSecondaryCategorySeoTemplate
       ? `${seoSecondaryCategory} para Eventos en ${seoCity} | Memorialo`
       : matchedMainCategory?.metaTitle || marketplaceHeading
     : undefined;
   const marketplaceSeoDescription = marketplaceRouteContext
-    ? hasSecondaryCategorySeoTemplate
-      ? `¿Buscas ${seoSecondaryCategory.toLocaleLowerCase('es-VE')} en ${seoCity}? Encuentra las mejores opciones de ${(seoMainCategory || '').toLocaleLowerCase('es-VE')} para tu fiesta o evento. ¡Cotiza y reserva de forma segura!`
-      : matchedMainCategory?.metaDescription
-        || (marketplaceRouteContext.taxonomy
-          ? `Explora ${marketplaceRouteContext.taxonomy.label} en Memorialo. Compara proveedores, precios y disponibilidad para tu próximo evento en Venezuela.`
-          : HOME_SEO_DESCRIPTION)
+    ? localSeoDescription
+      || matchedMainCategory?.metaDescription
+      || (marketplaceRouteContext.taxonomy
+        ? `Explora ${marketplaceRouteContext.taxonomy.label} en Memorialo. Compara proveedores, precios y disponibilidad para tu próximo evento en Venezuela.`
+        : HOME_SEO_DESCRIPTION)
     : undefined;
 
   const visibleArtists = useMemo(() => {
