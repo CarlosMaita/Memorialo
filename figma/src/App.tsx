@@ -154,18 +154,6 @@ const getMainCategoryConfig = (label?: string | null) => {
   ))?.[1] ?? null;
 };
 
-const getMainCategoryTitleBySubcategory = (label?: string | null) => {
-  const normalizedLabel = slugifyCategoryLabel(label);
-
-  if (!normalizedLabel) {
-    return null;
-  }
-
-  return Object.values(SERVICE_CATEGORIES).find((categoryConfig) => (
-    categoryConfig.subcategories.some((subcategory) => slugifyCategoryLabel(subcategory) === normalizedLabel)
-  ))?.title ?? null;
-};
-
 const capitalizeFirst = (value?: string | null) => {
   const normalized = (value || '').trim();
 
@@ -225,8 +213,8 @@ const searchCriteriaEquals = (left: SearchCriteria, right: SearchCriteria) => {
   );
 };
 
-const buildLocalSeoDescription = (secondaryCategory: string, city: string, mainCategory: string) => {
-  return `¿Buscas ${secondaryCategory.toLocaleLowerCase(SEO_LOCALE)} en ${city}? Encuentra las mejores opciones de ${mainCategory.toLocaleLowerCase(SEO_LOCALE)} para tu fiesta o evento. ¡Cotiza y reserva de forma segura!`;
+const buildLocalSeoDescription = (secondaryCategory: string) => {
+  return `¿Buscas ${secondaryCategory} para tu evento? Encuentra las mejores opciones y proveedores verificados en Venezuela a través de Memorialo. ¡Cotiza ya!`;
 };
 
 export default function App() {
@@ -4044,20 +4032,16 @@ export default function App() {
         ? `Proveedores en ${marketplaceRouteContext.city}`
         : `Proveedores de ${marketplaceRouteContext.taxonomy?.label}`
     : (isFavoritesRoute ? 'Tus Favoritos' : 'Tu Evento Inolvidable Empieza Aquí');
-  const seoCity = capitalizeFirst(marketplaceRouteContext?.city);
   const seoSecondaryCategory = marketplaceRouteContext?.taxonomy?.filterBy === 'subcategory'
     ? capitalizeFirst(marketplaceRouteContext.taxonomy.label)
     : '';
-  const seoMainCategory = seoSecondaryCategory
-    ? getMainCategoryTitleBySubcategory(marketplaceRouteContext?.taxonomy?.label)
-    : null;
-  const hasSecondaryCategorySeoTemplate = Boolean(seoSecondaryCategory && seoCity && seoMainCategory);
-  const localSeoDescription = hasSecondaryCategorySeoTemplate && seoMainCategory
-    ? buildLocalSeoDescription(seoSecondaryCategory, seoCity, seoMainCategory)
+  const hasSecondaryCategorySeoTemplate = Boolean(seoSecondaryCategory);
+  const localSeoDescription = hasSecondaryCategorySeoTemplate
+    ? buildLocalSeoDescription(seoSecondaryCategory)
     : null;
   const marketplaceSeoTitle = marketplaceRouteContext
     ? hasSecondaryCategorySeoTemplate
-      ? `${seoSecondaryCategory} para Eventos en ${seoCity} | Memorialo`
+      ? `${seoSecondaryCategory} en Venezuela | Memorialo`
       : matchedMainCategory?.metaTitle || marketplaceHeading
     : undefined;
   const marketplaceSeoDescription = marketplaceRouteContext
