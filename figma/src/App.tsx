@@ -1902,7 +1902,7 @@ export default function App() {
       return `/servicio/${explicitCitySlug}`;
     }
 
-    return '/';
+    return '/servicios/venezuela';
   };
 
   const parseMarketplaceRoute = (path: string): MarketplaceRouteContext | null => {
@@ -3992,7 +3992,10 @@ export default function App() {
   const HOME_SEO_TITLE = 'Memorialo | Contratar Proveedores para Eventos en Venezuela';
   const HOME_SEO_DESCRIPTION =
     'Todo para tu evento en un solo lugar. Encuentra y contrata de forma fácil locaciones, catering, música y decoración en Venezuela. ¡Haz tu evento inolvidable!';
+  const VENEZUELA_CATALOG_SEO_TITLE = 'Servicios para Eventos en Venezuela | Catálogo Memorialo';
+  const VENEZUELA_CATALOG_SEO_DESCRIPTION = 'Explora y contrata de forma segura los mejores servicios para eventos en Venezuela. Locaciones, música, catering y más con contratos unificados en un solo lugar.';
   const isHomePageRoute = currentRoute === '/' && !isFavoritesRoute && !marketplaceRouteContext;
+  const isVenezuelaCatalogRoute = !marketplaceRouteContext && /^\/servicios\/venezuela\/?$/.test(currentRoute);
   const matchedMainCategory = marketplaceRouteContext?.taxonomy?.filterBy === 'category'
     ? getMainCategoryConfig(marketplaceRouteContext.taxonomy.label)
     : null;
@@ -4022,7 +4025,7 @@ export default function App() {
 
   const marketplaceCanonical = marketplaceRouteContext
     ? marketplaceRouteContext.canonicalPath
-    : (isFavoritesRoute ? '/favoritos' : '/');
+    : (isFavoritesRoute ? '/favoritos' : (isVenezuelaCatalogRoute ? '/servicios/venezuela' : '/'));
 
   const marketplaceKeywords = marketplaceRouteContext
     ? [
@@ -4059,14 +4062,14 @@ export default function App() {
     ? hasSecondaryCategorySeoTemplate
       ? `${seoSecondaryCategory} para Eventos en ${seoCity} | Memorialo`
       : matchedMainCategory?.metaTitle || marketplaceHeading
-    : undefined;
+    : (isVenezuelaCatalogRoute ? VENEZUELA_CATALOG_SEO_TITLE : undefined);
   const marketplaceSeoDescription = marketplaceRouteContext
     ? localSeoDescription
       || matchedMainCategory?.metaDescription
       || (marketplaceRouteContext.taxonomy
         ? `Explora ${marketplaceRouteContext.taxonomy.label} en Memorialo. Compara proveedores, precios y disponibilidad para tu próximo evento en Venezuela.`
         : HOME_SEO_DESCRIPTION)
-    : undefined;
+    : (isVenezuelaCatalogRoute ? VENEZUELA_CATALOG_SEO_DESCRIPTION : undefined);
 
   const visibleArtists = useMemo(() => {
     if (!isFavoritesRoute) {
