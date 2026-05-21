@@ -1836,20 +1836,10 @@ export default function App() {
     const normalizedQuery = normalizeForSearch(criteria.query);
 
     if (normalizedQuery) {
-      const semantic = extractSemanticQueryAndCity(normalizedQuery);
-      const inferredCitySlug = explicitCitySlug || semantic.citySlug;
-      const typeSlug = resolveTypeSlugFromText(semantic.semanticQuery || normalizedQuery);
-
-      if (typeSlug && inferredCitySlug) {
-        return `/servicios/${inferredCitySlug}/${typeSlug}`;
-      }
-
-      if (typeSlug) {
-        return `/servicios/venezuela/${typeSlug}`;
-      }
-
-      if (inferredCitySlug) {
-        return `/s/${slugify(semantic.semanticQuery || normalizedQuery)}-en-${inferredCitySlug}`;
+      // Only include city in the URL if the user explicitly selected it via filters.
+      // Do NOT infer city or taxonomy from the query text to avoid unexpected redirects.
+      if (explicitCitySlug) {
+        return `/s/${slugify(normalizedQuery)}-en-${explicitCitySlug}`;
       }
 
       return `/s/${slugify(normalizedQuery)}`;
@@ -1995,14 +1985,20 @@ export default function App() {
     }
   };
 
+  // Build search criteria for a plain text search (resets city/category filters).
+  // Used by header search bars to prevent previously set filters from bleeding into
+  // a new text query and causing unexpected URL redirects.
+  const buildTextSearchCriteria = (query: string): SearchCriteria => ({
+    query: query.trim(),
+    city: '',
+    category: '',
+    subcategory: '',
+    priceRange: searchCriteria.priceRange
+  });
+
   const handleHeaderSearchSubmit = () => {
     const nextQuery = (headerSearchInput || '').trim();
-
-    handleSearchCriteriaChange({
-      ...searchCriteria,
-      query: nextQuery
-    });
-
+    handleSearchCriteriaChange(buildTextSearchCriteria(nextQuery));
     // Keep the header input ready for a new search after submit.
     setHeaderSearchInput('');
   };
@@ -4334,7 +4330,7 @@ export default function App() {
                   value={headerSearchInput}
                   onChange={setHeaderSearchInput}
                   onSubmit={(query) => {
-                    handleSearchCriteriaChange({ ...searchCriteria, query: query.trim() });
+                    handleSearchCriteriaChange(buildTextSearchCriteria(query));
                     setHeaderSearchInput('');
                   }}
                   placeholder="Buscar proveedores de servicio..."
@@ -4353,7 +4349,7 @@ export default function App() {
                   value={headerSearchInput}
                   onChange={setHeaderSearchInput}
                   onSubmit={(query) => {
-                    handleSearchCriteriaChange({ ...searchCriteria, query: query.trim() });
+                    handleSearchCriteriaChange(buildTextSearchCriteria(query));
                     setHeaderSearchInput('');
                   }}
                   placeholder="Estoy buscando..."
