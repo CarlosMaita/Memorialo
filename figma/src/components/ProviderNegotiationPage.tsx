@@ -110,6 +110,15 @@ function messageHasAttachments(message?: Pick<ChatMessage, 'attachments' | 'hasA
   return !!message.hasAttachments;
 }
 
+function normalizeServiceDescription(description?: string): string {
+  return String(description || '')
+    .replace(/:\s*null(\s*(?:\r?\n|$))/gi, '$1')
+    .replace(/\bnull\b/gi, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 const CONTRACT_CHAT_LINK_TOKEN_REGEX = /\[CONTRACT:([^[\]]+)\]/i;
 
 export function ProviderNegotiationPage({
@@ -631,7 +640,7 @@ export function ProviderNegotiationPage({
   const contractStartTime = activeContract?.terms?.startTime || activeBooking?.startTime || '';
   const contractLocation = activeContract?.terms?.location || activeBooking?.location || '';
   const contractPrice = activeContract?.terms?.price || activeBooking?.totalPrice || '';
-  const contractDescription = activeContract?.terms?.serviceDescription || '';
+  const contractDescription = normalizeServiceDescription(activeContract?.terms?.serviceDescription);
   const contractIdDisplay = activeContract?.id || '';
   const canSendContract = activeContract?.status === 'en_negociacion';
   const negotiationItemHeightPx = 84;

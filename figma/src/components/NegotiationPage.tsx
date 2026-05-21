@@ -107,6 +107,15 @@ function messageHasAttachments(message?: Pick<ChatMessage, 'attachments' | 'hasA
   return !!message.hasAttachments;
 }
 
+function normalizeServiceDescription(description?: string): string {
+  return String(description || '')
+    .replace(/:\s*null(\s*(?:\r?\n|$))/gi, '$1')
+    .replace(/\bnull\b/gi, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 const CONTRACT_CHAT_LINK_TOKEN_REGEX = /\[CONTRACT:([^[\]]+)\]/i;
 
 export function NegotiationPage({ contract, booking, user, onContractUpdate, onBack, chatApi }: NegotiationPageProps) {
@@ -544,7 +553,7 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
   const contractStartTime = contract?.terms?.startTime || booking?.startTime || '';
   const contractLocation = contract?.terms?.location || booking?.location || '';
   const contractPrice = contract?.terms?.price || booking?.totalPrice || '';
-  const contractDescription = contract?.terms?.serviceDescription || '';
+  const contractDescription = normalizeServiceDescription(contract?.terms?.serviceDescription);
   const providerName = contract?.artistName || booking?.artistName || 'Proveedor';
   const contractId = contract?.id || booking?.contractId || '';
 
