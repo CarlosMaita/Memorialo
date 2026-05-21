@@ -150,7 +150,7 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
                 <div className="text-center">
                   <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Paso 3: Solicita tu reserva con detalles</h3>
                   <p className="text-sm text-gray-600">
-                    Completa el formulario de reserva y firma el contrato digital con todos los detalles del servicio.
+                    Envía tu solicitud de reserva con toda la información del servicio para que el proveedor la revise.
                   </p>
                 </div>
               </CardContent>
@@ -167,7 +167,7 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
                 <div className="text-center">
                   <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Paso 4: Confirma y coordina con el proveedor</h3>
                   <p className="text-sm text-gray-600">
-                    El proveedor revisa y firma el contrato. ¡Tu reserva está confirmada y lista!
+                    Espera el contrato del proveedor y fírmalo aceptando términos, condiciones y acuerdos definidos en el chat.
                   </p>
                 </div>
               </CardContent>
