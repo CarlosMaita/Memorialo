@@ -2,6 +2,7 @@ import { ArrowRight, CheckCircle, Search, Users, Shield, Clock, Star, Heart, Cal
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
+import { SEOHead } from './SEOHead';
 
 interface ForClientsPageProps {
   onClose: () => void;
@@ -11,6 +12,12 @@ interface ForClientsPageProps {
 export function ForClientsPage({ onClose, onGetStarted }: ForClientsPageProps) {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: 'var(--cream-white)' }}>
+      <SEOHead
+        title="Organiza tu Evento de Forma Fácil | Memorialo Clientes"
+        description="Planifica tu celebración sin estrés. Encuentra espacios, banquetes, música y decoración en Venezuela. Compara presupuestos y contrata con total seguridad."
+        canonical="/para-clientes"
+        keywords="organizar evento venezuela, planificar celebración, contratar proveedores eventos, bodas venezuela, cumpleaños venezuela, eventos corporativos, decoración eventos, catering venezuela"
+      />
       {/* Header */}
       <div className="sticky top-0 z-10 shadow-sm" style={{ backgroundColor: 'var(--navy-blue)' }}>
         <div className="container mx-auto px-4 py-4">
@@ -74,12 +81,13 @@ export function ForClientsPage({ onClose, onGetStarted }: ForClientsPageProps) {
             </Badge>
             
             <h1 className="text-white mb-6">
-              Encuentra los mejores proveedores para tu evento
+              Toda tu celebración bajo control, sin llamadas eternas.
             </h1>
             
             <p className="text-xl text-white/80 mb-8 leading-relaxed">
-              Desde músicos hasta salones, todo lo que necesitas para crear momentos 
-              memorables en un solo lugar.
+              Planifica tu boda, cumpleaños o evento corporativo sin estrés. Encuentra 
+              espacios, banquetes, música y decoración en Venezuela, compara presupuestos 
+              y contrata con total seguridad.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -91,7 +99,7 @@ export function ForClientsPage({ onClose, onGetStarted }: ForClientsPageProps) {
                 }}
                 onClick={onGetStarted}
               >
-                Explorar Servicios
+                Comenzar a planificar gratis
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
               <Button 
@@ -99,8 +107,9 @@ export function ForClientsPage({ onClose, onGetStarted }: ForClientsPageProps) {
                 variant="outline"
                 className="border-white bg-transparent hover:bg-white/10"
                 style={{ color: 'white', borderWidth: '2px' }}
+                onClick={onGetStarted}
               >
-                Cómo Funciona
+                Explorar proveedores
               </Button>
             </div>
 
@@ -128,7 +137,7 @@ export function ForClientsPage({ onClose, onGetStarted }: ForClientsPageProps) {
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="mb-4" style={{ color: 'var(--navy-blue)' }}>
-              ¿Por qué elegir Memorialo?
+              Beneficios para el organizador
             </h2>
             <p className="text-gray-600 text-lg max-w-2xl mx-auto">
               Hacemos que organizar tu evento sea fácil, seguro y sin estrés
@@ -145,10 +154,10 @@ export function ForClientsPage({ onClose, onGetStarted }: ForClientsPageProps) {
                 >
                   <Search className="w-6 h-6" style={{ color: 'var(--gold)' }} />
                 </div>
-                <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Búsqueda Inteligente</h3>
+                <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Cotiza y compara en minutos, no en días.</h3>
                 <p className="text-gray-600 text-sm">
                   Encuentra exactamente lo que buscas con filtros avanzados por ciudad, 
-                  categoría, precio y disponibilidad.
+                  categoría, precio y disponibilidad. Sin llamadas interminables.
                 </p>
               </CardContent>
             </Card>
@@ -162,7 +171,7 @@ export function ForClientsPage({ onClose, onGetStarted }: ForClientsPageProps) {
                 >
                   <Globe className="w-6 h-6" style={{ color: 'var(--gold)' }} />
                 </div>
-                <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Alcance Nacional</h3>
+                <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Los mejores profesionales de Venezuela a un clic de distancia.</h3>
                 <p className="text-gray-600 text-sm">
                   Accede a una red de proveedores en las principales ciudades del país. 
                   Donde sea tu evento, estamos ahí.
@@ -213,7 +222,7 @@ export function ForClientsPage({ onClose, onGetStarted }: ForClientsPageProps) {
                 >
                   <Shield className="w-6 h-6" style={{ color: 'var(--gold)' }} />
                 </div>
-                <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Reserva Segura</h3>
+                <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Tu dinero y tus acuerdos protegidos con contratos digitales.</h3>
                 <p className="text-gray-600 text-sm">
                   Contratos digitales y pagos protegidos. Tu dinero está seguro hasta 
                   que el servicio se complete satisfactoriamente.
@@ -507,7 +516,7 @@ export function ForClientsPage({ onClose, onGetStarted }: ForClientsPageProps) {
               }}
               onClick={onGetStarted}
             >
-              Explorar Servicios Ahora
+              Comenzar a planificar gratis
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
             <p className="text-white/60 text-sm mt-4">
