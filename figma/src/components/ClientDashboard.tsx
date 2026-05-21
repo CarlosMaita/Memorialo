@@ -328,6 +328,10 @@ export function ClientDashboard({
     }));
   };
 
+  const handleRequestBookingDateEdit = (booking: any) => {
+    handleStartChatFromBooking(booking.id);
+  };
+
   const getBookingStatusText = (status: string) => {
     switch (status) {
       case 'en_negociacion':
@@ -532,9 +536,9 @@ export function ClientDashboard({
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => handleStartChatFromBooking(booking.id)}
+                  onClick={() => handleRequestBookingDateEdit(booking)}
                   className="h-7 w-7 p-0"
-                  title="Editar fecha/hora"
+                  title="Negociar fecha/hora"
                 >
                   <Edit2 className="w-4 h-4 text-gray-700" />
                 </Button>

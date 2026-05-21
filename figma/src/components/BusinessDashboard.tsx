@@ -1782,7 +1782,7 @@ export function BusinessDashboard({
                               >
                                 <MessageCircle className="w-4 h-4 text-gray-700" />
                               </Button>
-                              {displayStatus === 'pending' && (
+                              {(displayStatus === 'pending' || displayStatus === 'en_negociacion') && (
                                 <Button
                                   size="sm"
                                   variant="ghost"
