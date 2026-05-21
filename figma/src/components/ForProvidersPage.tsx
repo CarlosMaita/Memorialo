@@ -429,9 +429,6 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
               Solicitar ser Proveedor
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
-            <p className="text-white/60 text-sm mt-4">
-              Sin costos iniciales • Sujeto a proceso de aprobación
-            </p>
           </div>
         </div>
       </section>
