@@ -42,6 +42,8 @@ interface ClientDashboardProps {
   onBookingUpdate?: (booking: any) => void;
   onOpenNegotiation?: (contractId: string) => void;
   onSectionChange?: (section: SidebarSection) => void;
+  showArchivedBookings?: boolean;
+  onShowArchivedBookingsChange?: (showArchived: boolean) => void;
 }
 
 const navItems: { id: SidebarSection; label: string; icon: React.ReactNode }[] = [
@@ -68,7 +70,9 @@ export function ClientDashboard({
   bookings = [],
   onBookingUpdate,
   onOpenNegotiation,
-  onSectionChange
+  onSectionChange,
+  showArchivedBookings = false,
+  onShowArchivedBookingsChange
 }: ClientDashboardProps) {
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [showContractView, setShowContractView] = useState(false);
@@ -141,6 +145,10 @@ export function ClientDashboard({
   };
 
   const filteredUserBookingsBySearchAndStatus = userBookings.filter((booking: any) => {
+    if (!showArchivedBookings && booking.archived) {
+      return false;
+    }
+
     const status = getBookingFilterStatus(booking);
     if (bookingStatusFilter !== 'all' && status !== bookingStatusFilter) {
       return false;
@@ -342,10 +350,6 @@ export function ClientDashboard({
     }));
   };
 
-  const handleRequestBookingDateEdit = (booking: any) => {
-    handleStartChatFromBooking(booking.id);
-  };
-
   const getBookingStatusText = (status: string) => {
     switch (status) {
       case 'en_negociacion':
@@ -507,6 +511,11 @@ export function ClientDashboard({
               <Badge variant="outline" className={`${getBookingStatusBadgeClass(displayStatus)} text-xs`}>
                 <span className="flex items-center gap-1">{getBookingStatusIcon(displayStatus)}{getBookingStatusText(displayStatus)}</span>
               </Badge>
+              {booking.archived && (
+                <Badge variant="outline" className="mt-1 border-gray-300 bg-gray-100 text-gray-700 text-xs">
+                  Archivada
+                </Badge>
+              )}
             </div>
 
             <div>
@@ -546,17 +555,27 @@ export function ClientDashboard({
               >
                 <MessageCircle className="w-4 h-4 text-gray-700" />
               </Button>
-              {(displayStatus === 'pending' || displayStatus === 'en_negociacion') && (
+              {booking.archived ? (
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => handleRequestBookingDateEdit(booking)}
+                  onClick={() => onBookingUpdate?.({ ...booking, archived: false, archivedAt: null })}
                   className="h-7 w-7 p-0"
-                  title="Negociar fecha/hora"
+                  title="Desarchivar reserva"
                 >
-                  <Edit2 className="w-4 h-4 text-gray-700" />
+                  <Archive className="w-4 h-4 text-blue-700" />
                 </Button>
-              )}
+              ) : displayStatus === 'completed' ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onBookingUpdate?.({ ...booking, archived: true, archivedAt: new Date().toISOString() })}
+                  className="h-7 w-7 p-0"
+                  title="Archivar reserva"
+                >
+                  <Archive className="w-4 h-4 text-gray-700" />
+                </Button>
+              ) : null}
               {canLeaveReview && linkedContract && (
                 <Button
                   size="sm"
@@ -1083,6 +1102,13 @@ export function ClientDashboard({
                       <SelectItem value="oldest">Creación: menos recientes</SelectItem>
                     </SelectContent>
                   </Select>
+                  <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border">
+                    <span className="text-xs text-gray-600">Mostrar archivadas</span>
+                    <Switch
+                      checked={showArchivedBookings}
+                      onCheckedChange={(checked) => onShowArchivedBookingsChange?.(Boolean(checked))}
+                    />
+                  </div>
                 </div>
               )}
 

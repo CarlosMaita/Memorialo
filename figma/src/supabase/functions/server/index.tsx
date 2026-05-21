@@ -403,14 +403,25 @@ app.post(`${P}/bookings`, async (c) => {
   const auth = await verifyAuth(c.req.header('Authorization'));
   try {
     const d = await c.req.json();
-    const booking = { ...d, id: d.id || `booking-${Date.now()}`, userId: auth?.user.id || d.userId, createdAt: new Date().toISOString() };
+    const booking = {
+      ...d,
+      id: d.id || `booking-${Date.now()}`,
+      userId: auth?.user.id || d.userId,
+      archived: Boolean(d?.archived),
+      archivedAt: d?.archived ? (d?.archivedAt || new Date().toISOString()) : null,
+      createdAt: new Date().toISOString(),
+    };
     await kv.set(`booking:${booking.id}`, booking);
     return c.json(booking);
   } catch (error) { console.log('Create booking error:', error); return c.json({ error: 'Failed to create booking' }, 500); }
 });
 
 app.get(`${P}/bookings`, async (c) => {
-  try { return c.json(await kv.getByPrefix('booking:')); }
+  try {
+    const includeArchived = ['1', 'true', 'yes'].includes((c.req.query('include_archived') || '').toLowerCase());
+    const bookings = await kv.getByPrefix('booking:');
+    return c.json(includeArchived ? bookings : bookings.filter((booking: any) => !booking?.archived));
+  }
   catch (error) { console.log('Get bookings error:', error); return c.json({ error: 'Failed to get bookings' }, 500); }
 });
 

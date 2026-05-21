@@ -1098,6 +1098,7 @@ export function useSupabase() {
     perPage?: number;
     userId?: string;
     artistUserId?: string;
+    includeArchived?: boolean;
   }) => {
     try {
       const query = buildQueryString({
@@ -1106,6 +1107,7 @@ export function useSupabase() {
         per_page: options?.perPage,
         user_id: options?.userId,
         artist_user_id: options?.artistUserId,
+        include_archived: options?.includeArchived ? 1 : undefined,
       });
       const data = await apiRequest(`/bookings${query}`, 'GET', undefined, accessToken || undefined);
       return extractCollection(data);

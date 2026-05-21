@@ -34,6 +34,8 @@ class Booking extends Model
         'special_requests',
         'total_price',
         'status',
+        'archived',
+        'archived_at',
         'plan_id',
         'plan_name',
         'contract_id',
@@ -45,6 +47,8 @@ class Booking extends Model
         return [
             'duration' => 'integer',
             'total_price' => 'decimal:2',
+            'archived' => 'boolean',
+            'archived_at' => 'datetime',
             'metadata' => 'array',
         ];
     }

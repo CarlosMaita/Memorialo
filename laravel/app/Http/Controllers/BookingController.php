@@ -20,6 +20,14 @@ class BookingController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Booking::query()->latest();
+        $includeArchived = $request->boolean('include_archived');
+
+        if (! $includeArchived) {
+            $query->where(function (Builder $builder) {
+                $builder->where('archived', false)->orWhereNull('archived');
+            });
+        }
+
         $scopeResponse = $this->applyScope($query, $request);
 
         if ($scopeResponse instanceof JsonResponse) {
@@ -140,6 +148,9 @@ class BookingController extends Controller
             'totalPrice' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'total_price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'status' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'archived' => ['sometimes', 'nullable', 'boolean'],
+            'archivedAt' => ['sometimes', 'nullable', 'date'],
+            'archived_at' => ['sometimes', 'nullable', 'date'],
             'planId' => ['sometimes', 'nullable', 'string', 'max:255'],
             'plan_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'planName' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -166,6 +177,7 @@ class BookingController extends Controller
             'eventType' => 'event_type',
             'specialRequests' => 'special_requests',
             'totalPrice' => 'total_price',
+            'archivedAt' => 'archived_at',
             'planId' => 'plan_id',
             'planName' => 'plan_name',
             'contractId' => 'contract_id',
@@ -176,6 +188,10 @@ class BookingController extends Controller
                 $payload[$snakeKey] = $payload[$camelKey];
                 unset($payload[$camelKey]);
             }
+        }
+
+        if (array_key_exists('archived', $payload) && ! array_key_exists('archived_at', $payload)) {
+            $payload['archived_at'] = $payload['archived'] ? now() : null;
         }
 
         return $payload;
@@ -200,6 +216,8 @@ class BookingController extends Controller
             'specialRequests' => $booking->special_requests,
             'totalPrice' => (float) $booking->total_price,
             'status' => $booking->status,
+            'archived' => (bool) $booking->archived,
+            'archivedAt' => optional($booking->archived_at)?->toISOString(),
             'planId' => $booking->plan_id,
             'planName' => $booking->plan_name,
             'contractId' => $booking->contract_id,

@@ -28,6 +28,7 @@ import {
   CalendarPlus,
   BarChart3,
   AlertCircle,
+  Archive,
   Search,
   LayoutDashboard,
   Briefcase,
@@ -75,6 +76,8 @@ interface BusinessDashboardProps {
   onReviewCreate?: (contractId: string) => void;
   accessToken?: string | null;
   onOpenNegotiation?: (contractId: string) => void;
+  showArchivedBookings?: boolean;
+  onShowArchivedBookingsChange?: (showArchived: boolean) => void;
 }
 
 const categories = [
@@ -123,7 +126,9 @@ export function BusinessDashboard({
   onAssignContractToEvent,
   onReviewCreate,
   accessToken = null,
-  onOpenNegotiation
+  onOpenNegotiation,
+  showArchivedBookings = false,
+  onShowArchivedBookingsChange
 }: BusinessDashboardProps) {
   const [showServiceEditor, setShowServiceEditor] = useState(false);
   const [editingService, setEditingService] = useState<Artist | null>(null);
@@ -375,6 +380,10 @@ export function BusinessDashboard({
 
   const filteredBookings = providerBookings
     .filter((booking) => {
+      if (!showArchivedBookings && (booking as any).archived) {
+        return false;
+      }
+
       const linkedContract = booking.contractId ? providerContractsById.get(booking.contractId) : null;
       const bookingStatus = linkedContract?.status === 'en_negociacion'
         ? 'en_negociacion'
@@ -675,6 +684,15 @@ export function BusinessDashboard({
       'cancelled': 'cancelada'
     };
     toast.success(`Reserva ${statusMap[status]}`);
+  };
+
+  const handleArchiveBooking = (booking: Booking, archived: boolean) => {
+    onBookingUpdate({
+      ...booking,
+      archived,
+      archivedAt: archived ? new Date().toISOString() : null,
+    } as Booking);
+    toast.success(archived ? 'Reserva archivada' : 'Reserva desarchivada');
   };
 
   const getBookingReview = (booking: Booking) => {
@@ -1649,6 +1667,13 @@ export function BusinessDashboard({
                       <SelectItem value="oldest">Creación: menos recientes</SelectItem>
                     </SelectContent>
                   </Select>
+                  <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border">
+                    <span className="text-xs text-gray-600">Mostrar archivadas</span>
+                    <Switch
+                      checked={showArchivedBookings}
+                      onCheckedChange={(checked) => onShowArchivedBookingsChange?.(Boolean(checked))}
+                    />
+                  </div>
                 </div>
               )}
 
@@ -1705,6 +1730,11 @@ export function BusinessDashboard({
                                 {isPendingProviderSignature && (
                                   <Badge variant="outline" className="border-yellow-300 bg-yellow-50 text-yellow-800">
                                     Firma pendiente
+                                  </Badge>
+                                )}
+                                {(booking as any).archived && (
+                                  <Badge variant="outline" className="border-gray-300 bg-gray-100 text-gray-700">
+                                    Archivada
                                   </Badge>
                                 )}
                                 {hasReview && (
@@ -1793,6 +1823,27 @@ export function BusinessDashboard({
                               >
                                 <MessageCircle className="w-4 h-4 text-gray-700" />
                               </Button>
+                              {(booking as any).archived ? (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleArchiveBooking(booking, false)}
+                                  className="h-7 w-7 p-0"
+                                  title="Desarchivar reserva"
+                                >
+                                  <Archive className="w-4 h-4 text-blue-700" />
+                                </Button>
+                              ) : displayStatus === 'completed' ? (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleArchiveBooking(booking, true)}
+                                  className="h-7 w-7 p-0"
+                                  title="Archivar reserva"
+                                >
+                                  <Archive className="w-4 h-4 text-gray-700" />
+                                </Button>
+                              ) : null}
                               {(displayStatus === 'pending' || displayStatus === 'en_negociacion') && (
                                 <Button
                                   size="sm"

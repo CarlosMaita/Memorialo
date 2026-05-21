@@ -341,6 +341,8 @@ export default function App() {
   const [clientDashboardSection, setClientDashboardSection] = useState<ClientDashboardSection | undefined>(undefined);
   const [clientFocusedBookingId, setClientFocusedBookingId] = useState<string | null>(null);
   const [clientFocusedContractId, setClientFocusedContractId] = useState<string | null>(null);
+  const [includeArchivedClientBookings, setIncludeArchivedClientBookings] = useState(false);
+  const [includeArchivedProviderBookings, setIncludeArchivedProviderBookings] = useState(false);
   const [negotiationContractId, setNegotiationContractId] = useState<string | null>(null);
   const [favoriteServiceIds, setFavoriteServiceIds] = useState<string[]>([]);
   const [isCheckingProviderProfile, setIsCheckingProviderProfile] = useState(false);
@@ -548,11 +550,14 @@ export default function App() {
             : currentUser.isProvider && dashboardView !== 'client'
               ? 'provider'
               : 'client';
+      const includeArchivedBookings = scope === 'provider'
+        ? includeArchivedProviderBookings
+        : includeArchivedClientBookings;
 
       try {
         const [contractsData, bookingsData] = await Promise.all([
           supabase.getContracts({ scope }),
-          supabase.getBookings({ scope }),
+          supabase.getBookings({ scope, includeArchived: includeArchivedBookings }),
         ]);
 
         if (cancelled) {
@@ -576,7 +581,15 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [currentUser?.id, currentUser?.role, currentUser?.isProvider, currentRoute, dashboardView]);
+  }, [
+    currentUser?.id,
+    currentUser?.role,
+    currentUser?.isProvider,
+    currentRoute,
+    dashboardView,
+    includeArchivedClientBookings,
+    includeArchivedProviderBookings,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -5023,6 +5036,8 @@ export default function App() {
                 onOpenNegotiation={(contractId: string) => {
                   navigateTo(`/mi-negocio/negociacion/${contractId}`);
                 }}
+                showArchivedBookings={includeArchivedProviderBookings}
+                onShowArchivedBookingsChange={setIncludeArchivedProviderBookings}
                 reviews={reviews}
                 accessToken={supabase.accessToken}
               />
@@ -5073,6 +5088,8 @@ export default function App() {
                   onOpenNegotiation={(contractId: string) => {
                     navigateTo(`/me/negociacion/${contractId}`);
                   }}
+                  showArchivedBookings={includeArchivedClientBookings}
+                  onShowArchivedBookingsChange={setIncludeArchivedClientBookings}
                   onSectionChange={(section) => navigateTo(resolveClientSectionPath(section), { scrollToTop: false })}
                 />
               )

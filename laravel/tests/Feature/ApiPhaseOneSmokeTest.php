@@ -507,6 +507,7 @@ class ApiPhaseOneSmokeTest extends TestCase
             ->assertJsonPath('id', 'booking-001')
             ->assertJsonPath('artistId', (string) $serviceId)
             ->assertJsonPath('status', 'pending')
+            ->assertJsonPath('archived', false)
             ->assertJsonPath('totalPrice', 5000);
 
         $this->getJson('/api/bookings')
@@ -525,6 +526,30 @@ class ApiPhaseOneSmokeTest extends TestCase
             ->assertJsonPath('id', 'booking-001')
             ->assertJsonPath('status', 'confirmed')
             ->assertJsonPath('startTime', '19:00');
+
+        $archivedBooking = $this->putJson('/api/bookings/booking-001', [
+            'archived' => true,
+        ]);
+
+        $archivedBooking
+            ->assertOk()
+            ->assertJsonPath('id', 'booking-001')
+            ->assertJsonPath('archived', true);
+
+        $this->assertNotNull($archivedBooking->json('archivedAt'));
+
+        $this->getJson('/api/bookings')
+            ->assertOk()
+            ->assertJsonMissing([
+                'id' => 'booking-001',
+            ]);
+
+        $this->getJson('/api/bookings?include_archived=1')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => 'booking-001',
+                'archived' => true,
+            ]);
 
         $event = $this->postJson('/api/events', [
             'id' => 'event-001',
