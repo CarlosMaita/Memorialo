@@ -20,7 +20,7 @@ export function CancellationPolicy({ onBack }: CancellationPolicyProps) {
 
         <div className="bg-white rounded-lg shadow-sm p-8">
           <h1 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Política de Cancelación</h1>
-          <p className="text-gray-600 mb-8">Última actualización: Marzo 2026</p>
+          <p className="text-gray-600 mb-8">Última actualización: Mayo 2026</p>
 
           <div className="space-y-8">
             <section>
@@ -41,6 +41,13 @@ export function CancellationPolicy({ onBack }: CancellationPolicyProps) {
                 El Cliente reconoce que el Proveedor ya ha incurrido en costos de oportunidad o materiales. Los
                 reembolsos se rigen bajo los siguientes esquemas:
               </p>
+              <ul className="list-disc list-inside space-y-2 text-gray-700 mt-4">
+                <li>
+                  <strong>Políticas definidas por el Proveedor:</strong> El Proveedor puede establecer en el contrato
+                  sus propias políticas de cancelación. Si existe algún vacío o una condición no definida, aplicarán
+                  las políticas de cancelación establecidas por Memorialo.
+                </li>
+              </ul>
 
               <h3 className="mb-3 mt-6 text-gray-800">Para Categoría A (Talento y Alquileres)</h3>
               <ul className="list-disc list-inside space-y-2 text-gray-700 mb-4">
