@@ -20,7 +20,7 @@ export function RefundPolicy({ onBack }: RefundPolicyProps) {
 
         <div className="bg-white rounded-lg shadow-sm p-8">
           <h1 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Política de Reembolso</h1>
-          <p className="text-gray-600 mb-8">Última actualización: Marzo 2026</p>
+          <p className="text-gray-600 mb-8">Última actualización: Mayo 2026</p>
 
           <div className="space-y-8">
             <section>
@@ -100,7 +100,7 @@ export function RefundPolicy({ onBack }: RefundPolicyProps) {
                 Si un Proveedor se niega a procesar un reembolso justificado o ignora los plazos establecidos:
               </p>
               <ul className="list-disc list-inside space-y-2 text-gray-700">
-                <li><strong>Apertura de Disputa:</strong> El Cliente debe ir a "Mis Reservas", seleccionar el servicio y hacer clic en "Abrir Disputa por Reembolso", adjuntando capturas de pago y evidencia del incumplimiento.</li>
+                <li><strong>Apertura de Disputa:</strong> El Cliente debe ir a la reserva, ingresar al chat de negociación y pulsar el ícono de advertencia (⚠️) para escalar la conversación. Una vez escalada, un miembro de Memorialo ingresará a la cuenta para intervenir y ayudar en la resolución del conflicto.</li>
                 <li><strong>Mediación:</strong> El equipo de Memorialo revisará la evidencia, incluyendo el chat interno y los registros de los recordatorios automáticos de 48 horas.</li>
                 <li><strong>Sanción y Expulsión:</strong> Si Memorialo determina que el Proveedor retiene indebidamente los fondos, su cuenta será suspendida permanentemente.</li>
                 <li><strong>Soporte Legal al Cliente:</strong> Memorialo proporcionará al Cliente un informe detallado con los datos de registro del Proveedor, el contrato digital aceptado y el historial de la transacción para que el Cliente pueda proceder con denuncias formales ante la SUNDDE o autoridades competentes por estafa o apropiación indebida.</li>
