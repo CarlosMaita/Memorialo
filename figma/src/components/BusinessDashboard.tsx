@@ -18,8 +18,6 @@ import {
   FileText, 
   Download,
   MessageCircle,
-  ChevronDown,
-  ChevronUp,
   Calendar, 
   DollarSign,
   Star,
@@ -149,6 +147,8 @@ export function BusinessDashboard({
   const [searchService, setSearchService] = useState('');
   const [searchContract, setSearchContract] = useState('');
   const [searchBooking, setSearchBooking] = useState('');
+  const [bookingStatusFilter, setBookingStatusFilter] = useState<'all' | 'en_negociacion' | 'pending' | 'confirmed' | 'completed'>('all');
+  const [bookingOrder, setBookingOrder] = useState<'newest' | 'oldest'>('newest');
   const BOOKINGS_BATCH_SIZE = 16;
   const [visibleBookingsCount, setVisibleBookingsCount] = useState(BOOKINGS_BATCH_SIZE);
 
@@ -340,16 +340,14 @@ export function BusinessDashboard({
     return (statusOrder[a.status] || 6) - (statusOrder[b.status] || 6);
   });
 
-  // Sort bookings
-  const sortedBookings = [...providerBookings].sort((a, b) => {
-    const statusOrder: { [key: string]: number } = {
-      'pending': 1,
-      'confirmed': 2,
-      'completed': 3,
-      'cancelled': 4
-    };
-    return (statusOrder[a.status] || 5) - (statusOrder[b.status] || 5);
-  });
+  const getBookingTimestamp = (booking: Booking) => {
+    const createdAt = (booking as any).createdAt ? new Date((booking as any).createdAt).getTime() : NaN;
+    if (!Number.isNaN(createdAt)) {
+      return createdAt;
+    }
+
+    return new Date(`${booking.date}T${booking.startTime || '00:00'}`).getTime();
+  };
 
   // Filtered lists
   const activeServices = services.filter(service => 
@@ -364,9 +362,35 @@ export function BusinessDashboard({
     contract.clientName.toLowerCase().includes(searchContract.toLowerCase())
   );
 
-  const filteredBookings = sortedBookings.filter(booking => 
-    booking.clientName.toLowerCase().includes(searchBooking.toLowerCase())
-  );
+  const filteredBookings = providerBookings
+    .filter((booking) => {
+      const linkedContract = booking.contractId ? providerContracts.find((contract) => contract.id === booking.contractId) : null;
+      const bookingStatus = linkedContract?.status === 'en_negociacion'
+        ? 'en_negociacion'
+        : linkedContract?.status === 'pending_artist'
+          ? 'pending'
+          : booking.status;
+
+      if (bookingStatusFilter !== 'all' && bookingStatus !== bookingStatusFilter) {
+        return false;
+      }
+
+      const searchValue = searchBooking.trim().toLowerCase();
+      if (!searchValue) {
+        return true;
+      }
+
+      return [booking.clientName, booking.eventType, booking.location, booking.contractId]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(searchValue);
+    })
+    .sort((a, b) => {
+      const aDate = getBookingTimestamp(a);
+      const bDate = getBookingTimestamp(b);
+      return bookingOrder === 'newest' ? bDate - aDate : aDate - bDate;
+    });
 
   const visibleFilteredBookings = filteredBookings.slice(0, visibleBookingsCount);
 
@@ -404,7 +428,7 @@ export function BusinessDashboard({
 
   useEffect(() => {
     setVisibleBookingsCount(BOOKINGS_BATCH_SIZE);
-  }, [activeSection, searchBooking, providerBookings.length]);
+  }, [activeSection, searchBooking, bookingStatusFilter, bookingOrder, providerBookings.length]);
 
   useEffect(() => {
     if (!focusBookingId) {
@@ -1582,15 +1606,38 @@ export function BusinessDashboard({
               </div>
 
               {providerBookings.length > 0 && (
-                <div className="relative w-full md:max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#D4AF37' }} />
-                  <Input
-                    type="text"
-                    placeholder="Buscar por nombre de cliente..."
-                    value={searchBooking}
-                    onChange={(e) => setSearchBooking(e.target.value)}
-                    className="h-10 pl-10 border-2 border-gray-200 focus:border-[#D4AF37]"
-                  />
+                <div className="flex flex-col md:flex-row md:items-center gap-3">
+                  <div className="relative w-full md:max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#D4AF37' }} />
+                    <Input
+                      type="text"
+                      placeholder="Buscar por cliente o contrato..."
+                      value={searchBooking}
+                      onChange={(e) => setSearchBooking(e.target.value)}
+                      className="h-10 pl-10 border-2 border-gray-200 focus:border-[#D4AF37]"
+                    />
+                  </div>
+                  <Select value={bookingStatusFilter} onValueChange={(value: 'all' | 'en_negociacion' | 'pending' | 'confirmed' | 'completed') => setBookingStatusFilter(value)}>
+                    <SelectTrigger className="w-full md:w-[210px]">
+                      <SelectValue placeholder="Filtrar por estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="en_negociacion">En negociación</SelectItem>
+                      <SelectItem value="pending">Pendientes</SelectItem>
+                      <SelectItem value="confirmed">Aprobados</SelectItem>
+                      <SelectItem value="completed">Completados</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={bookingOrder} onValueChange={(value: 'newest' | 'oldest') => setBookingOrder(value)}>
+                    <SelectTrigger className="w-full md:w-[210px]">
+                      <SelectValue placeholder="Ordenar por creación" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">Creación: más recientes</SelectItem>
+                      <SelectItem value="oldest">Creación: menos recientes</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
@@ -1614,24 +1661,31 @@ export function BusinessDashboard({
                   <div className="hidden md:grid grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_130px_140px_90px_auto] gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                     <span>Cliente / detalle</span>
                     <span>Contrato</span>
-                    <span>Fecha</span>
+                    <span>Fecha de evento</span>
                     <span>Estado</span>
                     <span>Total</span>
                     <span className="text-right">Opciones</span>
                   </div>
 
                   {visibleFilteredBookings.map((booking) => {
+                    const linkedContract = booking.contractId ? providerContracts.find((contract) => contract.id === booking.contractId) : null;
                     const isPendingProviderSignature = hasContractPendingProvider(booking);
-                    const displayStatus = isPendingProviderSignature ? 'pending' : booking.status;
-                    const isExpanded = expandedBookingId === booking.id;
+                    const displayStatus = linkedContract?.status === 'en_negociacion'
+                      ? 'en_negociacion'
+                      : isPendingProviderSignature
+                        ? 'pending'
+                        : booking.status;
+                    const isFocused = expandedBookingId === booking.id;
                     const bookingReview = getBookingReview(booking);
                     const reviewRating = Number(bookingReview?.rating || 0);
                     const hasReview = Number.isFinite(reviewRating) && reviewRating > 0;
                     const contractCode = booking.contractId ? String(booking.contractId).trim() : '';
                     const compactContractCode = contractCode.length > 18 ? `${contractCode.slice(0, 8)}…${contractCode.slice(-4)}` : contractCode;
+                    const createdAtRaw = (booking as any).createdAt || `${booking.date}T${booking.startTime || '00:00'}`;
+                    const createdAtLabel = new Date(createdAtRaw).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 
                     return (
-                      <Card key={booking.id} className={`shadow-sm ${displayStatus === 'pending' ? 'border-yellow-200 bg-yellow-50/40' : 'border-slate-200'}`}>
+                      <Card key={booking.id} className={`shadow-sm border-[#1B2A47] bg-white ${isFocused ? 'ring-2 ring-[#1B2A47]/20' : ''}`}>
                         <CardContent className="px-3 py-2.5">
                           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_130px_140px_90px_auto] md:items-center">
                             <div className="min-w-0">
@@ -1655,6 +1709,7 @@ export function BusinessDashboard({
                                 {formatEventTypeLabel(booking.eventType)}
                                 {booking.location ? ` · ${booking.location}` : ''}
                               </p>
+                              <p className="mt-0.5 text-[11px] text-gray-400">Creada: {createdAtLabel}</p>
                             </div>
 
                             <div className="min-w-0">
@@ -1727,50 +1782,30 @@ export function BusinessDashboard({
                               >
                                 <MessageCircle className="w-4 h-4 text-gray-700" />
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setExpandedBookingId(isExpanded ? null : booking.id)}
-                                className="h-7 w-7 p-0"
-                                title={isExpanded ? 'Ocultar detalles' : 'Mostrar detalles'}
-                              >
-                                {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-700" /> : <ChevronDown className="w-4 h-4 text-gray-700" />}
-                              </Button>
+                              {displayStatus === 'pending' && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleEditBooking(booking)}
+                                  className="h-7 w-7 p-0"
+                                  title="Editar fecha/hora"
+                                >
+                                  <Edit className="w-4 h-4 text-gray-700" />
+                                </Button>
+                              )}
+                              {displayStatus === 'confirmed' && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleUpdateBookingStatus(booking.id, 'completed')}
+                                  className="h-7 w-7 p-0"
+                                  title="Marcar como completada"
+                                >
+                                  <CheckCircle2 className="w-4 h-4 text-gray-700" />
+                                </Button>
+                              )}
                             </div>
                           </div>
-
-                          {isExpanded && (
-                            <div className="mt-3 space-y-3 border-t border-slate-100 pt-3">
-                              <div className="grid grid-cols-2 gap-2 text-xs md:grid-cols-3">
-                                <div><p className="text-gray-400">Fecha</p><p className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(booking.date).toLocaleDateString('es-ES')}</p></div>
-                                <div><p className="text-gray-400">Hora</p><p className="flex items-center gap-1"><Clock className="w-3 h-3" />{booking.startTime || 'No disponible'}</p></div>
-                                <div><p className="text-gray-400">{getMeasureTitle(booking, false)}</p><p>{getMeasureLabel(booking, booking.duration)}</p></div>
-                                <div><p className="text-gray-400">Ubicación</p><p className="truncate">{booking.location}</p></div>
-                                <div><p className="text-gray-400">Precio</p><p className="text-green-600">${booking.totalPrice}</p></div>
-                                <div><p className="text-gray-400">Contrato</p><p className="truncate">{contractCode || 'Sin contrato'}</p></div>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {booking.contractId && getBookingContract(booking)?.status === 'en_negociacion' && (
-                                  <Button size="sm" onClick={() => {
-                                    const contract = getBookingContract(booking);
-                                    if (contract) handleViewContract(contract);
-                                  }} className="flex-1">
-                                    <FileText className="w-4 h-4 mr-1" />Enviar contrato
-                                  </Button>
-                                )}
-                                {displayStatus === 'pending' && (
-                                  <Button size="sm" variant="outline" onClick={() => handleEditBooking(booking)} className="flex-1">
-                                    <Calendar className="w-4 h-4 mr-1" />Editar Fecha/Hora
-                                  </Button>
-                                )}
-                                {displayStatus === 'confirmed' && (
-                                  <Button size="sm" onClick={() => handleUpdateBookingStatus(booking.id, 'completed')} className="flex-1">
-                                    Marcar como Completada
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          )}
                         </CardContent>
                       </Card>
                     );
