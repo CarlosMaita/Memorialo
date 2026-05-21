@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Music, Users, Target, Heart, Sparkles, TrendingUp, Shield, Award, CheckCircle, ArrowRight, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
+import { SEOHead } from './SEOHead';
 
 interface AboutPageProps {
   onGetStarted?: () => void;
@@ -16,6 +17,11 @@ export function AboutPage({ onGetStarted, onClose }: AboutPageProps) {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: 'var(--cream-white)' }}>
+      <SEOHead
+        title="Sobre Nosotros | Memorialo: Red de Proveedores de Eventos"
+        description="Conoce Memorialo, la red de proveedores de eventos en Venezuela. Conectamos talento local con clientes para planificar celebraciones de forma fácil y segura."
+        canonical="/sobre-nosotros"
+      />
       {/* Hero Section */}
       <section className="relative overflow-hidden" style={{ backgroundColor: 'var(--navy-blue)' }}>
         {/* Close Button */}
