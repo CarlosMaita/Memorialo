@@ -355,7 +355,15 @@ export function BookingDialog({ artist, selectedPlan, open, onClose, onContractC
     const contractId = `CT-${Date.now()}`;
     
     const serviceDescription = selectedServicePlan
-      ? `${selectedServicePlan.name}: ${selectedServicePlan.description}\n\nIncluye:\n${selectedServicePlan.includes.map(item => `• ${item}`).join('\n')}`
+      ? (() => {
+          const planName = String(selectedServicePlan.name || '').trim();
+          const planDescription = String(selectedServicePlan.description || '').trim();
+          const shouldIncludeDescription = planDescription && planDescription.toLowerCase() !== 'null';
+          const planIncludes = selectedServicePlan.includes.map(item => `• ${item}`).join('\n');
+
+          const planTitle = shouldIncludeDescription ? `${planName}: ${planDescription}` : planName;
+          return planIncludes ? `${planTitle}\n\nIncluye:\n${planIncludes}` : planTitle;
+        })()
       : `Servicio de ${artist.category} - ${formData.eventType || 'Evento personalizado'}`;
 
     // Use custom terms from service, or fallback to default

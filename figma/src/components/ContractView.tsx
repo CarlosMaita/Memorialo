@@ -33,6 +33,7 @@ interface ContractRecord {
   metadata?: {
     saleType?: 'time' | 'unit';
     unitLabel?: string;
+    planName?: string;
     clientLegalName?: string;
     clientRepresentativeName?: string;
     providerBusinessName?: string;
@@ -133,6 +134,21 @@ const getMeasureTitle = (contract: ContractRecord) => {
   return contract.terms.startTime ? 'Hora y Duración' : 'Duración';
 };
 
+const getServiceDescriptionText = (description?: string, fallbackName?: string) => {
+  const normalizedDescription = String(description || '')
+    .replace(/:\s*null(\s*(?:\r?\n|$))/gi, '$1')
+    .replace(/\bnull\b/gi, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  if (normalizedDescription) {
+    return normalizedDescription;
+  }
+
+  return String(fallbackName || '').trim();
+};
+
 
 export function ContractView({ contract, open, onClose, userType, onSign, onReject }: ContractViewProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -210,6 +226,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     ? `${providerRepresentativeName} (${providerIdentificationLabel}: ${providerIdentificationNumber})`
     : providerRepresentativeName;
   const agreements = (contract.terms.agreements || '').trim() || 'No se definieron acuerdos adicionales entre las partes.';
+  const serviceDescriptionText = getServiceDescriptionText(contract.terms.serviceDescription, contract.metadata?.planName);
 
   const handleSign = () => {
     if (canEditTerms) {
@@ -462,7 +479,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
             <CardContent className="space-y-3">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Descripción del Servicio</p>
-                <p>{contract.terms.serviceDescription}</p>
+                <p>{serviceDescriptionText}</p>
               </div>
 
               {specialRequest && (
