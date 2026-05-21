@@ -5025,7 +5025,7 @@ export default function App() {
                       <div className="h-6 w-48 bg-gray-200 rounded animate-pulse mb-2" />
                       <div className="h-4 w-72 bg-gray-100 rounded animate-pulse mb-4" />
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                        {Array.from({ length: 5 }).map((_, index) => (
+                        {Array.from({ length: homeCategoryHighlights.length || 5 }).map((_, index) => (
                           <div key={`home-category-skeleton-${index}`} className="rounded-xl border border-gray-200 bg-white p-4 space-y-2">
                             <div className="h-6 w-6 rounded bg-gray-200 animate-pulse" />
                             <div className="h-4 w-3/4 rounded bg-gray-200 animate-pulse" />
