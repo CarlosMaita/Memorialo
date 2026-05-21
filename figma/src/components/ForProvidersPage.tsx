@@ -2,6 +2,7 @@ import { ArrowRight, CheckCircle, Users, TrendingUp, Shield, Clock, Star, Briefc
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
+import { SEOHead } from './SEOHead';
 
 interface ForProvidersPageProps {
   onClose: () => void;
@@ -11,6 +12,12 @@ interface ForProvidersPageProps {
 export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProps) {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: 'var(--cream-white)' }}>
+      <SEOHead
+        title="Únete como Proveedor de Eventos | Memorialo Venezuela"
+        description="Publica tus servicios en Memorialo y conecta con cientos de clientes en Venezuela. Consigue más reservas, gestiona tus fechas y haz crecer tu negocio."
+        canonical="/para-proveedores"
+        keywords="proveedor eventos venezuela, agencia festejo, músicos eventos, catering venezuela, decoradores eventos, digitalizar negocio eventos, conseguir clientes eventos"
+      />
       {/* Header */}
       <div className="sticky top-0 z-10 shadow-sm" style={{ backgroundColor: 'var(--navy-blue)' }}>
         <div className="container mx-auto px-4 py-4">
@@ -74,7 +81,7 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
             </Badge>
             
             <h1 className="text-white mb-6">
-              Haz crecer tu negocio con Memorialo
+              Digitaliza tu negocio y multiplica tus contratos de eventos.
             </h1>
             
             <p className="text-xl text-white/80 mb-8 leading-relaxed">
@@ -127,7 +134,7 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="mb-4" style={{ color: 'var(--navy-blue)' }}>
-              ¿Por qué unirte a Memorialo?
+              Tus clientes ideales a un solo clic de distancia.
             </h2>
             <p className="text-gray-600 text-lg max-w-2xl mx-auto">
               Tenemos todo lo que necesitas para llevar tu negocio al siguiente nivel
@@ -245,7 +252,7 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
             <h2 className="text-center mb-12" style={{ color: 'var(--navy-blue)' }}>
-              Todo lo que necesitas para triunfar
+              Todo bajo control: Chat, contratos y notificaciones en un solo lugar.
             </h2>
 
             <div className="space-y-12">
@@ -336,7 +343,7 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-center mb-4" style={{ color: 'var(--navy-blue)' }}>
-              Cómo funciona
+              Sencillo. Transparente. Diseñado para que crezcas.
             </h2>
             <p className="text-center text-gray-600 mb-12 text-lg">
               Comenzar es fácil y rápido. En menos de 10 minutos estarás listo.
