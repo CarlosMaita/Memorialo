@@ -2,6 +2,7 @@ import { ArrowRight, Search, FileText, CheckCircle, Calendar, Users, CreditCard,
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
+import { SEOHead } from './SEOHead';
 
 interface HowItWorksPageProps {
   onClose: () => void;
@@ -10,9 +11,15 @@ interface HowItWorksPageProps {
 
 export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: 'var(--cream-white)' }}>
-      {/* Header */}
-      <div className="sticky top-0 z-10 shadow-sm" style={{ backgroundColor: 'var(--navy-blue)' }}>
+    <>
+      <SEOHead
+        title="Cómo Funciona Memorialo | Contrata Servicios para Eventos"
+        description="Descubre cómo reservar proveedores para tu evento en 4 pasos simples. Busca, compara perfiles, solicita tu presupuesto y coordina de forma segura."
+        canonical="/como-funciona"
+      />
+      <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: 'var(--cream-white)' }}>
+        {/* Header */}
+        <div className="sticky top-0 z-10 shadow-sm" style={{ backgroundColor: 'var(--navy-blue)' }}>
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -107,7 +114,7 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
                   <Search className="w-8 h-8" />
                 </div>
                 <div className="text-center">
-                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>1. Busca</h3>
+                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Paso 1: Busca por ciudad y categoría</h3>
                   <p className="text-sm text-gray-600">
                     Usa nuestros filtros por ubicación, categoría y presupuesto para encontrar el proveedor ideal.
                   </p>
@@ -124,7 +131,7 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
                   <Eye className="w-8 h-8" />
                 </div>
                 <div className="text-center">
-                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>2. Elige</h3>
+                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Paso 2: Compara perfiles y valoraciones</h3>
                   <p className="text-sm text-gray-600">
                     Revisa perfiles, precios, portafolios y reseñas de clientes anteriores para tomar la mejor decisión.
                   </p>
@@ -141,9 +148,9 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
                   <FileText className="w-8 h-8" />
                 </div>
                 <div className="text-center">
-                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>3. Contrata</h3>
+                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Paso 3: Solicita tu reserva con detalles</h3>
                   <p className="text-sm text-gray-600">
-                    Completa el formulario de reserva y firma el contrato digital con todos los detalles del servicio.
+                    Envía tu solicitud de reserva con toda la información del servicio para que el proveedor la revise.
                   </p>
                 </div>
               </CardContent>
@@ -158,9 +165,9 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
                   <CheckCircle className="w-8 h-8" />
                 </div>
                 <div className="text-center">
-                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>4. Confirma</h3>
+                  <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Paso 4: Confirma y coordina con el proveedor</h3>
                   <p className="text-sm text-gray-600">
-                    El proveedor revisa y firma el contrato. ¡Tu reserva está confirmada y lista!
+                    Espera el contrato del proveedor. Una vez recibido, fírmalo aceptando términos, condiciones y acuerdos del chat.
                   </p>
                 </div>
               </CardContent>
@@ -177,22 +184,22 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
                 <div className="flex gap-3">
                   <Calendar className="w-5 h-5 flex-shrink-0 mt-1" style={{ color: 'var(--gold)' }} />
                   <div>
-                    <h4 className="text-sm mb-1" style={{ color: 'var(--navy-blue)' }}>Organiza tus Eventos</h4>
-                    <p className="text-sm text-gray-600">Crea eventos y asigna múltiples servicios a cada uno</p>
+                    <h4 className="text-sm mb-1" style={{ color: 'var(--navy-blue)' }}>Chat interno unificado</h4>
+                    <p className="text-sm text-gray-600">Mantén toda la coordinación de tu reserva en un solo canal con el proveedor.</p>
                   </div>
                 </div>
                 <div className="flex gap-3">
                   <Shield className="w-5 h-5 flex-shrink-0 mt-1" style={{ color: 'var(--gold)' }} />
                   <div>
-                    <h4 className="text-sm mb-1" style={{ color: 'var(--navy-blue)' }}>Contratos Seguros</h4>
-                    <p className="text-sm text-gray-600">Todos los acuerdos quedan documentados y firmados digitalmente</p>
+                    <h4 className="text-sm mb-1" style={{ color: 'var(--navy-blue)' }}>Contratos digitales seguros</h4>
+                    <p className="text-sm text-gray-600">Todos los acuerdos quedan documentados y firmados digitalmente.</p>
                   </div>
                 </div>
                 <div className="flex gap-3">
                   <Star className="w-5 h-5 flex-shrink-0 mt-1" style={{ color: 'var(--gold)' }} />
                   <div>
-                    <h4 className="text-sm mb-1" style={{ color: 'var(--navy-blue)' }}>Reseñas Verificadas</h4>
-                    <p className="text-sm text-gray-600">Lee opiniones reales de otros clientes</p>
+                    <h4 className="text-sm mb-1" style={{ color: 'var(--navy-blue)' }}>Notificaciones en tiempo real</h4>
+                    <p className="text-sm text-gray-600">Recibe alertas al instante sobre respuestas, firmas y cambios en tu reserva.</p>
                   </div>
                 </div>
               </div>
@@ -588,7 +595,8 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
             </Button>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
