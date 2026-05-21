@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Calendar, Clock, DollarSign, FileText, Star, CheckCircle, XCircle,
   AlertCircle, MessageSquare, FolderOpen, Package, Edit2, ChevronDown,
-  ChevronUp, Eye, Archive, Menu, X, CalendarDays, BookOpen, Activity, MessageCircle,
+  ChevronUp, Eye, Archive, CalendarDays, BookOpen, Activity, MessageCircle,
   Search, Download
 } from 'lucide-react';
 import { Contract, User, Review, Event } from '../types';
@@ -41,10 +41,12 @@ interface ClientDashboardProps {
   bookings?: any[];
   onBookingUpdate?: (booking: any) => void;
   onOpenNegotiation?: (contractId: string) => void;
+  onSectionChange?: (section: SidebarSection) => void;
 }
 
 const navItems: { id: SidebarSection; label: string; icon: React.ReactNode }[] = [
   { id: 'bookings', label: 'Reservas', icon: <BookOpen className="w-5 h-5" /> },
+  { id: 'events', label: 'Eventos', icon: <CalendarDays className="w-5 h-5" /> },
 ];
 
 export function ClientDashboard({
@@ -65,7 +67,8 @@ export function ClientDashboard({
   onContractUpdate,
   bookings = [],
   onBookingUpdate,
-  onOpenNegotiation
+  onOpenNegotiation,
+  onSectionChange
 }: ClientDashboardProps) {
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [showContractView, setShowContractView] = useState(false);
@@ -74,7 +77,6 @@ export function ClientDashboard({
   const [showArchived, setShowArchived] = useState(false);
   const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
   const [activeSection, setActiveSection] = useState<SidebarSection>('bookings');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchBooking, setSearchBooking] = useState('');
   const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
   const [showEventBookings, setShowEventBookings] = useState(false);
@@ -202,7 +204,7 @@ export function ClientDashboard({
     });
 
   useEffect(() => {
-    setActiveSection('bookings');
+    setActiveSection(initialSection || 'bookings');
   }, [initialSection]);
 
   // Group contracts by event
@@ -440,7 +442,7 @@ export function ClientDashboard({
 
   const handleNavClick = (section: SidebarSection) => {
     setActiveSection(section);
-    setSidebarOpen(false);
+    onSectionChange?.(section);
   };
 
   const renderBookingRow = (booking: any) => {
@@ -936,20 +938,6 @@ export function ClientDashboard({
   // ── Layout ────────────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-[calc(100vh-64px)] bg-gray-50">
-
-      {/* Mobile overlay sidebar */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
-          <div className="relative w-72 bg-white h-full shadow-2xl z-10">
-            <button onClick={() => setSidebarOpen(false)} className="absolute top-4 right-4 text-gray-500 hover:text-gray-900 p-1">
-              <X className="w-5 h-5" />
-            </button>
-            <SidebarContent />
-          </div>
-        </div>
-      )}
-
       {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 shrink-0 sticky top-0 h-screen">
         <SidebarContent />
@@ -959,9 +947,6 @@ export function ClientDashboard({
       <main className="flex-1 min-w-0">
         {/* Mobile top bar */}
         <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 sticky top-0 z-30">
-          <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg bg-[#1B2A47] text-white">
-            <Menu className="w-5 h-5" />
-          </button>
           <div>
             <p className="text-sm font-semibold text-[#1B2A47]">
               {navItems.find(n => n.id === activeSection)?.label}

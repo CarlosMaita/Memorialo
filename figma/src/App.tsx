@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, type MouseEvent } from 'react';
-import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase, Shield, Search, Bell, CheckCheck, Heart, Calendar, MessageCircle, Receipt, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, LayoutDashboard, Menu, X, LogIn, UserCircle, LogOut, Briefcase, Shield, Search, Bell, CheckCheck, Heart, Calendar, CalendarDays, MessageCircle, Receipt, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Artist, ServicePlan, Contract, User, Review, Booking, Provider, Event } from './types';
 import { mockArtists, mockEvents, mockUsers, mockProviders } from './data/mockData';
 import { mockReviews } from './data/mockReviews';
@@ -2470,7 +2470,7 @@ export default function App() {
       setViewMode('business');
       setDashboardView('client');
 
-      if (normalizedPath === '/me/reservas') {
+      if (normalizedPath === '/me/reservas' || normalizedPath === '/me/eventos') {
         let queryParams = new URLSearchParams();
         try {
           queryParams = new URL(currentRoute, window.location.origin).searchParams;
@@ -2480,7 +2480,7 @@ export default function App() {
         }
         const focusedContractId = queryParams.get('contractId')?.trim() || null;
 
-        setClientDashboardSection('bookings');
+        setClientDashboardSection(normalizedPath === '/me/eventos' ? 'events' : 'bookings');
         setClientFocusedContractId(focusedContractId);
         setNegotiationContractId(null);
       } else if (normalizedPath.startsWith('/me/negociacion/')) {
@@ -2809,6 +2809,10 @@ export default function App() {
     return '/mi-negocio';
   };
 
+  const resolveClientSectionPath = (section: ClientDashboardSection): string => (
+    section === 'events' ? '/me/eventos' : '/me/reservas'
+  );
+
   const handleProviderSectionChange = (section: ProviderDashboardSection) => {
     setProviderDashboardSection(section);
     navigateTo(resolveProviderSectionPath(section));
@@ -2845,7 +2849,7 @@ export default function App() {
     });
 
     const openClientBookings = (contractId: string | null = null): NotificationDestination => ({
-      path: '/me/reservas',
+      path: resolveClientSectionPath('bookings'),
       viewMode: 'business',
       dashboardView: 'client',
       clientSection: 'bookings',
@@ -4521,10 +4525,18 @@ export default function App() {
                       <DropdownMenuItem onClick={() => {
                         setViewMode('business');
                         setDashboardView('client');
-                        navigateTo('/me/reservas');
+                        navigateTo(resolveClientSectionPath('bookings'));
                       }}>
                         <Calendar className="w-4 h-4 mr-2" />
                         Mis Reservas
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        setViewMode('business');
+                        setDashboardView('client');
+                        navigateTo(resolveClientSectionPath('events'));
+                      }}>
+                        <CalendarDays className="w-4 h-4 mr-2" />
+                        Mis Eventos
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => {
                         setViewMode('client');
@@ -4657,11 +4669,19 @@ export default function App() {
                   </Button>
                   <Button
                     variant="ghost"
-                    onClick={() => { setViewMode('business'); setDashboardView('client'); navigateTo('/me/reservas'); setMobileMenuOpen(false); }}
+                    onClick={() => { setViewMode('business'); setDashboardView('client'); navigateTo(resolveClientSectionPath('bookings')); setMobileMenuOpen(false); }}
                     className="w-full justify-start text-white hover:text-white hover:bg-white/10"
                   >
                     <Calendar className="w-4 h-4 mr-2" />
                     Mis Reservas
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => { setViewMode('business'); setDashboardView('client'); navigateTo(resolveClientSectionPath('events')); setMobileMenuOpen(false); }}
+                    className="w-full justify-start text-white hover:text-white hover:bg-white/10"
+                  >
+                    <CalendarDays className="w-4 h-4 mr-2" />
+                    Mis Eventos
                   </Button>
                   <Button
                     variant="ghost"
@@ -4981,6 +5001,7 @@ export default function App() {
                   onOpenNegotiation={(contractId: string) => {
                     navigateTo(`/me/negociacion/${contractId}`);
                   }}
+                  onSectionChange={(section) => navigateTo(resolveClientSectionPath(section), { scrollToTop: false })}
                 />
               )
             )}
@@ -5448,6 +5469,7 @@ export default function App() {
                 onContractUpdate={handleContractUpdate}
                 bookings={bookings}
                 onBookingUpdate={handleBookingUpdate}
+                onSectionChange={(section) => navigateTo(resolveClientSectionPath(section), { scrollToTop: false })}
               />
             )
           )
