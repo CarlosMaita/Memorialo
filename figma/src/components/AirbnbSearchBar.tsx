@@ -31,6 +31,16 @@ const capitalizeCategory = (text: string): string => {
     .join(' ');
 };
 
+// Busca la configuración de una categoría por su clave o por su título (compatible con valores en title-case provenientes del contexto de ruta)
+const getCategoryData = (cat: string) => {
+  return (
+    SERVICE_CATEGORIES[cat as keyof typeof SERVICE_CATEGORIES] ??
+    SERVICE_CATEGORIES[cat.toUpperCase() as keyof typeof SERVICE_CATEGORIES] ??
+    Object.values(SERVICE_CATEGORIES).find((c) => c.title === cat) ??
+    null
+  );
+};
+
 export function AirbnbSearchBar({ onSearch, searchCriteria, availableCities = VENEZUELAN_CITIES }: AirbnbSearchBarProps) {
   const [query, setQuery] = useState('');
   const [city, setCity] = useState('');
@@ -192,7 +202,7 @@ export function AirbnbSearchBar({ onSearch, searchCriteria, availableCities = VE
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-2xl">{SERVICE_CATEGORIES[category as keyof typeof SERVICE_CATEGORIES].icon}</span>
+                    <span className="text-2xl">{getCategoryData(category)?.icon}</span>
                     <Label className="text-xs font-semibold text-gray-900">{capitalizeCategory(category)}</Label>
                   </div>
                   <Button
@@ -215,7 +225,7 @@ export function AirbnbSearchBar({ onSearch, searchCriteria, availableCities = VE
                   </Button>
                 </div>
                 <div className="space-y-2">
-                  {SERVICE_CATEGORIES[category as keyof typeof SERVICE_CATEGORIES].subcategories.map((sub) => (
+                  {(getCategoryData(category)?.subcategories ?? []).map((sub) => (
                     <button
                       key={sub}
                       onClick={() => {
@@ -458,7 +468,7 @@ export function AirbnbSearchBar({ onSearch, searchCriteria, availableCities = VE
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-xl">{SERVICE_CATEGORIES[category as keyof typeof SERVICE_CATEGORIES].icon}</span>
+                        <span className="text-xl">{getCategoryData(category)?.icon}</span>
                         <Label className="text-xs font-semibold text-gray-900">{capitalizeCategory(category)}</Label>
                       </div>
                       <Button
@@ -474,7 +484,7 @@ export function AirbnbSearchBar({ onSearch, searchCriteria, availableCities = VE
                       </Button>
                     </div>
                     <div className="space-y-2">
-                      {SERVICE_CATEGORIES[category as keyof typeof SERVICE_CATEGORIES].subcategories.map((sub) => (
+                      {(getCategoryData(category)?.subcategories ?? []).map((sub) => (
                         <button
                           key={sub}
                           onClick={() => {
