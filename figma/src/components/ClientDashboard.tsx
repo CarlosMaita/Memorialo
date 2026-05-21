@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Calendar, Clock, DollarSign, FileText, Star, CheckCircle, XCircle,
   AlertCircle, MessageSquare, FolderOpen, Package, Edit2, ChevronDown,
-  ChevronUp, Eye, Archive, CalendarDays, BookOpen, Activity, MessageCircle,
+  ChevronUp, Eye, Archive, ArchiveRestore, CalendarDays, BookOpen, Activity, MessageCircle,
   Search, Download
 } from 'lucide-react';
 import { Contract, User, Review, Event } from '../types';
@@ -563,7 +563,7 @@ export function ClientDashboard({
                   className="h-7 w-7 p-0"
                   title="Desarchivar reserva"
                 >
-                  <Archive className="w-4 h-4 text-blue-700" />
+                  <ArchiveRestore className="w-4 h-4 text-blue-700" />
                 </Button>
               ) : displayStatus === 'completed' ? (
                 <Button
