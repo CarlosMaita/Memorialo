@@ -4716,6 +4716,82 @@ export default function App() {
               )}
             </div>
 
+            {/* Mobile Notification Bell */}
+            {currentUser && notificationsEnabled && (
+              <DropdownMenu onOpenChange={(open) => {
+                if (open) {
+                  handleRefreshNotifications();
+                }
+              }}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden relative h-10 w-10 rounded-full p-0 hover:bg-white/10 text-white shrink-0"
+                    aria-label="Abrir notificaciones"
+                  >
+                    <Bell className="h-5 w-5" />
+                    {unreadNotificationsCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-[10px] leading-[18px] font-semibold text-white text-center">
+                        {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                      </span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80">
+                  <div className="px-2 py-1.5 flex items-center justify-between">
+                    <p className="text-sm font-semibold">Notificaciones</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleMarkAllNotificationsRead}
+                      disabled={unreadNotificationsCount === 0}
+                      className="h-7 px-2"
+                    >
+                      <CheckCheck className="w-3.5 h-3.5 mr-1" />
+                      Leer todo
+                    </Button>
+                  </div>
+                  <DropdownMenuSeparator />
+                  {notificationsLoading ? (
+                    <div className="px-3 py-4 text-sm text-muted-foreground">Cargando notificaciones...</div>
+                  ) : notifications.length === 0 ? (
+                    <div className="px-3 py-4 text-sm text-muted-foreground">No tienes notificaciones por ahora.</div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <DropdownMenuItem
+                        key={notification.id}
+                        onClick={() => handleMarkNotificationRead(notification)}
+                        className="items-start rounded-md bg-white py-2.5 cursor-pointer text-foreground focus:bg-zinc-100 data-[highlighted]:bg-zinc-100 hover:bg-zinc-100"
+                      >
+                        <div className="w-full">
+                          <div className="flex items-start gap-2">
+                            {!notification.isRead && <span className="mt-1 h-2 w-2 rounded-full bg-blue-500 shrink-0" />}
+                            <div className="min-w-0 flex-1">
+                              <p className={`text-sm ${notification.isRead ? 'font-normal' : 'font-semibold'}`}>
+                                {notification.title || 'Notificación'}
+                              </p>
+                              {notification.body && (
+                                <p className="text-xs text-muted-foreground line-clamp-2">{notification.body}</p>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(event) => void handleDismissNotification(event, notification)}
+                              className="mt-0.5 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                              aria-label="Descartar notificación"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
             {/* Mobile Menu Button */}
             <Button
               variant="ghost"
