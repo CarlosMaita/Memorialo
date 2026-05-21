@@ -807,9 +807,11 @@ export function useSupabase() {
     try {
       const data = await apiRequest('/home-collection-sections', 'GET');
       return Array.isArray(data) ? data : [];
-    } catch (error) {
-      console.error('Get home collection sections error:', error);
-      throw error;
+    } catch (error: any) {
+      if (error?.message !== 'BACKEND_UNAVAILABLE' && !error?.message?.includes('compute resources')) {
+        console.error('Get home collection sections error:', error);
+      }
+      return [];
     }
   };
 

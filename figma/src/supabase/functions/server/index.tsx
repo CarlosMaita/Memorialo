@@ -731,6 +731,68 @@ app.delete(`${P}/admin/users/:id`, async (c) => {
   } catch (error) { console.log('Delete user error:', error); return c.json({ error: 'Failed to delete user' }, 500); }
 });
 
+// ==================== HOME COLLECTION SECTIONS ====================
+
+app.get(`${P}/home-collection-sections`, async (c) => {
+  try {
+    const sections = (await kv.getByPrefix('home-collection-section:')).filter((s: any) => s.visible !== false).sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || String(a.id).localeCompare(String(b.id)));
+    return c.json(sections);
+  } catch (error) { console.log('Get home collection sections error:', error); return c.json({ error: 'Failed to get home collection sections' }, 500); }
+});
+
+app.get(`${P}/admin/home-collection-sections`, async (c) => {
+  const auth = await verifyAuth(c.req.header('Authorization'));
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401);
+  if (!(await verifyAdmin(auth))) return c.json({ error: 'Forbidden' }, 403);
+  try {
+    const sections = (await kv.getByPrefix('home-collection-section:')).sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || String(a.id).localeCompare(String(b.id)));
+    return c.json(sections);
+  } catch (error) { return c.json({ error: 'Failed to get home collection sections' }, 500); }
+});
+
+app.post(`${P}/admin/home-collection-sections`, async (c) => {
+  const auth = await verifyAuth(c.req.header('Authorization'));
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401);
+  if (!(await verifyAdmin(auth))) return c.json({ error: 'Forbidden' }, 403);
+  try {
+    const d = await c.req.json();
+    if (!d.title) return c.json({ error: 'title is required' }, 400);
+    if (!d.collectionId) return c.json({ error: 'collectionId is required' }, 400);
+    const id = `hcs-${Date.now()}`;
+    const section = { id, title: String(d.title), subtitle: d.subtitle ?? null, collectionId: String(d.collectionId), sortOrder: Number(d.sortOrder ?? 0), visible: d.visible !== false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    await kv.set(`home-collection-section:${id}`, section);
+    return c.json(section);
+  } catch (error) { return c.json({ error: 'Failed to create home collection section' }, 500); }
+});
+
+app.put(`${P}/admin/home-collection-sections/:id`, async (c) => {
+  const auth = await verifyAuth(c.req.header('Authorization'));
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401);
+  if (!(await verifyAdmin(auth))) return c.json({ error: 'Forbidden' }, 403);
+  try {
+    const id = c.req.param('id');
+    const cur = await kv.get(`home-collection-section:${id}`);
+    if (!cur) return c.json({ error: 'Section not found' }, 404);
+    const d = await c.req.json();
+    const updated = { ...cur, ...d, id, updatedAt: new Date().toISOString() };
+    await kv.set(`home-collection-section:${id}`, updated);
+    return c.json(updated);
+  } catch (error) { return c.json({ error: 'Failed to update home collection section' }, 500); }
+});
+
+app.delete(`${P}/admin/home-collection-sections/:id`, async (c) => {
+  const auth = await verifyAuth(c.req.header('Authorization'));
+  if (!auth) return c.json({ error: 'Unauthorized' }, 401);
+  if (!(await verifyAdmin(auth))) return c.json({ error: 'Forbidden' }, 403);
+  try {
+    const id = c.req.param('id');
+    const cur = await kv.get(`home-collection-section:${id}`);
+    if (!cur) return c.json({ error: 'Section not found' }, 404);
+    await kv.del(`home-collection-section:${id}`);
+    return c.json({ success: true });
+  } catch (error) { return c.json({ error: 'Failed to delete home collection section' }, 500); }
+});
+
 // ==================== SEO ====================
 
 app.get(`${P}/robots.txt`, (c) => {
