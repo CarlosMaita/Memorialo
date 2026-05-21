@@ -1041,12 +1041,13 @@ export function ClientDashboard({
                     {pendingBookings > 0 && ` · ${pendingBookings} pendiente${pendingBookings !== 1 ? 's' : ''}`}
                   </p>
                 </div>
-                <EventManager
-                  events={allUserEvents}
-                  onCreateEvent={onCreateEvent}
-                  onUpdateEvent={onUpdateEvent}
-                  onDeleteEvent={onDeleteEvent}
-                />
+                {userBookings.length > 0 && (
+                  <div className="flex items-center gap-3 bg-white border rounded-lg px-3 py-2">
+                    <span className="text-xs text-gray-600">Sin evento</span>
+                    <Switch checked={showEventBookings} onCheckedChange={setShowEventBookings} />
+                    <span className="text-xs text-gray-600">En eventos</span>
+                  </div>
+                )}
               </div>
 
               {userBookings.length > 0 && (
@@ -1082,11 +1083,6 @@ export function ClientDashboard({
                       <SelectItem value="oldest">Creación: menos recientes</SelectItem>
                     </SelectContent>
                   </Select>
-                  <div className="flex items-center gap-3 bg-white border rounded-lg px-3 py-2">
-                    <span className="text-xs text-gray-600">Sin evento</span>
-                    <Switch checked={showEventBookings} onCheckedChange={setShowEventBookings} />
-                    <span className="text-xs text-gray-600">En eventos</span>
-                  </div>
                 </div>
               )}
 
