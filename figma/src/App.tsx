@@ -3934,9 +3934,9 @@ export default function App() {
   const isNegotiationWorkspaceRoute =
     currentRoute.startsWith('/mi-negocio/negociacion/') ||
     currentRoute.startsWith('/me/negociacion/');
-  const HOME_SEO_TITLE = 'Inicio de servicios para eventos en Venezuela';
+  const HOME_SEO_TITLE = 'Memorialo | Contratar Proveedores para Eventos en Venezuela';
   const HOME_SEO_DESCRIPTION =
-    'Conecta con proveedores confiables para bodas, fiestas y eventos corporativos. Explora categorías, servicios destacados y contrata en pocos pasos con Memorialo.';
+    'Todo para tu evento en un solo lugar. Encuentra y contrata de forma fácil locaciones, catering, música y decoración en Venezuela. ¡Haz tu evento inolvidable!';
   const isHomePageRoute = currentRoute === '/' && !isFavoritesRoute && !marketplaceRouteContext;
   const homeCategoryHighlights = Object.entries(SERVICE_CATEGORIES).slice(0, 5).map(([categoryName, categoryConfig]) => {
     const firstSubcategory = categoryConfig.subcategories[0] || categoryName;

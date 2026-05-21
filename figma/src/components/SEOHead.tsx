@@ -16,6 +16,8 @@ const DEFAULT_DESCRIPTION =
   'Memorialo es el marketplace para conectar proveedores de eventos con clientes en Venezuela. Encuentra los mejores servicios para bodas, fiestas, eventos corporativos y celebraciones.';
 const DEFAULT_OG_IMAGE = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&h=630&fit=crop';
 const forceNoindexByEnv = String((import.meta as any).env?.VITE_NOINDEXE ?? (import.meta as any).env?.VITE_NOINDEX ?? 'false').toLowerCase() === 'true';
+const escapedSiteName = SITE_NAME.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const siteNamePattern = new RegExp(`\\b${escapedSiteName}\\b`, 'i');
 
 /**
  * SEOHead: Manages dynamic <head> meta tags for SEO.
@@ -33,7 +35,12 @@ export function SEOHead({
   keywords,
 }: SEOHeadProps) {
   const effectiveNoindex = noindex || forceNoindexByEnv;
-  const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} - Marketplace de Servicios para Eventos`;
+  const normalizedTitle = title?.trim();
+  const fullTitle = normalizedTitle
+    ? siteNamePattern.test(normalizedTitle)
+      ? normalizedTitle
+      : `${normalizedTitle} | ${SITE_NAME}`
+    : `${SITE_NAME} - Marketplace de Servicios para Eventos`;
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const canonicalUrl = canonical ? `${origin}${canonical}` : `${origin}${window.location.pathname}`;
 
