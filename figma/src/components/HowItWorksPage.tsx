@@ -167,7 +167,7 @@ export function HowItWorksPage({ onClose, onGetStarted }: HowItWorksPageProps) {
                 <div className="text-center">
                   <h3 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Paso 4: Confirma y coordina con el proveedor</h3>
                   <p className="text-sm text-gray-600">
-                    Espera el contrato del proveedor. Una vez recibido, fírmalo aceptando términos, condiciones y acuerdos previamente acordados en el chat.
+                    Espera el contrato del proveedor. Una vez recibido, fírmalo aceptando términos, condiciones y acuerdos del chat.
                   </p>
                 </div>
               </CardContent>
