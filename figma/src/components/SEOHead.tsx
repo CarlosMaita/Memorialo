@@ -33,7 +33,12 @@ export function SEOHead({
   keywords,
 }: SEOHeadProps) {
   const effectiveNoindex = noindex || forceNoindexByEnv;
-  const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} - Marketplace de Servicios para Eventos`;
+  const normalizedTitle = title?.trim();
+  const fullTitle = normalizedTitle
+    ? normalizedTitle.toLowerCase().includes(SITE_NAME.toLowerCase())
+      ? normalizedTitle
+      : `${normalizedTitle} | ${SITE_NAME}`
+    : `${SITE_NAME} - Marketplace de Servicios para Eventos`;
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const canonicalUrl = canonical ? `${origin}${canonical}` : `${origin}${window.location.pathname}`;
 
