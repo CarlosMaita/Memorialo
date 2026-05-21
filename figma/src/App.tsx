@@ -4447,7 +4447,7 @@ export default function App() {
               <Button
                 variant={viewMode === 'client' ? 'secondary' : 'ghost'}
                 onClick={handleHeaderHomeRefresh}
-                className={viewMode === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}
+                className={`hidden ${viewMode === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
               >
                 <Users className="w-4 h-4 mr-2" />
                 Buscar Servicios
@@ -4721,7 +4721,7 @@ export default function App() {
               <Button
                 variant={viewMode === 'client' ? 'secondary' : 'ghost'}
                 onClick={() => { handleHeaderHomeRefresh(); setMobileMenuOpen(false); }}
-                className={`w-full justify-center ${viewMode === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
+                className={`hidden w-full justify-center ${viewMode === 'client' ? '' : 'text-white hover:text-white hover:bg-white/10'}`}
               >
                 <Users className="w-4 h-4 mr-2" />
                 Buscar Servicios
