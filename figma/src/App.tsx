@@ -152,6 +152,28 @@ const getMainCategoryConfig = (label?: string | null) => {
   ))?.[1] ?? null;
 };
 
+const getMainCategoryTitleBySubcategory = (label?: string | null) => {
+  const normalizedLabel = slugifyCategoryLabel(label);
+
+  if (!normalizedLabel) {
+    return null;
+  }
+
+  return Object.values(SERVICE_CATEGORIES).find((categoryConfig) => (
+    categoryConfig.subcategories.some((subcategory) => slugifyCategoryLabel(subcategory) === normalizedLabel)
+  ))?.title ?? null;
+};
+
+const ucfirst = (value?: string | null) => {
+  const normalized = (value || '').trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  return normalized.charAt(0).toLocaleUpperCase('es-VE') + normalized.slice(1);
+};
+
 type BookingConfirmationState = {
   bookingId?: string;
   contractId?: string;
@@ -4016,14 +4038,26 @@ export default function App() {
         ? `Proveedores en ${marketplaceRouteContext.city}`
         : `Proveedores de ${marketplaceRouteContext.taxonomy?.label}`
     : (isFavoritesRoute ? 'Tus Favoritos' : 'Tu Evento Inolvidable Empieza Aquí');
+  const seoCity = ucfirst(marketplaceRouteContext?.city);
+  const seoSecondaryCategory = marketplaceRouteContext?.taxonomy?.filterBy === 'subcategory'
+    ? ucfirst(marketplaceRouteContext.taxonomy.label)
+    : '';
+  const seoMainCategory = seoSecondaryCategory
+    ? getMainCategoryTitleBySubcategory(marketplaceRouteContext?.taxonomy?.label)
+    : null;
+  const hasSecondaryCategorySeoTemplate = Boolean(seoSecondaryCategory && seoCity && seoMainCategory);
   const marketplaceSeoTitle = marketplaceRouteContext
-    ? matchedMainCategory?.metaTitle || marketplaceHeading
+    ? hasSecondaryCategorySeoTemplate
+      ? `${seoSecondaryCategory} para Eventos en ${seoCity} | Memorialo`
+      : matchedMainCategory?.metaTitle || marketplaceHeading
     : undefined;
   const marketplaceSeoDescription = marketplaceRouteContext
-    ? matchedMainCategory?.metaDescription
-      || (marketplaceRouteContext.taxonomy
-        ? `Explora ${marketplaceRouteContext.taxonomy.label} en Memorialo. Compara proveedores, precios y disponibilidad para tu próximo evento en Venezuela.`
-        : HOME_SEO_DESCRIPTION)
+    ? hasSecondaryCategorySeoTemplate
+      ? `¿Buscas ${seoSecondaryCategory.toLocaleLowerCase('es-VE')} en ${seoCity}? Encuentra las mejores opciones de ${(seoMainCategory || '').toLocaleLowerCase('es-VE')} para tu fiesta o evento. ¡Cotiza y reserva de forma segura!`
+      : matchedMainCategory?.metaDescription
+        || (marketplaceRouteContext.taxonomy
+          ? `Explora ${marketplaceRouteContext.taxonomy.label} en Memorialo. Compara proveedores, precios y disponibilidad para tu próximo evento en Venezuela.`
+          : HOME_SEO_DESCRIPTION)
     : undefined;
 
   const visibleArtists = useMemo(() => {
