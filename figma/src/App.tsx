@@ -127,6 +127,31 @@ type MarketplaceCacheEntry = {
   updatedAt: number;
 };
 
+const slugifyCategoryLabel = (value?: string | null) => {
+  if (!value) return '';
+
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+};
+
+const getMainCategoryConfig = (label?: string | null) => {
+  const normalizedLabel = slugifyCategoryLabel(label);
+
+  if (!normalizedLabel) {
+    return null;
+  }
+
+  return Object.entries(SERVICE_CATEGORIES).find(([categoryKey, categoryConfig]) => (
+    slugifyCategoryLabel(categoryKey) === normalizedLabel || slugifyCategoryLabel(categoryConfig.title) === normalizedLabel
+  ))?.[1] ?? null;
+};
+
 type BookingConfirmationState = {
   bookingId?: string;
   contractId?: string;
@@ -1638,13 +1663,6 @@ export default function App() {
       lookup.set(key, target);
     };
 
-    Object.entries(SERVICE_CATEGORIES).forEach(([category, entry]) => {
-      register(category, { label: category, filterBy: 'category' });
-      entry.subcategories.forEach((subcategory) => {
-        register(subcategory, { label: subcategory, filterBy: 'subcategory' });
-      });
-    });
-
     artists.forEach((artist) => {
       if (artist.category) {
         register(artist.category, { label: artist.category, filterBy: 'category' });
@@ -1654,6 +1672,13 @@ export default function App() {
       }
       artist.specialties?.forEach((specialty) => {
         register(specialty, { label: specialty, filterBy: 'subcategory' });
+      });
+    });
+
+    Object.entries(SERVICE_CATEGORIES).forEach(([category, entry]) => {
+      register(category, { label: entry.title, filterBy: 'category' });
+      entry.subcategories.forEach((subcategory) => {
+        register(subcategory, { label: subcategory, filterBy: 'subcategory' });
       });
     });
 
@@ -3940,14 +3965,17 @@ export default function App() {
   const HOME_SEO_DESCRIPTION =
     'Todo para tu evento en un solo lugar. Encuentra y contrata de forma fácil locaciones, catering, música y decoración en Venezuela. ¡Haz tu evento inolvidable!';
   const isHomePageRoute = currentRoute === '/' && !isFavoritesRoute && !marketplaceRouteContext;
-  const homeCategoryHighlights = Object.entries(SERVICE_CATEGORIES).slice(0, 5).map(([categoryName, categoryConfig]) => {
-    const firstSubcategory = categoryConfig.subcategories[0] || categoryName;
+  const matchedMainCategory = marketplaceRouteContext?.taxonomy?.filterBy === 'category'
+    ? getMainCategoryConfig(marketplaceRouteContext.taxonomy.label)
+    : null;
+  const homeCategoryHighlights = Object.entries(SERVICE_CATEGORIES).slice(0, 5).map(([, categoryConfig]) => {
+    const categoryLabel = categoryConfig.title;
 
     return {
-      categoryName,
+      categoryName: categoryLabel,
       icon: categoryConfig.icon,
       description: categoryConfig.description,
-      path: `/servicios/venezuela/${slugify(firstSubcategory)}`,
+      path: `/servicios/venezuela/${slugify(categoryLabel)}`,
     };
   });
   const homeRelevantServices = useMemo(() => {
@@ -3978,12 +4006,25 @@ export default function App() {
     : 'servicios eventos Venezuela, bodas, fiestas, DJ, catering, fotografia, decoracion';
 
   const marketplaceHeading = marketplaceRouteContext
-    ? marketplaceRouteContext.taxonomy && marketplaceRouteContext.city
+    ? matchedMainCategory && marketplaceRouteContext.city
+      ? `${matchedMainCategory.title} en ${marketplaceRouteContext.city}`
+      : matchedMainCategory
+        ? matchedMainCategory.title
+        : marketplaceRouteContext.taxonomy && marketplaceRouteContext.city
       ? `${marketplaceRouteContext.taxonomy.label} en ${marketplaceRouteContext.city}`
       : marketplaceRouteContext.city
         ? `Proveedores en ${marketplaceRouteContext.city}`
         : `Proveedores de ${marketplaceRouteContext.taxonomy?.label}`
     : (isFavoritesRoute ? 'Tus Favoritos' : 'Tu Evento Inolvidable Empieza Aquí');
+  const marketplaceSeoTitle = marketplaceRouteContext
+    ? matchedMainCategory?.metaTitle || marketplaceHeading
+    : undefined;
+  const marketplaceSeoDescription = marketplaceRouteContext
+    ? matchedMainCategory?.metaDescription
+      || (marketplaceRouteContext.taxonomy
+        ? `Explora ${marketplaceRouteContext.taxonomy.label} en Memorialo. Compara proveedores, precios y disponibilidad para tu próximo evento en Venezuela.`
+        : HOME_SEO_DESCRIPTION)
+    : undefined;
 
   const visibleArtists = useMemo(() => {
     if (!isFavoritesRoute) {
@@ -5023,10 +5064,10 @@ export default function App() {
                 {/* SEO for marketplace home */}
                 {!serviceArtist && (
                   <SEOHead
-                    title={isHomePageRoute ? HOME_SEO_TITLE : undefined}
+                    title={isHomePageRoute ? HOME_SEO_TITLE : marketplaceSeoTitle}
                     description={isHomePageRoute
                       ? HOME_SEO_DESCRIPTION
-                      : undefined}
+                      : marketplaceSeoDescription}
                     canonical={marketplaceCanonical}
                     keywords={isHomePageRoute
                       ? 'home memorialo, proveedores de eventos, contratar servicios para eventos, bodas venezuela, marketplace eventos'
