@@ -4779,7 +4779,7 @@ export default function App() {
                               type="button"
                               onClick={(event) => void handleDismissNotification(event, notification)}
                               className="mt-0.5 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                              aria-label="Marcar como leída"
+                              aria-label="Descartar notificación"
                             >
                               <X className="h-4 w-4" />
                             </button>
