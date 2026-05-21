@@ -107,6 +107,8 @@ type MarketplaceRouteContext = {
   canonicalPath: string;
 };
 
+const SEO_LOCALE = 'es-VE';
+
 type HomeListingSnapshot = {
   path: string;
   searchCriteria: SearchCriteria;
@@ -150,6 +152,28 @@ const getMainCategoryConfig = (label?: string | null) => {
   return Object.entries(SERVICE_CATEGORIES).find(([categoryKey, categoryConfig]) => (
     slugifyCategoryLabel(categoryKey) === normalizedLabel || slugifyCategoryLabel(categoryConfig.title) === normalizedLabel
   ))?.[1] ?? null;
+};
+
+const getMainCategoryTitleBySubcategory = (label?: string | null) => {
+  const normalizedLabel = slugifyCategoryLabel(label);
+
+  if (!normalizedLabel) {
+    return null;
+  }
+
+  return Object.values(SERVICE_CATEGORIES).find((categoryConfig) => (
+    categoryConfig.subcategories.some((subcategory) => slugifyCategoryLabel(subcategory) === normalizedLabel)
+  ))?.title ?? null;
+};
+
+const capitalizeFirst = (value?: string | null) => {
+  const normalized = (value || '').trim();
+
+  if (!normalized) {
+    return '';
+  }
+
+  return normalized.charAt(0).toLocaleUpperCase(SEO_LOCALE) + normalized.slice(1);
 };
 
 type BookingConfirmationState = {
@@ -199,6 +223,10 @@ const searchCriteriaEquals = (left: SearchCriteria, right: SearchCriteria) => {
     left.priceRange[0] === right.priceRange[0] &&
     left.priceRange[1] === right.priceRange[1]
   );
+};
+
+const buildLocalSeoDescription = (secondaryCategory: string, city: string, mainCategory: string) => {
+  return `¿Buscas ${secondaryCategory.toLocaleLowerCase(SEO_LOCALE)} en ${city}? Encuentra las mejores opciones de ${mainCategory.toLocaleLowerCase(SEO_LOCALE)} para tu fiesta o evento. ¡Cotiza y reserva de forma segura!`;
 };
 
 export default function App() {
@@ -4016,11 +4044,25 @@ export default function App() {
         ? `Proveedores en ${marketplaceRouteContext.city}`
         : `Proveedores de ${marketplaceRouteContext.taxonomy?.label}`
     : (isFavoritesRoute ? 'Tus Favoritos' : 'Tu Evento Inolvidable Empieza Aquí');
+  const seoCity = capitalizeFirst(marketplaceRouteContext?.city);
+  const seoSecondaryCategory = marketplaceRouteContext?.taxonomy?.filterBy === 'subcategory'
+    ? capitalizeFirst(marketplaceRouteContext.taxonomy.label)
+    : '';
+  const seoMainCategory = seoSecondaryCategory
+    ? getMainCategoryTitleBySubcategory(marketplaceRouteContext?.taxonomy?.label)
+    : null;
+  const hasSecondaryCategorySeoTemplate = Boolean(seoSecondaryCategory && seoCity && seoMainCategory);
+  const localSeoDescription = hasSecondaryCategorySeoTemplate && seoMainCategory
+    ? buildLocalSeoDescription(seoSecondaryCategory, seoCity, seoMainCategory)
+    : null;
   const marketplaceSeoTitle = marketplaceRouteContext
-    ? matchedMainCategory?.metaTitle || marketplaceHeading
+    ? hasSecondaryCategorySeoTemplate
+      ? `${seoSecondaryCategory} para Eventos en ${seoCity} | Memorialo`
+      : matchedMainCategory?.metaTitle || marketplaceHeading
     : undefined;
   const marketplaceSeoDescription = marketplaceRouteContext
-    ? matchedMainCategory?.metaDescription
+    ? localSeoDescription
+      || matchedMainCategory?.metaDescription
       || (marketplaceRouteContext.taxonomy
         ? `Explora ${marketplaceRouteContext.taxonomy.label} en Memorialo. Compara proveedores, precios y disponibilidad para tu próximo evento en Venezuela.`
         : HOME_SEO_DESCRIPTION)
