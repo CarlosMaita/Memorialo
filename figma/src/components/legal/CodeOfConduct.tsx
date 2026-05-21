@@ -384,7 +384,7 @@ export function CodeOfConduct({ onBack }: CodeOfConductProps) {
               </p>
               <p className="text-gray-700 mt-2">
                 <strong>Email:</strong> contacto@memorialo.com<br />
-                <strong>Soporte:</strong> Disponible 24/7 en la plataforma<br />
+                <strong>Soporte:</strong> Disponible de 9:00 a.m. a 6:00 p.m. (hora Venezuela, VET).<br />
                 <strong>Ubicación:</strong> Venezuela
               </p>
             </section>

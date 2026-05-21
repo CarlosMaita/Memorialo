@@ -135,6 +135,7 @@ export function RefundPolicy({ onBack }: RefundPolicyProps) {
               </p>
               <p className="text-gray-700 mt-2">
                 <strong>Email:</strong> soporte@memorialo.com<br />
+                <strong>Horario de atención:</strong> 9:00 a.m. a 6:00 p.m. (hora Venezuela, VET).<br />
                 <strong>Ubicación:</strong> Venezuela
               </p>
             </section>
