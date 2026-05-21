@@ -5231,11 +5231,20 @@ export default function App() {
                                 <p className="text-sm text-gray-600">{section.subtitle}</p>
                               ) : null}
                             </div>
-                            <div className="hidden md:flex items-center gap-2">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigateTo(`/coleccion/${sectionCollection.slug}`)}
+                              >
+                                Ver más
+                              </Button>
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="icon"
+                                className="hidden md:inline-flex"
                                 onClick={() => homeCollSectionCarouselRefs.current.get(section.id)?.scrollBy({ left: -420, behavior: 'smooth' })}
                                 aria-label="Anterior"
                               >
@@ -5245,6 +5254,7 @@ export default function App() {
                                 type="button"
                                 variant="outline"
                                 size="icon"
+                                className="hidden md:inline-flex"
                                 onClick={() => homeCollSectionCarouselRefs.current.get(section.id)?.scrollBy({ left: 420, behavior: 'smooth' })}
                                 aria-label="Siguiente"
                               >
