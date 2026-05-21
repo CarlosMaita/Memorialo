@@ -5021,7 +5021,6 @@ export default function App() {
                 >
                   <Badge asChild className="mb-3 bg-white/20 text-white border-white/30">
                     <h2>
-                      <span className="mr-1" aria-hidden="true">📢</span>
                       {mainContentAccent}
                     </h2>
                   </Badge>
