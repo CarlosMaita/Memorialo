@@ -287,6 +287,7 @@ export default function App() {
   const [secondaryCtaBgImageUrl, setSecondaryCtaBgImageUrl] = useState('');
   const [secondaryCtaButtonColor, setSecondaryCtaButtonColor] = useState<'blue' | 'yellow'>('blue');
   const [marketplaceConfigLoaded, setMarketplaceConfigLoaded] = useState(false);
+  const [homeContentLoading, setHomeContentLoading] = useState(true);
 
   // Notifications (N2)
   const notificationsEnabled = ((import.meta as any).env?.VITE_NOTIFICATIONS_HEADER_ENABLED ?? 'true') !== 'false';
@@ -1591,10 +1592,18 @@ export default function App() {
       }
     };
 
-    void loadMarketplaceConfig();
-    void loadBanners();
-    void loadCollections();
-    void loadHomeCollectionSections();
+    void (async () => {
+      await Promise.allSettled([
+        loadMarketplaceConfig(),
+        loadBanners(),
+        loadCollections(),
+        loadHomeCollectionSections(),
+      ]);
+
+      if (!cancelled) {
+        setHomeContentLoading(false);
+      }
+    })();
 
     return () => {
       cancelled = true;
@@ -5009,245 +5018,279 @@ export default function App() {
                 )}
                 {isHomePageRoute && (
               <div className="space-y-8 mb-8">
-                {bannersSectionEnabled && homeBanners.length > 0 && (
-                  <section>
-                    <BannerCarousel banners={homeBanners} />
-                  </section>
-                )}
-                <section
-                  className="rounded-2xl p-6 md:p-8 text-white"
-                  style={
-                    mainContentBgType === 'solid'
-                      ? { backgroundColor: mainContentBgColor }
-                      : mainContentBgType === 'image' && /^https?:\/\//i.test(mainContentBgImageUrl)
-                        ? { backgroundImage: `url(${mainContentBgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
-                        : { background: mainContentBgGradient || 'linear-gradient(135deg, var(--navy-blue) 0%, var(--copper) 100%)' }
-                  }
-                >
-                  <Badge asChild className="mb-3 bg-white/20 text-white border-white/30">
-                    <h2>
-                      {mainContentAccent}
-                    </h2>
-                  </Badge>
-                  <p className="text-2xl md:text-3xl font-semibold mb-2">{mainContentTitle}</p>
-                  <p className="text-sm md:text-base text-white/90 mb-4">
-                    {mainContentSubtitle}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="secondary" onClick={() => handleMainContentButtonClick(mainContentPrimaryButtonLink)}>
-                      {mainContentPrimaryButtonText}
-                    </Button>
-                    <Button variant="outline" className="bg-white/10 border-white/40 text-white hover:bg-white/20" onClick={() => handleMainContentButtonClick(mainContentSecondaryButtonLink)}>
-                      {mainContentSecondaryButtonText}
-                    </Button>
-                  </div>
-                </section>
-
-                <section>
-                  <div className="mb-3">
-                    <h2 className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--navy-blue)' }}>Categorías principales</h2>
-                    <p className="text-sm text-gray-600">Navega por las categorías más buscadas y llega rápido a lo que necesitas.</p>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                    {homeCategoryHighlights.map((category) => (
-                      <button
-                        key={category.categoryName}
-                        type="button"
-                        onClick={() => navigateTo(category.path)}
-                        className="text-left rounded-xl border border-gray-200 bg-white p-4 hover:border-[var(--gold)] hover:shadow-sm transition-all"
-                      >
-                        <p className="text-2xl mb-2">
-                          <span role="img" aria-label={`Ícono representativo de la categoría ${category.categoryName}`}>{category.icon}</span>
-                        </p>
-                        <p className="font-medium text-sm" style={{ color: 'var(--navy-blue)' }}>{category.categoryName}</p>
-                        <p className="text-xs text-gray-600 mt-1">{category.description}</p>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-
-                {relevantServicesSectionEnabled && homeRelevantServices.length > 0 && (
-                  <section>
-                    <div className="mb-3 flex items-start justify-between gap-2">
-                      <div>
-                        <h2 className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--navy-blue)' }}>
-                          {relevantServicesTitle || 'Servicios relevantes'}
-                        </h2>
-                        {relevantServicesSubtitle ? (
-                          <p className="text-sm text-gray-600">{relevantServicesSubtitle}</p>
-                        ) : null}
-                      </div>
-                      <div className="hidden md:flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => relevantServicesCarouselRef.current?.scrollBy({ left: -420, behavior: 'smooth' })}
-                          aria-label="Servicios relevantes anteriores"
-                        >
-                          <ChevronLeft className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => relevantServicesCarouselRef.current?.scrollBy({ left: 420, behavior: 'smooth' })}
-                          aria-label="Siguientes servicios relevantes"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div
-                      ref={relevantServicesCarouselRef}
-                      className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth"
-                    >
-                      {homeRelevantServices.map((artist) => (
-                        <div key={artist.id} className="shrink-0 snap-start w-full md:w-[calc((100%-0.75rem)/2)] xl:w-[calc((100%-2.25rem)/4)]">
-                          <ArtistCard
-                            artist={artist}
-                            onViewProfile={handleViewProfile}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                <section>
-                  <div className="mb-3">
-                    <h2 className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--navy-blue)' }}>Contrata en 4 pasos</h2>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    {[
-                      'Busca por ciudad y categoría',
-                      'Compara perfiles y valoraciones',
-                      'Solicita tu reserva con detalles',
-                      'Confirma y coordina con el proveedor',
-                    ].map((step, index) => (
-                      <div key={step} className="rounded-xl border border-gray-200 bg-white p-4">
-                        <p className="text-xs font-semibold text-gray-500">Paso {index + 1}</p>
-                        <p className="text-sm mt-1" style={{ color: 'var(--navy-blue)' }}>{step}</p>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                {homeCollectionSections.filter((s) => s.visible).sort((a, b) => a.sortOrder - b.sortOrder).map((section) => {
-                  const collectionFromState = collections.find((col) => col.id === section.collectionId);
-                  const collectionFromEmbed = section.collection
-                    ? { ...section.collection, services: section.collection.services || [], serviceIds: section.collection.serviceIds || [] } as any
-                    : null;
-                  const sectionCollection = collectionFromState || collectionFromEmbed;
-                  if (!sectionCollection) return null;
-                  const sectionServices = sectionCollection.serviceIds
-                    .map((sid: string) => {
-                      // Primary: find in filtered marketplace artists (already moderation-checked)
-                      const fromMarketplace = filteredArtists.find((a) => String(a.id) === sid);
-                      if (fromMarketplace) return fromMarketplace;
-                      // Secondary: find in the embedded collection services (loaded with sections)
-                      const fromEmbed = sectionCollection.services?.find((s: any) => String(s.id) === sid);
-                      if (fromEmbed) return fromEmbed;
-                      // Fallback: find in full artists state (never reset, accumulates all loaded services)
-                      // Apply basic moderation checks; city filter is intentionally skipped for curated sections.
-                      const fromArtists = artists.find((a) => String(a.id) === sid);
-                      if (!fromArtists || fromArtists.isArchived || fromArtists.isPublished === false) return null;
-                      if (fromArtists.userId) {
-                        const serviceUser = allUsers.find((u) => u.id === fromArtists.userId);
-                        if (serviceUser?.banned || serviceUser?.archived) return null;
-                        const serviceProvider = providers.find((p) => p.userId === fromArtists.userId);
-                        if (serviceProvider?.banned) return null;
-                      }
-                      return fromArtists;
-                    })
-                    .filter(Boolean) as typeof filteredArtists;
-                  if (sectionServices.length === 0) return null;
-                  return (
-                    <section key={section.id}>
-                      <div className="mb-3 flex items-start justify-between gap-2">
-                        <div>
-                          <h2 className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--navy-blue)' }}>
-                            {section.title}
-                          </h2>
-                          {section.subtitle ? (
-                            <p className="text-sm text-gray-600">{section.subtitle}</p>
-                          ) : null}
-                        </div>
-                        <div className="hidden md:flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => homeCollSectionCarouselRefs.current.get(section.id)?.scrollBy({ left: -420, behavior: 'smooth' })}
-                            aria-label="Anterior"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => homeCollSectionCarouselRefs.current.get(section.id)?.scrollBy({ left: 420, behavior: 'smooth' })}
-                            aria-label="Siguiente"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      <div
-                        ref={(el) => {
-                          if (el) homeCollSectionCarouselRefs.current.set(section.id, el);
-                          else homeCollSectionCarouselRefs.current.delete(section.id);
-                        }}
-                        className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth"
-                      >
-                        {sectionServices.map((artist) => (
-                          <div key={artist.id} className="shrink-0 snap-start w-full md:w-[calc((100%-0.75rem)/2)] xl:w-[calc((100%-2.25rem)/4)]">
-                            <ArtistCard
-                              artist={artist}
-                              onViewProfile={handleViewProfile}
-                            />
+                {homeContentLoading ? (
+                  <>
+                    <section className="rounded-2xl p-6 md:p-8 bg-gray-200 animate-pulse h-56" />
+                    <section>
+                      <div className="h-6 w-48 bg-gray-200 rounded animate-pulse mb-2" />
+                      <div className="h-4 w-72 bg-gray-100 rounded animate-pulse mb-4" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                        {Array.from({ length: 5 }).map((_, index) => (
+                          <div key={`home-category-skeleton-${index}`} className="rounded-xl border border-gray-200 bg-white p-4 space-y-2">
+                            <div className="h-6 w-6 rounded bg-gray-200 animate-pulse" />
+                            <div className="h-4 w-3/4 rounded bg-gray-200 animate-pulse" />
+                            <div className="h-3 w-full rounded bg-gray-100 animate-pulse" />
                           </div>
                         ))}
                       </div>
                     </section>
-                  );
-                })}
-
-                {marketplaceConfigLoaded && secondaryCtaEnabled && (
-                  <section
-                    className="rounded-2xl p-6 text-white"
-                    style={
-                      secondaryCtaBgType === 'solid'
-                        ? { backgroundColor: secondaryCtaBgColor }
-                        : secondaryCtaBgType === 'image' && /^https?:\/\//i.test(secondaryCtaBgImageUrl)
-                          ? { backgroundImage: `url(${secondaryCtaBgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
-                          : { background: secondaryCtaBgGradient || 'linear-gradient(135deg, #F7B267 0%, #F4A261 100%)' }
-                    }
-                  >
-                    {secondaryCtaAccent && (
-                      <Badge asChild className="mb-3 bg-white/20 text-white border-white/30">
-                        <span>{secondaryCtaAccent}</span>
-                      </Badge>
-                    )}
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                      <div>
-                        <h2 className="text-xl font-semibold mb-1 text-white">{secondaryCtaTitle}</h2>
-                        <p className="text-sm text-white/90">{secondaryCtaSubtitle}</p>
+                    <section>
+                      <div className="h-6 w-56 bg-gray-200 rounded animate-pulse mb-4" />
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                        {Array.from({ length: 4 }).map((_, index) => (
+                          <div key={`home-service-skeleton-${index}`} className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
+                            <div className="h-36 w-full rounded-xl bg-gray-200 animate-pulse" />
+                            <div className="h-4 w-3/4 rounded bg-gray-200 animate-pulse" />
+                            <div className="h-3 w-1/2 rounded bg-gray-100 animate-pulse" />
+                          </div>
+                        ))}
                       </div>
-                      <Button
-                        onClick={() => handleMainContentButtonClick(secondaryCtaButtonLink)}
+                    </section>
+                    <section className="rounded-2xl p-6 bg-gray-100 animate-pulse h-28" />
+                  </>
+                ) : (
+                  <>
+                    {bannersSectionEnabled && homeBanners.length > 0 && (
+                      <section>
+                        <BannerCarousel banners={homeBanners} />
+                      </section>
+                    )}
+                    <section
+                      className="rounded-2xl p-6 md:p-8 text-white"
+                      style={
+                        mainContentBgType === 'solid'
+                          ? { backgroundColor: mainContentBgColor }
+                          : mainContentBgType === 'image' && /^https?:\/\//i.test(mainContentBgImageUrl)
+                            ? { backgroundImage: `url(${mainContentBgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
+                            : { background: mainContentBgGradient || 'linear-gradient(135deg, var(--navy-blue) 0%, var(--copper) 100%)' }
+                      }
+                    >
+                      <Badge asChild className="mb-3 bg-white/20 text-white border-white/30">
+                        <h2>
+                          {mainContentAccent}
+                        </h2>
+                      </Badge>
+                      <p className="text-2xl md:text-3xl font-semibold mb-2">{mainContentTitle}</p>
+                      <p className="text-sm md:text-base text-white/90 mb-4">
+                        {mainContentSubtitle}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="secondary" onClick={() => handleMainContentButtonClick(mainContentPrimaryButtonLink)}>
+                          {mainContentPrimaryButtonText}
+                        </Button>
+                        <Button variant="outline" className="bg-white/10 border-white/40 text-white hover:bg-white/20" onClick={() => handleMainContentButtonClick(mainContentSecondaryButtonLink)}>
+                          {mainContentSecondaryButtonText}
+                        </Button>
+                      </div>
+                    </section>
+
+                    <section>
+                      <div className="mb-3">
+                        <h2 className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--navy-blue)' }}>Categorías principales</h2>
+                        <p className="text-sm text-gray-600">Navega por las categorías más buscadas y llega rápido a lo que necesitas.</p>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                        {homeCategoryHighlights.map((category) => (
+                          <button
+                            key={category.categoryName}
+                            type="button"
+                            onClick={() => navigateTo(category.path)}
+                            className="text-left rounded-xl border border-gray-200 bg-white p-4 hover:border-[var(--gold)] hover:shadow-sm transition-all"
+                          >
+                            <p className="text-2xl mb-2">
+                              <span role="img" aria-label={`Ícono representativo de la categoría ${category.categoryName}`}>{category.icon}</span>
+                            </p>
+                            <p className="font-medium text-sm" style={{ color: 'var(--navy-blue)' }}>{category.categoryName}</p>
+                            <p className="text-xs text-gray-600 mt-1">{category.description}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+
+                    {relevantServicesSectionEnabled && homeRelevantServices.length > 0 && (
+                      <section>
+                        <div className="mb-3 flex items-start justify-between gap-2">
+                          <div>
+                            <h2 className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--navy-blue)' }}>
+                              {relevantServicesTitle || 'Servicios relevantes'}
+                            </h2>
+                            {relevantServicesSubtitle ? (
+                              <p className="text-sm text-gray-600">{relevantServicesSubtitle}</p>
+                            ) : null}
+                          </div>
+                          <div className="hidden md:flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => relevantServicesCarouselRef.current?.scrollBy({ left: -420, behavior: 'smooth' })}
+                              aria-label="Servicios relevantes anteriores"
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              onClick={() => relevantServicesCarouselRef.current?.scrollBy({ left: 420, behavior: 'smooth' })}
+                              aria-label="Siguientes servicios relevantes"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        <div
+                          ref={relevantServicesCarouselRef}
+                          className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth"
+                        >
+                          {homeRelevantServices.map((artist) => (
+                            <div key={artist.id} className="shrink-0 snap-start w-full md:w-[calc((100%-0.75rem)/2)] xl:w-[calc((100%-2.25rem)/4)]">
+                              <ArtistCard
+                                artist={artist}
+                                onViewProfile={handleViewProfile}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+
+                    <section>
+                      <div className="mb-3">
+                        <h2 className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--navy-blue)' }}>Contrata en 4 pasos</h2>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        {[
+                          'Busca por ciudad y categoría',
+                          'Compara perfiles y valoraciones',
+                          'Solicita tu reserva con detalles',
+                          'Confirma y coordina con el proveedor',
+                        ].map((step, index) => (
+                          <div key={step} className="rounded-xl border border-gray-200 bg-white p-4">
+                            <p className="text-xs font-semibold text-gray-500">Paso {index + 1}</p>
+                            <p className="text-sm mt-1" style={{ color: 'var(--navy-blue)' }}>{step}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+
+                    {homeCollectionSections.filter((s) => s.visible).sort((a, b) => a.sortOrder - b.sortOrder).map((section) => {
+                      const collectionFromState = collections.find((col) => col.id === section.collectionId);
+                      const collectionFromEmbed = section.collection
+                        ? { ...section.collection, services: section.collection.services || [], serviceIds: section.collection.serviceIds || [] } as any
+                        : null;
+                      const sectionCollection = collectionFromState || collectionFromEmbed;
+                      if (!sectionCollection) return null;
+                      const sectionServices = sectionCollection.serviceIds
+                        .map((sid: string) => {
+                          // Primary: find in filtered marketplace artists (already moderation-checked)
+                          const fromMarketplace = filteredArtists.find((a) => String(a.id) === sid);
+                          if (fromMarketplace) return fromMarketplace;
+                          // Secondary: find in the embedded collection services (loaded with sections)
+                          const fromEmbed = sectionCollection.services?.find((s: any) => String(s.id) === sid);
+                          if (fromEmbed) return fromEmbed;
+                          // Fallback: find in full artists state (never reset, accumulates all loaded services)
+                          // Apply basic moderation checks; city filter is intentionally skipped for curated sections.
+                          const fromArtists = artists.find((a) => String(a.id) === sid);
+                          if (!fromArtists || fromArtists.isArchived || fromArtists.isPublished === false) return null;
+                          if (fromArtists.userId) {
+                            const serviceUser = allUsers.find((u) => u.id === fromArtists.userId);
+                            if (serviceUser?.banned || serviceUser?.archived) return null;
+                            const serviceProvider = providers.find((p) => p.userId === fromArtists.userId);
+                            if (serviceProvider?.banned) return null;
+                          }
+                          return fromArtists;
+                        })
+                        .filter(Boolean) as typeof filteredArtists;
+                      if (sectionServices.length === 0) return null;
+                      return (
+                        <section key={section.id}>
+                          <div className="mb-3 flex items-start justify-between gap-2">
+                            <div>
+                              <h2 className="text-xl md:text-2xl font-semibold" style={{ color: 'var(--navy-blue)' }}>
+                                {section.title}
+                              </h2>
+                              {section.subtitle ? (
+                                <p className="text-sm text-gray-600">{section.subtitle}</p>
+                              ) : null}
+                            </div>
+                            <div className="hidden md:flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={() => homeCollSectionCarouselRefs.current.get(section.id)?.scrollBy({ left: -420, behavior: 'smooth' })}
+                                aria-label="Anterior"
+                              >
+                                <ChevronLeft className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={() => homeCollSectionCarouselRefs.current.get(section.id)?.scrollBy({ left: 420, behavior: 'smooth' })}
+                                aria-label="Siguiente"
+                              >
+                                <ChevronRight className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div
+                            ref={(el) => {
+                              if (el) homeCollSectionCarouselRefs.current.set(section.id, el);
+                              else homeCollSectionCarouselRefs.current.delete(section.id);
+                            }}
+                            className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth"
+                          >
+                            {sectionServices.map((artist) => (
+                              <div key={artist.id} className="shrink-0 snap-start w-full md:w-[calc((100%-0.75rem)/2)] xl:w-[calc((100%-2.25rem)/4)]">
+                                <ArtistCard
+                                  artist={artist}
+                                  onViewProfile={handleViewProfile}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                      );
+                    })}
+
+                    {marketplaceConfigLoaded && secondaryCtaEnabled && (
+                      <section
+                        className="rounded-2xl p-6 text-white"
                         style={
-                          secondaryCtaButtonColor === 'yellow'
-                            ? { backgroundColor: '#d4af37', color: '#0a1f44', borderColor: '#d4af37' }
-                            : { backgroundColor: '#0a1f44', color: '#ffffff', borderColor: '#0a1f44' }
+                          secondaryCtaBgType === 'solid'
+                            ? { backgroundColor: secondaryCtaBgColor }
+                            : secondaryCtaBgType === 'image' && /^https?:\/\//i.test(secondaryCtaBgImageUrl)
+                              ? { backgroundImage: `url(${secondaryCtaBgImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
+                              : { background: secondaryCtaBgGradient || 'linear-gradient(135deg, #F7B267 0%, #F4A261 100%)' }
                         }
-                        className="shrink-0"
                       >
-                        {secondaryCtaButtonText}
-                      </Button>
-                    </div>
-                  </section>
+                        {secondaryCtaAccent && (
+                          <Badge asChild className="mb-3 bg-white/20 text-white border-white/30">
+                            <span>{secondaryCtaAccent}</span>
+                          </Badge>
+                        )}
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                          <div>
+                            <h2 className="text-xl font-semibold mb-1 text-white">{secondaryCtaTitle}</h2>
+                            <p className="text-sm text-white/90">{secondaryCtaSubtitle}</p>
+                          </div>
+                          <Button
+                            onClick={() => handleMainContentButtonClick(secondaryCtaButtonLink)}
+                            style={
+                              secondaryCtaButtonColor === 'yellow'
+                                ? { backgroundColor: '#d4af37', color: '#0a1f44', borderColor: '#d4af37' }
+                                : { backgroundColor: '#0a1f44', color: '#ffffff', borderColor: '#0a1f44' }
+                            }
+                            className="shrink-0"
+                          >
+                            {secondaryCtaButtonText}
+                          </Button>
+                        </div>
+                      </section>
+                    )}
+                  </>
                 )}
               </div>
             )}
