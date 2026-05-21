@@ -198,7 +198,7 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
                 </div>
                 <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Soporte Dedicado</h3>
                 <p className="text-gray-600 text-sm">
-                  Equipo de soporte disponible para ayudarte en cada paso. 
+                  Equipo de soporte disponible de 9:00 a.m. a 6:00 p.m. para ayudarte en cada paso. 
                   Tu éxito es nuestro éxito.
                 </p>
               </CardContent>
