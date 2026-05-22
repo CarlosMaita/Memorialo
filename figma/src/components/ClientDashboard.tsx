@@ -623,70 +623,55 @@ export function ClientDashboard({
               <p className="text-sm font-semibold text-green-600">${booking.totalPrice}</p>
             </div>
 
-            <div className="flex items-center justify-end gap-1">
-              {canViewContract && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleViewContractFromBooking(booking)}
-                  className="h-7 w-7 p-0"
-                  title={contractActionLabel}
-                >
-                  <FileText className="w-4 h-4 text-gray-700" />
-                </Button>
-              )}
-              {canDownloadContract && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleDownloadContractFromBooking(booking)}
-                  className="h-7 w-7 p-0"
-                  title="Descargar contrato"
-                >
-                  <Download className="w-4 h-4 text-gray-700" />
-                </Button>
-              )}
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleStartChatFromBooking(booking.id)}
-                className="h-7 w-7 p-0"
-                title="Abrir conversación"
-              >
-                <MessageCircle className="w-4 h-4 text-gray-700" />
-              </Button>
-              {booking.archived ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onBookingUpdate?.({ ...booking, archived: false, archivedAt: null })}
-                  className="h-7 w-7 p-0"
-                  title="Desarchivar reserva"
-                >
-                  <ArchiveRestore className="w-4 h-4 text-blue-700" />
-                </Button>
-              ) : displayStatus === 'completed' ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onBookingUpdate?.({ ...booking, archived: true, archivedAt: new Date().toISOString() })}
-                  className="h-7 w-7 p-0"
-                  title="Archivar reserva"
-                >
-                  <Archive className="w-4 h-4 text-gray-700" />
-                </Button>
-              ) : null}
-              {canLeaveReview && linkedContract && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onReviewCreate(linkedContract.id)}
-                  className="h-7 w-7 p-0 text-[#D4AF37] hover:bg-[#D4AF37] hover:text-white"
-                  title="Calificar"
-                >
-                  <Star className="w-4 h-4" />
-                </Button>
-              )}
+            <div className="flex items-center justify-end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 rounded-full p-0"
+                    title="Más opciones"
+                    aria-label="Más opciones"
+                  >
+                    <MoreVertical className="w-4 h-4 text-gray-700" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {canViewContract && (
+                    <DropdownMenuItem onClick={() => handleViewContractFromBooking(booking)}>
+                      <FileText className="w-4 h-4" />
+                      {contractActionLabel}
+                    </DropdownMenuItem>
+                  )}
+                  {canDownloadContract && (
+                    <DropdownMenuItem onClick={() => handleDownloadContractFromBooking(booking)}>
+                      <Download className="w-4 h-4" />
+                      Descargar contrato
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => handleStartChatFromBooking(booking.id)}>
+                    <MessageCircle className="w-4 h-4" />
+                    Abrir conversación
+                  </DropdownMenuItem>
+                  {booking.archived ? (
+                    <DropdownMenuItem onClick={() => onBookingUpdate?.({ ...booking, archived: false, archivedAt: null })}>
+                      <ArchiveRestore className="w-4 h-4" />
+                      Desarchivar reserva
+                    </DropdownMenuItem>
+                  ) : displayStatus === 'completed' ? (
+                    <DropdownMenuItem onClick={() => onBookingUpdate?.({ ...booking, archived: true, archivedAt: new Date().toISOString() })}>
+                      <Archive className="w-4 h-4" />
+                      Archivar reserva
+                    </DropdownMenuItem>
+                  ) : null}
+                  {canLeaveReview && linkedContract && (
+                    <DropdownMenuItem onClick={() => onReviewCreate(linkedContract.id)}>
+                      <Star className="w-4 h-4" />
+                      Calificar
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </CardContent>
