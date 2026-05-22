@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -21,6 +22,7 @@ import {
   Calendar, 
   DollarSign,
   Star,
+  Eye,
   EyeOff,
   CheckCircle2,
   Clock,
@@ -33,6 +35,7 @@ import {
   Search,
   LayoutDashboard,
   Briefcase,
+  MoreVertical,
   // Menu and X removed (mobile sidebar removed)
   TrendingUp,
   Award,
@@ -139,6 +142,7 @@ export function BusinessDashboard({
   const [showBookingDialog, setShowBookingDialog] = useState(false);
   const [creatingBookingContract, setCreatingBookingContract] = useState<Contract | null>(null);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [mobileDetailBooking, setMobileDetailBooking] = useState<Booking | null>(null);
   const [activeSection, setActiveSection] = useState<SidebarSection>('dashboard');
   const [expandedContractId, setExpandedContractId] = useState<string | null>(null);
   const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
@@ -1720,11 +1724,110 @@ export function BusinessDashboard({
                     const compactContractCode = contractCode.length > 18 ? `${contractCode.slice(0, 8)}…${contractCode.slice(-4)}` : contractCode;
                     const createdAtRaw = (booking as any).createdAt || `${booking.date}T${booking.startTime || '00:00'}`;
                     const createdAtLabel = formatBookingDate(createdAtRaw, { day: 'numeric', month: 'short', year: 'numeric' });
+                    const eventDateLabel = formatBookingDate(booking.date, { day: 'numeric', month: 'short', year: 'numeric' });
+                    const contractActionLabel = isPendingProviderSignature ? 'Firmar contrato' : 'Ver contrato';
 
                     return (
                       <Card key={booking.id} className={`shadow-sm border-[#1B2A47] bg-white ${isFocused ? 'ring-2 ring-[#1B2A47]/20' : ''}`}>
                         <CardContent className="px-3 py-2.5">
-                          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_130px_140px_90px_auto] md:items-center">
+                          <div className="md:hidden">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <h4 className="truncate text-sm font-medium text-[#1B2A47]">{booking.clientName}</h4>
+                                <p className="mt-0.5 truncate text-xs text-gray-500">
+                                  {formatEventTypeLabel(booking.eventType)}
+                                  {booking.location ? ` · ${booking.location}` : ''}
+                                </p>
+                                <p className="mt-0.5 text-[11px] text-gray-400">Creada: {createdAtLabel}</p>
+                                <p className="mt-2 flex items-center gap-1 text-xs text-gray-600">
+                                  <Calendar className="w-3 h-3" />
+                                  {eventDateLabel}
+                                  <span className="text-gray-300">•</span>
+                                  <Clock className="w-3 h-3" />
+                                  {booking.startTime || 'No disponible'}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setMobileDetailBooking(booking)}
+                                  className="h-8 w-8 rounded-full p-0"
+                                  title="Ver detalle de la reserva"
+                                >
+                                  <Eye className="w-4 h-4 text-gray-700" />
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 w-8 rounded-full p-0"
+                                      title="Más opciones"
+                                    >
+                                      <MoreVertical className="w-4 h-4 text-gray-700" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-56">
+                                    {booking.contractId && (
+                                      <DropdownMenuItem onClick={() => {
+                                        const c = booking.contractId ? providerContractsById.get(booking.contractId) : null;
+                                        if (c) handleViewContract(c);
+                                      }}>
+                                        <FileText className="w-4 h-4" />
+                                        {contractActionLabel}
+                                      </DropdownMenuItem>
+                                    )}
+                                    {booking.contractId && (
+                                      <DropdownMenuItem onClick={() => {
+                                        const c = booking.contractId ? providerContractsById.get(booking.contractId) : null;
+                                        if (c) handleDownloadContractPDF(c, booking.eventType);
+                                      }}>
+                                        <Download className="w-4 h-4" />
+                                        Descargar contrato
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem onClick={() => handleStartChatFromBooking(booking.id)}>
+                                      <MessageCircle className="w-4 h-4" />
+                                      Abrir conversación
+                                    </DropdownMenuItem>
+                                    {(booking as any).archived ? (
+                                      <DropdownMenuItem onClick={() => handleArchiveBooking(booking, false)}>
+                                        <ArchiveRestore className="w-4 h-4" />
+                                        Desarchivar reserva
+                                      </DropdownMenuItem>
+                                    ) : displayStatus === 'completed' ? (
+                                      <DropdownMenuItem onClick={() => handleArchiveBooking(booking, true)}>
+                                        <Archive className="w-4 h-4" />
+                                        Archivar reserva
+                                      </DropdownMenuItem>
+                                    ) : null}
+                                    {(displayStatus === 'pending' || displayStatus === 'en_negociacion') && (
+                                      <DropdownMenuItem onClick={() => handleEditBooking(booking)}>
+                                        <Edit className="w-4 h-4" />
+                                        Editar fecha y hora
+                                      </DropdownMenuItem>
+                                    )}
+                                    {displayStatus === 'confirmed' && (
+                                      <DropdownMenuItem onClick={() => handleUpdateBookingStatus(booking.id, 'completed')}>
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        Marcar como completada
+                                      </DropdownMenuItem>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </div>
+
+                            <div className="mt-3">
+                              <Badge className={`${getStatusBadge(displayStatus)} text-xs`}>
+                                <span className="flex items-center gap-1">{getStatusIcon(displayStatus)}{getStatusText(displayStatus)}</span>
+                              </Badge>
+                            </div>
+                          </div>
+
+                          <div className="hidden md:grid md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_130px_140px_90px_auto] md:items-center md:gap-3">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <h4 className="truncate text-sm font-medium text-[#1B2A47]">{booking.clientName}</h4>
@@ -1751,7 +1854,6 @@ export function BusinessDashboard({
                             </div>
 
                             <div className="min-w-0">
-                              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400 md:hidden">Contrato</p>
                               {contractCode ? (
                                 <Badge
                                   variant="outline"
@@ -1771,18 +1873,16 @@ export function BusinessDashboard({
                             </div>
 
                             <div>
-                              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400 md:hidden">Estado</p>
                               <Badge className={`${getStatusBadge(displayStatus)} text-xs`}>
                                 <span className="flex items-center gap-1">{getStatusIcon(displayStatus)}{getStatusText(displayStatus)}</span>
                               </Badge>
                             </div>
 
                             <div>
-                              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400 md:hidden">Total</p>
                               <p className="text-sm font-semibold text-green-600">${booking.totalPrice}</p>
                             </div>
 
-                            <div className="flex items-center justify-start gap-1 md:justify-end">
+                            <div className="flex items-center justify-end gap-1">
                               {booking.contractId && (
                                 <Button
                                   size="sm"
@@ -1792,7 +1892,7 @@ export function BusinessDashboard({
                                     if (c) handleViewContract(c);
                                   }}
                                   className="h-7 w-7 p-0"
-                                  title="Ver contrato"
+                                  title={contractActionLabel}
                                 >
                                   <FileText className="w-4 h-4 text-gray-700" />
                                 </Button>
@@ -1816,7 +1916,7 @@ export function BusinessDashboard({
                                 variant="ghost"
                                 onClick={() => handleStartChatFromBooking(booking.id)}
                                 className="h-7 w-7 p-0"
-                                title="Iniciar conversación"
+                                title="Abrir conversación"
                               >
                                 <MessageCircle className="w-4 h-4 text-gray-700" />
                               </Button>
@@ -1847,7 +1947,7 @@ export function BusinessDashboard({
                                   variant="ghost"
                                   onClick={() => handleEditBooking(booking)}
                                   className="h-7 w-7 p-0"
-                                  title="Editar fecha/hora"
+                                  title="Editar fecha y hora"
                                 >
                                   <Edit className="w-4 h-4 text-gray-700" />
                                 </Button>
@@ -1950,6 +2050,95 @@ export function BusinessDashboard({
           userType="artist"
         />
       )}
+
+      <Dialog open={Boolean(mobileDetailBooking)} onOpenChange={(open) => !open && setMobileDetailBooking(null)}>
+        {mobileDetailBooking && (
+          <DialogContent className="max-w-[calc(100vw-24px)] rounded-2xl p-0 sm:max-w-lg">
+            <DialogHeader className="border-b border-slate-100 px-4 py-3 text-left">
+              <DialogTitle className="text-base text-[#1B2A47]">
+                {mobileDetailBooking.clientName}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                Detalle completo de la reserva
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 px-4 py-4">
+              {(() => {
+                const detailContract = getBookingContract(mobileDetailBooking);
+                const detailStatus = detailContract?.status === 'en_negociacion'
+                  ? 'en_negociacion'
+                  : hasContractPendingProvider(mobileDetailBooking)
+                    ? 'pending'
+                    : mobileDetailBooking.status;
+                const detailReview = getBookingReview(mobileDetailBooking);
+                const detailReviewRating = Number(detailReview?.rating || 0);
+                const detailHasReview = Number.isFinite(detailReviewRating) && detailReviewRating > 0;
+
+                return (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge className={`${getStatusBadge(detailStatus)} text-xs`}>
+                        <span className="flex items-center gap-1">{getStatusIcon(detailStatus)}{getStatusText(detailStatus)}</span>
+                      </Badge>
+                      {hasContractPendingProvider(mobileDetailBooking) && (
+                        <Badge variant="outline" className="border-yellow-300 bg-yellow-50 text-yellow-800">
+                          Firma pendiente
+                        </Badge>
+                      )}
+                      {detailHasReview && (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
+                          <span className="flex items-center gap-1">
+                            {renderStars(detailReviewRating)}
+                            <span className="text-[11px]">{Math.round(detailReviewRating)}/5</span>
+                          </span>
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 rounded-xl bg-slate-50 p-3 text-sm sm:grid-cols-2">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Evento</p>
+                        <p className="mt-1 text-slate-700">{formatEventTypeLabel(mobileDetailBooking.eventType)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Contrato</p>
+                        <p className="mt-1 text-slate-700">{mobileDetailBooking.contractId || 'Sin contrato'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Fecha del evento</p>
+                        <p className="mt-1 text-slate-700">{formatBookingDate(mobileDetailBooking.date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Hora</p>
+                        <p className="mt-1 text-slate-700">{mobileDetailBooking.startTime || 'No disponible'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Ubicación</p>
+                        <p className="mt-1 text-slate-700">{mobileDetailBooking.location || 'No especificada'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Total</p>
+                        <p className="mt-1 font-semibold text-green-600">${mobileDetailBooking.totalPrice}</p>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Creada</p>
+                        <p className="mt-1 text-slate-700">
+                          {formatBookingDate((mobileDetailBooking as any).createdAt || `${mobileDetailBooking.date}T${mobileDetailBooking.startTime || '00:00'}`, {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
 
       {/* Create Booking Dialog */}
       <Dialog open={showBookingDialog} onOpenChange={setShowBookingDialog}>

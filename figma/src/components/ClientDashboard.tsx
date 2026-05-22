@@ -3,6 +3,7 @@ import {
   Calendar, Clock, DollarSign, FileText, Star, CheckCircle, XCircle,
   AlertCircle, MessageSquare, FolderOpen, Package, Edit2, ChevronDown,
   ChevronUp, Eye, Archive, ArchiveRestore, CalendarDays, BookOpen, Activity, MessageCircle,
+  MoreVertical,
   Search, Download
 } from 'lucide-react';
 import { Contract, User, Review, Event } from '../types';
@@ -12,6 +13,8 @@ import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { ContractView } from './ContractView';
 import { EventManager } from './EventManager';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
@@ -86,6 +89,7 @@ export function ClientDashboard({
   const [showEventBookings, setShowEventBookings] = useState(false);
   const [bookingStatusFilter, setBookingStatusFilter] = useState<'all' | 'en_negociacion' | 'pending' | 'confirmed' | 'completed'>('all');
   const [bookingOrder, setBookingOrder] = useState<'newest' | 'oldest'>('newest');
+  const [mobileDetailBooking, setMobileDetailBooking] = useState<any | null>(null);
 
   const getMeasureType = (contract: any): 'time' | 'unit' => {
     if (contract?.metadata?.saleType === 'unit' || contract?.terms?.measureType === 'unit') {
@@ -451,20 +455,115 @@ export function ClientDashboard({
     const canLeaveReview = Boolean(linkedContract && canReview(linkedContract) && !hasReviewed(linkedContract.id));
     const canDownloadContract = Boolean(linkedContract && booking.contractId);
     const contractCode = booking.contractId ? String(booking.contractId).trim() : '';
-    const compactContractCode = contractCode.length > 18 ? `${contractCode.slice(0, 8)}…${contractCode.slice(-4)}` : contractCode;
     const createdAtRaw = booking.createdAt || `${booking.date}T${booking.startTime || '00:00'}`;
     const createdAtLabel = formatBookingDate(createdAtRaw, { day: 'numeric', month: 'short', year: 'numeric' });
+    const eventDateLabel = formatBookingDate(booking.date, { day: 'numeric', month: 'short', year: 'numeric' });
+    const eventBadgeLabel = linkedContract?.eventId ? userEventsById.get(linkedContract.eventId)?.name || 'Evento' : null;
+    const contractActionLabel = linkedContract?.status === 'pending_client' ? 'Firmar contrato' : 'Ver contrato';
+    const compactContractCode = contractCode.length > 18 ? `${contractCode.slice(0, 8)}…${contractCode.slice(-4)}` : contractCode;
 
     return (
       <Card key={booking.id} className={`shadow-sm border-[#1B2A47] bg-white ${isFocused ? 'ring-2 ring-[#1B2A47]/20' : ''}`}>
         <CardContent className="px-3 py-2.5">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_130px_140px_90px_auto] md:items-center">
+          <div className="md:hidden">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="truncate text-sm font-medium text-[#1B2A47]">{booking.artistName || 'Proveedor'}</h4>
+                  {eventBadgeLabel && (
+                    <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                      {eventBadgeLabel}
+                    </Badge>
+                  )}
+                </div>
+                <p className="mt-0.5 truncate text-xs text-gray-500">
+                  {booking.eventType || 'Evento'}
+                  {booking.location ? ` · ${booking.location}` : ''}
+                </p>
+                <p className="mt-0.5 text-[11px] text-gray-400">Creada: {createdAtLabel}</p>
+                <p className="mt-2 flex items-center gap-1 text-xs text-gray-600">
+                  <Calendar className="w-3 h-3" />
+                  {eventDateLabel}
+                  <span className="text-gray-300">•</span>
+                  <Clock className="w-3 h-3" />
+                  {booking.startTime || 'N/A'}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setMobileDetailBooking(booking)}
+                  className="h-8 w-8 rounded-full p-0"
+                  title="Ver detalle de la reserva"
+                >
+                  <Eye className="w-4 h-4 text-gray-700" />
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 rounded-full p-0"
+                      title="Más opciones"
+                    >
+                      <MoreVertical className="w-4 h-4 text-gray-700" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    {booking.contractId && (
+                      <DropdownMenuItem onClick={() => handleViewContractFromBooking(booking)}>
+                        <FileText className="w-4 h-4" />
+                        {contractActionLabel}
+                      </DropdownMenuItem>
+                    )}
+                    {canDownloadContract && (
+                      <DropdownMenuItem onClick={() => handleDownloadContractFromBooking(booking)}>
+                        <Download className="w-4 h-4" />
+                        Descargar contrato
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={() => handleStartChatFromBooking(booking.id)}>
+                      <MessageCircle className="w-4 h-4" />
+                      Abrir conversación
+                    </DropdownMenuItem>
+                    {booking.archived ? (
+                      <DropdownMenuItem onClick={() => onBookingUpdate?.({ ...booking, archived: false, archivedAt: null })}>
+                        <ArchiveRestore className="w-4 h-4" />
+                        Desarchivar reserva
+                      </DropdownMenuItem>
+                    ) : displayStatus === 'completed' ? (
+                      <DropdownMenuItem onClick={() => onBookingUpdate?.({ ...booking, archived: true, archivedAt: new Date().toISOString() })}>
+                        <Archive className="w-4 h-4" />
+                        Archivar reserva
+                      </DropdownMenuItem>
+                    ) : null}
+                    {canLeaveReview && linkedContract && (
+                      <DropdownMenuItem onClick={() => onReviewCreate(linkedContract.id)}>
+                        <Star className="w-4 h-4" />
+                        Calificar
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <Badge variant="outline" className={`${getBookingStatusBadgeClass(displayStatus)} text-xs`}>
+                <span className="flex items-center gap-1">{getBookingStatusIcon(displayStatus)}{getBookingStatusText(displayStatus)}</span>
+              </Badge>
+            </div>
+          </div>
+
+          <div className="hidden md:grid md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_130px_140px_90px_auto] md:items-center md:gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="truncate text-sm font-medium text-[#1B2A47]">{booking.artistName || 'Proveedor'}</h4>
-                {linkedContract?.eventId && (
+                {eventBadgeLabel && (
                   <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
-                    {userEventsById.get(linkedContract.eventId)?.name || 'Evento'}
+                    {eventBadgeLabel}
                   </Badge>
                 )}
               </div>
@@ -476,7 +575,6 @@ export function ClientDashboard({
             </div>
 
             <div className="min-w-0">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400 md:hidden">Contrato</p>
               {contractCode ? (
                 <Badge
                   variant="outline"
@@ -502,26 +600,23 @@ export function ClientDashboard({
             </div>
 
             <div>
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400 md:hidden">Estado</p>
               <Badge variant="outline" className={`${getBookingStatusBadgeClass(displayStatus)} text-xs`}>
                 <span className="flex items-center gap-1">{getBookingStatusIcon(displayStatus)}{getBookingStatusText(displayStatus)}</span>
               </Badge>
-
             </div>
 
             <div>
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-400 md:hidden">Total</p>
               <p className="text-sm font-semibold text-green-600">${booking.totalPrice}</p>
             </div>
 
-            <div className="flex items-center justify-start gap-1 md:justify-end">
+            <div className="flex items-center justify-end gap-1">
               {booking.contractId && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => handleViewContractFromBooking(booking)}
                   className="h-7 w-7 p-0"
-                  title="Ver contrato"
+                  title={contractActionLabel}
                 >
                   <FileText className="w-4 h-4 text-gray-700" />
                 </Button>
@@ -542,7 +637,7 @@ export function ClientDashboard({
                 variant="ghost"
                 onClick={() => handleStartChatFromBooking(booking.id)}
                 className="h-7 w-7 p-0"
-                title="Iniciar conversación"
+                title="Abrir conversación"
               >
                 <MessageCircle className="w-4 h-4 text-gray-700" />
               </Button>
@@ -573,7 +668,7 @@ export function ClientDashboard({
                   variant="ghost"
                   onClick={() => onReviewCreate(linkedContract.id)}
                   className="h-7 w-7 p-0 text-[#D4AF37] hover:bg-[#D4AF37] hover:text-white"
-                  title="Dejar reseña"
+                  title="Calificar"
                 >
                   <Star className="w-4 h-4" />
                 </Button>
@@ -1204,6 +1299,78 @@ export function ClientDashboard({
           userType="client"
         />
       )}
+
+      <Dialog open={Boolean(mobileDetailBooking)} onOpenChange={(open) => !open && setMobileDetailBooking(null)}>
+        {mobileDetailBooking && (
+          <DialogContent className="max-w-[calc(100vw-24px)] rounded-2xl p-0 sm:max-w-lg">
+            <DialogHeader className="border-b border-slate-100 px-4 py-3 text-left">
+              <DialogTitle className="text-base text-[#1B2A47]">
+                {mobileDetailBooking.artistName || 'Proveedor'}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                Detalle completo de la reserva
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 px-4 py-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className={`${getBookingStatusBadgeClass(getBookingContract(mobileDetailBooking)?.status === 'en_negociacion' ? 'en_negociacion' : mobileDetailBooking.status)} text-xs`}>
+                  <span className="flex items-center gap-1">
+                    {getBookingStatusIcon(getBookingContract(mobileDetailBooking)?.status === 'en_negociacion' ? 'en_negociacion' : mobileDetailBooking.status)}
+                    {getBookingStatusText(getBookingContract(mobileDetailBooking)?.status === 'en_negociacion' ? 'en_negociacion' : mobileDetailBooking.status)}
+                  </span>
+                </Badge>
+                {(() => {
+                  const detailContract = getBookingContract(mobileDetailBooking);
+                  const detailEventName = detailContract?.eventId ? userEventsById.get(detailContract.eventId)?.name : null;
+                  return detailEventName ? (
+                    <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                      {detailEventName}
+                    </Badge>
+                  ) : null;
+                })()}
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 rounded-xl bg-slate-50 p-3 text-sm sm:grid-cols-2">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Evento</p>
+                  <p className="mt-1 text-slate-700">{mobileDetailBooking.eventType || 'Sin especificar'}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Contrato</p>
+                  <p className="mt-1 text-slate-700">{mobileDetailBooking.contractId || 'Sin contrato'}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Fecha del evento</p>
+                  <p className="mt-1 text-slate-700">{formatBookingDate(mobileDetailBooking.date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Hora</p>
+                  <p className="mt-1 text-slate-700">{mobileDetailBooking.startTime || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Ubicación</p>
+                  <p className="mt-1 text-slate-700">{mobileDetailBooking.location || 'No especificada'}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Total</p>
+                  <p className="mt-1 font-semibold text-green-600">${mobileDetailBooking.totalPrice}</p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Creada</p>
+                  <p className="mt-1 text-slate-700">
+                    {formatBookingDate(mobileDetailBooking.createdAt || `${mobileDetailBooking.date}T${mobileDetailBooking.startTime || '00:00'}`, {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }
