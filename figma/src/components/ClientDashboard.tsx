@@ -11,6 +11,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { ContractView } from './ContractView';
+import { ConfirmDialog } from './ConfirmDialog';
 import { EventManager } from './EventManager';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -86,6 +87,8 @@ export function ClientDashboard({
   const [showEventBookings, setShowEventBookings] = useState(false);
   const [bookingStatusFilter, setBookingStatusFilter] = useState<'all' | 'en_negociacion' | 'pending' | 'confirmed' | 'completed'>('all');
   const [bookingOrder, setBookingOrder] = useState<'newest' | 'oldest'>('newest');
+  const [bookingToCancel, setBookingToCancel] = useState<any | null>(null);
+  const [showCancelBookingConfirm, setShowCancelBookingConfirm] = useState(false);
 
   const getMeasureType = (contract: any): 'time' | 'unit' => {
     if (contract?.metadata?.saleType === 'unit' || contract?.terms?.measureType === 'unit') {
@@ -443,6 +446,33 @@ export function ClientDashboard({
     onUpdateEvent(eventId, { archived });
   };
 
+  const handleCancelBookingClick = (booking: any) => {
+    setBookingToCancel(booking);
+    setShowCancelBookingConfirm(true);
+  };
+
+  const handleCancelBookingConfirm = () => {
+    if (!bookingToCancel || !onBookingUpdate) {
+      return;
+    }
+
+    const linkedContract = getBookingContract(bookingToCancel);
+    if (linkedContract && linkedContract.status !== 'active' && linkedContract.status !== 'completed' && linkedContract.status !== 'cancelled') {
+      onContractUpdate({
+        ...linkedContract,
+        status: 'cancelled',
+      });
+    }
+
+    onBookingUpdate({
+      ...bookingToCancel,
+      status: 'cancelled' as const,
+    });
+
+    setShowCancelBookingConfirm(false);
+    setBookingToCancel(null);
+  };
+
   const handleEditEvent = (event: Event) => setEventToEdit(event);
   const handleEditComplete = () => setEventToEdit(null);
 
@@ -458,6 +488,7 @@ export function ClientDashboard({
     const canLeaveReview = Boolean(linkedContract && canReview(linkedContract) && !hasReviewed(linkedContract.id));
     const canAccessContract = Boolean(booking.contractId && canClientAccessContract(linkedContract));
     const canDownloadContract = canAccessContract;
+    const canCancelBookingRequest = ['pending', 'en_negociacion'].includes(displayStatus);
     const contractCode = booking.contractId ? String(booking.contractId).trim() : '';
     const compactContractCode = contractCode.length > 18 ? `${contractCode.slice(0, 8)}…${contractCode.slice(-4)}` : contractCode;
     const createdAtRaw = booking.createdAt || `${booking.date}T${booking.startTime || '00:00'}`;
@@ -584,6 +615,17 @@ export function ClientDashboard({
                   title="Dejar reseña"
                 >
                   <Star className="w-4 h-4" />
+                </Button>
+              )}
+              {canCancelBookingRequest && onBookingUpdate && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleCancelBookingClick(booking)}
+                  className="h-7 w-7 p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  title="Cancelar solicitud"
+                >
+                  <XCircle className="w-4 h-4" />
                 </Button>
               )}
             </div>
@@ -1214,9 +1256,35 @@ export function ClientDashboard({
             setShowContractView(false);
             setSelectedContract(null);
           }}
+          onReject={(rejectedContract) => {
+            onContractUpdate(rejectedContract);
+            if (onBookingUpdate && bookings) {
+              const associatedBooking = bookings.find(b => b.contractId === rejectedContract.id);
+              if (associatedBooking && rejectedContract.status === 'cancelled') {
+                onBookingUpdate({ ...associatedBooking, status: 'cancelled' as const });
+              }
+            }
+            setShowContractView(false);
+            setSelectedContract(null);
+          }}
           userType="client"
         />
       )}
+      <ConfirmDialog
+        open={showCancelBookingConfirm}
+        onOpenChange={(open) => {
+          setShowCancelBookingConfirm(open);
+          if (!open) {
+            setBookingToCancel(null);
+          }
+        }}
+        onConfirm={handleCancelBookingConfirm}
+        title="¿Cancelar esta solicitud?"
+        description="Esta acción cancelará la reserva y no podrás continuar con esta solicitud desde Mis Reservas."
+        confirmText="Sí, cancelar solicitud"
+        cancelText="No, mantener"
+        variant="danger"
+      />
     </div>
   );
 }
