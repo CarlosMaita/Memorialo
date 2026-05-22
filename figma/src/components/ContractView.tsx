@@ -228,6 +228,9 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     : providerRepresentativeName;
   const agreements = (contract.terms.agreements || '').trim() || 'No se definieron acuerdos adicionales entre las partes.';
   const serviceDescriptionText = getServiceDescriptionText(contract.terms.serviceDescription, contract.metadata?.planName);
+  const signButtonLabel = userType === 'client'
+    ? 'Firma y aprobación de contrato'
+    : 'Firma y envío de contrato';
 
   const handleSign = () => {
     if (canEditTerms) {
@@ -452,7 +455,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                     onClick={handleSign}
                     disabled={!agreedToTerms || signing || rejecting}
                   >
-                    {signing ? 'Firmando...' : 'Firmar Contrato'}
+                    {signing ? 'Firmando...' : signButtonLabel}
                   </Button>
                   {canRejectContract && (
                     <Button
@@ -775,7 +778,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                     onClick={handleSign}
                     disabled={!agreedToTerms || signing || rejecting}
                   >
-                    {signing ? 'Firmando...' : 'Firmar Contrato'}
+                    {signing ? 'Firmando...' : signButtonLabel}
                   </Button>
                   {canRejectContract && (
                     <Button
