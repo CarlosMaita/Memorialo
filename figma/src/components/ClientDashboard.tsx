@@ -185,7 +185,6 @@ export function ClientDashboard({
   };
 
   const assignedBookings = filteredUserBookings.filter((booking: any) => Boolean(getBookingContract(booking)?.eventId));
-  const unassignedBookings = filteredUserBookings.filter((booking: any) => !getBookingContract(booking)?.eventId);
 
   const bookingsByEvent = assignedBookings.reduce((map, booking: any) => {
     const linkedContract = getBookingContract(booking);
@@ -257,7 +256,7 @@ export function ClientDashboard({
   // Pending signatures count
   const pendingSignature = userContracts.filter(c => c.status === 'pending_client').length;
   const pendingBookings = userBookings.filter((booking: any) => booking.status === 'pending').length;
-  const visibleBookings = showEventBookings ? assignedBookings : unassignedBookings;
+  const visibleBookings = showEventBookings ? assignedBookings : filteredUserBookings;
 
   const toggleEventExpanded = (eventId: string) => {
     const s = new Set(expandedEvents);
@@ -1058,9 +1057,8 @@ export function ClientDashboard({
                 </div>
                 {userBookings.length > 0 && (
                   <div className="flex items-center gap-3 bg-white border rounded-lg px-3 py-2">
-                    <span className="text-xs text-gray-600">Sin evento</span>
+                    <span className="text-xs text-gray-600">Agrupar por evento</span>
                     <Switch checked={showEventBookings} onCheckedChange={setShowEventBookings} />
-                    <span className="text-xs text-gray-600">En eventos</span>
                   </div>
                 )}
               </div>
@@ -1180,17 +1178,7 @@ export function ClientDashboard({
                       ))
                     )
                   ) : (
-                    visibleBookings.length === 0 ? (
-                      <Card>
-                        <CardContent className="flex flex-col items-center justify-center py-10">
-                          <FolderOpen className="w-10 h-10 text-gray-300 mb-3" />
-                          <p className="text-gray-600 mb-1">No hay reservas sin evento asignado</p>
-                          <p className="text-sm text-gray-500">Activa el switch para ver las reservas en eventos</p>
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      visibleBookings.map((booking: any) => renderBookingRow(booking))
-                    )
+                    visibleBookings.map((booking: any) => renderBookingRow(booking))
                   )}
                 </div>
               )}
