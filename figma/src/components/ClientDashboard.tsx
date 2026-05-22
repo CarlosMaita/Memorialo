@@ -623,7 +623,7 @@ export function ClientDashboard({
               <p className="text-sm font-semibold text-green-600">${booking.totalPrice}</p>
             </div>
 
-            <div className="flex items-center justify-start gap-1 md:justify-end">
+            <div className="flex items-center justify-end gap-1">
               {canViewContract && (
                 <Button
                   size="sm"
@@ -1302,7 +1302,7 @@ export function ClientDashboard({
       {selectedContract && (
         <ContractView
           contract={selectedContract}
-          open={showContractView && canClientViewContract(selectedContract)}
+          open={showContractView}
           onClose={() => { setShowContractView(false); setSelectedContract(null); }}
           onSign={(signedContract) => {
             onContractUpdate(signedContract);
