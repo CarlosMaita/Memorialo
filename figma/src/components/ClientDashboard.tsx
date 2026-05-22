@@ -250,12 +250,14 @@ export function ClientDashboard({
     });
 
     const focusedContract = userContracts.find((contract) => contract.id === focusContractId);
-    if (canClientAccessContract(focusedContract)) {
-      setSelectedContract(focusedContract);
-      setShowContractView(true);
-    }
+    if (focusedContract) {
+      if (canClientAccessContract(focusedContract)) {
+        setSelectedContract(focusedContract);
+        setShowContractView(true);
+      }
 
-    onFocusContractHandled?.();
+      onFocusContractHandled?.();
+    }
   }, [focusContractId, onFocusContractHandled, userContracts]);
 
   // Pending signatures count
