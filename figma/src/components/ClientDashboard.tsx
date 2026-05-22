@@ -6,7 +6,7 @@ import {
   MoreVertical,
   Search, Download
 } from 'lucide-react';
-import { Contract, User, Review, Event } from '../types';
+import { Booking, Contract, User, Review, Event } from '../types';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -89,7 +89,7 @@ export function ClientDashboard({
   const [showEventBookings, setShowEventBookings] = useState(false);
   const [bookingStatusFilter, setBookingStatusFilter] = useState<'all' | 'en_negociacion' | 'pending' | 'confirmed' | 'completed'>('all');
   const [bookingOrder, setBookingOrder] = useState<'newest' | 'oldest'>('newest');
-  const [mobileDetailBooking, setMobileDetailBooking] = useState<any | null>(null);
+  const [mobileDetailBooking, setMobileDetailBooking] = useState<Booking | null>(null);
 
   const getMeasureType = (contract: any): 'time' | 'unit' => {
     if (contract?.metadata?.saleType === 'unit' || contract?.terms?.measureType === 'unit') {
@@ -261,6 +261,13 @@ export function ClientDashboard({
   const pendingSignature = userContracts.filter(c => c.status === 'pending_client').length;
   const pendingBookings = userBookings.filter((booking: any) => booking.status === 'pending').length;
   const visibleBookings = showEventBookings ? assignedBookings : filteredUserBookings;
+  const mobileDetailContract = mobileDetailBooking ? getBookingContract(mobileDetailBooking) : null;
+  const mobileDetailDisplayStatus = mobileDetailBooking
+    ? mobileDetailContract?.status === 'en_negociacion'
+      ? 'en_negociacion'
+      : mobileDetailBooking.status
+    : null;
+  const mobileDetailEventName = mobileDetailContract?.eventId ? userEventsById.get(mobileDetailContract.eventId)?.name : null;
 
   const toggleEventExpanded = (eventId: string) => {
     const s = new Set(expandedEvents);
@@ -1314,21 +1321,17 @@ export function ClientDashboard({
 
             <div className="space-y-4 px-4 py-4">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className={`${getBookingStatusBadgeClass(getBookingContract(mobileDetailBooking)?.status === 'en_negociacion' ? 'en_negociacion' : mobileDetailBooking.status)} text-xs`}>
+                <Badge variant="outline" className={`${getBookingStatusBadgeClass(mobileDetailDisplayStatus || mobileDetailBooking.status)} text-xs`}>
                   <span className="flex items-center gap-1">
-                    {getBookingStatusIcon(getBookingContract(mobileDetailBooking)?.status === 'en_negociacion' ? 'en_negociacion' : mobileDetailBooking.status)}
-                    {getBookingStatusText(getBookingContract(mobileDetailBooking)?.status === 'en_negociacion' ? 'en_negociacion' : mobileDetailBooking.status)}
+                    {getBookingStatusIcon(mobileDetailDisplayStatus || mobileDetailBooking.status)}
+                    {getBookingStatusText(mobileDetailDisplayStatus || mobileDetailBooking.status)}
                   </span>
                 </Badge>
-                {(() => {
-                  const detailContract = getBookingContract(mobileDetailBooking);
-                  const detailEventName = detailContract?.eventId ? userEventsById.get(detailContract.eventId)?.name : null;
-                  return detailEventName ? (
-                    <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
-                      {detailEventName}
-                    </Badge>
-                  ) : null;
-                })()}
+                {mobileDetailEventName ? (
+                  <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                    {mobileDetailEventName}
+                  </Badge>
+                ) : null}
               </div>
 
               <div className="grid grid-cols-1 gap-3 rounded-xl bg-slate-50 p-3 text-sm sm:grid-cols-2">
