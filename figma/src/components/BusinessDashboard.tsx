@@ -1733,11 +1733,7 @@ export function BusinessDashboard({
                                     Firma pendiente
                                   </Badge>
                                 )}
-                                {(booking as any).archived && (
-                                  <Badge variant="outline" className="border-gray-300 bg-gray-100 text-gray-700">
-                                    Archivada
-                                  </Badge>
-                                )}
+
                                 {hasReview && (
                                   <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
                                     <span className="flex items-center gap-1">
