@@ -511,11 +511,7 @@ export function ClientDashboard({
               <Badge variant="outline" className={`${getBookingStatusBadgeClass(displayStatus)} text-xs`}>
                 <span className="flex items-center gap-1">{getBookingStatusIcon(displayStatus)}{getBookingStatusText(displayStatus)}</span>
               </Badge>
-              {booking.archived && (
-                <Badge variant="outline" className="mt-1 border-gray-300 bg-gray-100 text-gray-700 text-xs">
-                  Archivada
-                </Badge>
-              )}
+
             </div>
 
             <div>
