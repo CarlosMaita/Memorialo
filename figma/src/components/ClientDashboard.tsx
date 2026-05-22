@@ -12,6 +12,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { ContractView } from './ContractView';
+import { ConfirmDialog } from './ConfirmDialog';
 import { EventManager } from './EventManager';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
@@ -89,6 +90,8 @@ export function ClientDashboard({
   const [showEventBookings, setShowEventBookings] = useState(false);
   const [bookingStatusFilter, setBookingStatusFilter] = useState<'all' | 'en_negociacion' | 'pending' | 'confirmed' | 'completed'>('all');
   const [bookingOrder, setBookingOrder] = useState<'newest' | 'oldest'>('newest');
+  const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
+  const [showCancelBookingConfirm, setShowCancelBookingConfirm] = useState(false);
   const [mobileDetailBooking, setMobileDetailBooking] = useState<Booking | null>(null);
 
   const getMeasureType = (contract: any): 'time' | 'unit' => {
@@ -447,6 +450,33 @@ export function ClientDashboard({
     onUpdateEvent(eventId, { archived });
   };
 
+  const handleCancelBookingClick = (booking: Booking) => {
+    setBookingToCancel(booking);
+    setShowCancelBookingConfirm(true);
+  };
+
+  const handleCancelBookingConfirm = () => {
+    if (!bookingToCancel || !onBookingUpdate) {
+      return;
+    }
+
+    const linkedContract = getBookingContract(bookingToCancel);
+    if (linkedContract && linkedContract.status !== 'active' && linkedContract.status !== 'completed' && linkedContract.status !== 'cancelled') {
+      onContractUpdate({
+        ...linkedContract,
+        status: 'cancelled',
+      });
+    }
+
+    onBookingUpdate({
+      ...bookingToCancel,
+      status: 'cancelled' as const,
+    });
+
+    setShowCancelBookingConfirm(false);
+    setBookingToCancel(null);
+  };
+
   const handleEditEvent = (event: Event) => setEventToEdit(event);
   const handleEditComplete = () => setEventToEdit(null);
 
@@ -462,6 +492,7 @@ export function ClientDashboard({
     const canLeaveReview = Boolean(linkedContract && canReview(linkedContract) && !hasReviewed(linkedContract.id));
     const canViewContract = Boolean(booking.contractId && canClientViewContract(linkedContract));
     const canDownloadContract = canViewContract;
+    const canCancelBookingRequest = ['pending', 'en_negociacion'].includes(displayStatus);
     const contractCode = booking.contractId ? String(booking.contractId).trim() : '';
     const createdAtRaw = booking.createdAt || `${booking.date}T${booking.startTime || '00:00'}`;
     const createdAtLabel = formatBookingDate(createdAtRaw, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -555,6 +586,15 @@ export function ClientDashboard({
                       <DropdownMenuItem onClick={() => onReviewCreate(linkedContract.id)}>
                         <Star className="w-4 h-4" />
                         Calificar
+                      </DropdownMenuItem>
+                    )}
+                    {canCancelBookingRequest && onBookingUpdate && (
+                      <DropdownMenuItem
+                        onClick={() => handleCancelBookingClick(booking)}
+                        className="text-red-600 focus:text-red-700"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Cancelar solicitud
                       </DropdownMenuItem>
                     )}
                   </DropdownMenuContent>
@@ -668,6 +708,15 @@ export function ClientDashboard({
                     <DropdownMenuItem onClick={() => onReviewCreate(linkedContract.id)}>
                       <Star className="w-4 h-4" />
                       Calificar
+                    </DropdownMenuItem>
+                  )}
+                  {canCancelBookingRequest && onBookingUpdate && (
+                    <DropdownMenuItem
+                      onClick={() => handleCancelBookingClick(booking)}
+                      className="text-red-600 focus:text-red-700"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Cancelar solicitud
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
@@ -1300,9 +1349,35 @@ export function ClientDashboard({
             setShowContractView(false);
             setSelectedContract(null);
           }}
+          onReject={(rejectedContract) => {
+            onContractUpdate(rejectedContract);
+            if (onBookingUpdate && bookings) {
+              const associatedBooking = bookings.find(b => b.contractId === rejectedContract.id);
+              if (associatedBooking && rejectedContract.status === 'cancelled') {
+                onBookingUpdate({ ...associatedBooking, status: 'cancelled' as const });
+              }
+            }
+            setShowContractView(false);
+            setSelectedContract(null);
+          }}
           userType="client"
         />
       )}
+      <ConfirmDialog
+        open={showCancelBookingConfirm}
+        onOpenChange={(open) => {
+          setShowCancelBookingConfirm(open);
+          if (!open) {
+            setBookingToCancel(null);
+          }
+        }}
+        onConfirm={handleCancelBookingConfirm}
+        title="¿Cancelar esta solicitud?"
+        description="Esta acción cancelará la reserva y no podrás continuar con esta solicitud desde Mis Reservas."
+        confirmText="Sí, cancelar solicitud"
+        cancelText="No, mantener"
+        variant="danger"
+      />
 
       <Dialog open={Boolean(mobileDetailBooking)} onOpenChange={(open) => !open && setMobileDetailBooking(null)}>
         {mobileDetailBooking && (
