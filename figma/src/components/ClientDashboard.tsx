@@ -261,13 +261,6 @@ export function ClientDashboard({
   const pendingSignature = userContracts.filter(c => c.status === 'pending_client').length;
   const pendingBookings = userBookings.filter((booking: any) => booking.status === 'pending').length;
   const visibleBookings = showEventBookings ? assignedBookings : filteredUserBookings;
-  const mobileDetailContract = mobileDetailBooking ? getBookingContract(mobileDetailBooking) : null;
-  const mobileDetailDisplayStatus = mobileDetailBooking
-    ? mobileDetailContract?.status === 'en_negociacion'
-      ? 'en_negociacion'
-      : mobileDetailBooking.status
-    : null;
-  const mobileDetailEventName = mobileDetailContract?.eventId ? userEventsById.get(mobileDetailContract.eventId)?.name : null;
 
   const toggleEventExpanded = (eventId: string) => {
     const s = new Set(expandedEvents);
@@ -464,7 +457,7 @@ export function ClientDashboard({
     const contractCode = booking.contractId ? String(booking.contractId).trim() : '';
     const createdAtRaw = booking.createdAt || `${booking.date}T${booking.startTime || '00:00'}`;
     const createdAtLabel = formatBookingDate(createdAtRaw, { day: 'numeric', month: 'short', year: 'numeric' });
-    const eventDateLabel = formatBookingDate(booking.date, { day: 'numeric', month: 'short', year: 'numeric' });
+    const bookingDateLabel = formatBookingDate(booking.date, { day: 'numeric', month: 'short', year: 'numeric' });
     const eventBadgeLabel = linkedContract?.eventId ? userEventsById.get(linkedContract.eventId)?.name || 'Evento' : null;
     const contractActionLabel = linkedContract?.status === 'pending_client' ? 'Firmar contrato' : 'Ver contrato';
     const compactContractCode = contractCode.length > 18 ? `${contractCode.slice(0, 8)}…${contractCode.slice(-4)}` : contractCode;
@@ -476,7 +469,9 @@ export function ClientDashboard({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="truncate text-sm font-medium text-[#1B2A47]">{booking.artistName || 'Proveedor'}</h4>
+                  <h4 className="truncate text-sm font-medium text-[#1B2A47]" title={booking.artistName || 'Proveedor'}>
+                    {booking.artistName || 'Proveedor'}
+                  </h4>
                   {eventBadgeLabel && (
                     <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
                       {eventBadgeLabel}
@@ -490,7 +485,7 @@ export function ClientDashboard({
                 <p className="mt-0.5 text-[11px] text-gray-400">Creada: {createdAtLabel}</p>
                 <p className="mt-2 flex items-center gap-1 text-xs text-gray-600">
                   <Calendar className="w-3 h-3" />
-                  {eventDateLabel}
+                  {bookingDateLabel}
                   <span className="text-gray-300">•</span>
                   <Clock className="w-3 h-3" />
                   {booking.startTime || 'N/A'}
@@ -504,6 +499,7 @@ export function ClientDashboard({
                   onClick={() => setMobileDetailBooking(booking)}
                   className="h-8 w-8 rounded-full p-0"
                   title="Ver detalle de la reserva"
+                  aria-label="Ver detalle de la reserva"
                 >
                   <Eye className="w-4 h-4 text-gray-700" />
                 </Button>
@@ -514,6 +510,7 @@ export function ClientDashboard({
                       variant="ghost"
                       className="h-8 w-8 rounded-full p-0"
                       title="Más opciones"
+                      aria-label="Más opciones"
                     >
                       <MoreVertical className="w-4 h-4 text-gray-700" />
                     </Button>
@@ -567,7 +564,9 @@ export function ClientDashboard({
           <div className="hidden md:grid md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_130px_140px_90px_auto] md:items-center md:gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h4 className="truncate text-sm font-medium text-[#1B2A47]">{booking.artistName || 'Proveedor'}</h4>
+                <h4 className="truncate text-sm font-medium text-[#1B2A47]" title={booking.artistName || 'Proveedor'}>
+                  {booking.artistName || 'Proveedor'}
+                </h4>
                 {eventBadgeLabel && (
                   <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
                     {eventBadgeLabel}
@@ -1320,19 +1319,29 @@ export function ClientDashboard({
             </DialogHeader>
 
             <div className="space-y-4 px-4 py-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className={`${getBookingStatusBadgeClass(mobileDetailDisplayStatus || mobileDetailBooking.status)} text-xs`}>
-                  <span className="flex items-center gap-1">
-                    {getBookingStatusIcon(mobileDetailDisplayStatus || mobileDetailBooking.status)}
-                    {getBookingStatusText(mobileDetailDisplayStatus || mobileDetailBooking.status)}
-                  </span>
-                </Badge>
-                {mobileDetailEventName ? (
-                  <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
-                    {mobileDetailEventName}
-                  </Badge>
-                ) : null}
-              </div>
+              {(() => {
+                const detailContract = getBookingContract(mobileDetailBooking);
+                const detailDisplayStatus = detailContract?.status === 'en_negociacion'
+                  ? 'en_negociacion'
+                  : mobileDetailBooking.status;
+                const detailEventName = detailContract?.eventId ? userEventsById.get(detailContract.eventId)?.name : null;
+
+                return (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline" className={`${getBookingStatusBadgeClass(detailDisplayStatus)} text-xs`}>
+                      <span className="flex items-center gap-1">
+                        {getBookingStatusIcon(detailDisplayStatus)}
+                        {getBookingStatusText(detailDisplayStatus)}
+                      </span>
+                    </Badge>
+                    {detailEventName ? (
+                      <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                        {detailEventName}
+                      </Badge>
+                    ) : null}
+                  </div>
+                );
+              })()}
 
               <div className="grid grid-cols-1 gap-3 rounded-xl bg-slate-50 p-3 text-sm sm:grid-cols-2">
                 <div>

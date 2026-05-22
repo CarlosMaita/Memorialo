@@ -1724,7 +1724,7 @@ export function BusinessDashboard({
                     const compactContractCode = contractCode.length > 18 ? `${contractCode.slice(0, 8)}…${contractCode.slice(-4)}` : contractCode;
                     const createdAtRaw = (booking as any).createdAt || `${booking.date}T${booking.startTime || '00:00'}`;
                     const createdAtLabel = formatBookingDate(createdAtRaw, { day: 'numeric', month: 'short', year: 'numeric' });
-                    const eventDateLabel = formatBookingDate(booking.date, { day: 'numeric', month: 'short', year: 'numeric' });
+                    const bookingDateLabel = formatBookingDate(booking.date, { day: 'numeric', month: 'short', year: 'numeric' });
                     const contractActionLabel = isPendingProviderSignature ? 'Firmar contrato' : 'Ver contrato';
 
                     return (
@@ -1733,7 +1733,9 @@ export function BusinessDashboard({
                           <div className="md:hidden">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0 flex-1">
-                                <h4 className="truncate text-sm font-medium text-[#1B2A47]">{booking.clientName}</h4>
+                                <h4 className="truncate text-sm font-medium text-[#1B2A47]" title={booking.clientName}>
+                                  {booking.clientName}
+                                </h4>
                                 <p className="mt-0.5 truncate text-xs text-gray-500">
                                   {formatEventTypeLabel(booking.eventType)}
                                   {booking.location ? ` · ${booking.location}` : ''}
@@ -1741,7 +1743,7 @@ export function BusinessDashboard({
                                 <p className="mt-0.5 text-[11px] text-gray-400">Creada: {createdAtLabel}</p>
                                 <p className="mt-2 flex items-center gap-1 text-xs text-gray-600">
                                   <Calendar className="w-3 h-3" />
-                                  {eventDateLabel}
+                                  {bookingDateLabel}
                                   <span className="text-gray-300">•</span>
                                   <Clock className="w-3 h-3" />
                                   {booking.startTime || 'No disponible'}
@@ -1755,6 +1757,7 @@ export function BusinessDashboard({
                                   onClick={() => setMobileDetailBooking(booking)}
                                   className="h-8 w-8 rounded-full p-0"
                                   title="Ver detalle de la reserva"
+                                  aria-label="Ver detalle de la reserva"
                                 >
                                   <Eye className="w-4 h-4 text-gray-700" />
                                 </Button>
@@ -1765,6 +1768,7 @@ export function BusinessDashboard({
                                       variant="ghost"
                                       className="h-8 w-8 rounded-full p-0"
                                       title="Más opciones"
+                                      aria-label="Más opciones"
                                     >
                                       <MoreVertical className="w-4 h-4 text-gray-700" />
                                     </Button>
@@ -1830,7 +1834,9 @@ export function BusinessDashboard({
                           <div className="hidden md:grid md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)_130px_140px_90px_auto] md:items-center md:gap-3">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <h4 className="truncate text-sm font-medium text-[#1B2A47]">{booking.clientName}</h4>
+                                <h4 className="truncate text-sm font-medium text-[#1B2A47]" title={booking.clientName}>
+                                  {booking.clientName}
+                                </h4>
                                 {isPendingProviderSignature && (
                                   <Badge variant="outline" className="border-yellow-300 bg-yellow-50 text-yellow-800">
                                     Firma pendiente
