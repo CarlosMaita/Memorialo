@@ -357,7 +357,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
           ...contract.metadata,
           contractRejection: {
             reason: rejectReason.trim(),
-            improvementComment: rejectImprovementComment.trim() || undefined,
+            improvementComment: rejectImprovementComment.trim() ? rejectImprovementComment.trim() : undefined,
             rejectedAt: new Date().toISOString(),
             rejectedBy: userType,
           },

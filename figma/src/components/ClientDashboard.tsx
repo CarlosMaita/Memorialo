@@ -5,7 +5,7 @@ import {
   ChevronUp, Eye, Archive, ArchiveRestore, CalendarDays, BookOpen, Activity, MessageCircle,
   Search, Download
 } from 'lucide-react';
-import { Contract, User, Review, Event } from '../types';
+import { Contract, User, Review, Event, Booking } from '../types';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -87,7 +87,7 @@ export function ClientDashboard({
   const [showEventBookings, setShowEventBookings] = useState(false);
   const [bookingStatusFilter, setBookingStatusFilter] = useState<'all' | 'en_negociacion' | 'pending' | 'confirmed' | 'completed'>('all');
   const [bookingOrder, setBookingOrder] = useState<'newest' | 'oldest'>('newest');
-  const [bookingToCancel, setBookingToCancel] = useState<any | null>(null);
+  const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
   const [showCancelBookingConfirm, setShowCancelBookingConfirm] = useState(false);
 
   const getMeasureType = (contract: any): 'time' | 'unit' => {
@@ -446,7 +446,7 @@ export function ClientDashboard({
     onUpdateEvent(eventId, { archived });
   };
 
-  const handleCancelBookingClick = (booking: any) => {
+  const handleCancelBookingClick = (booking: Booking) => {
     setBookingToCancel(booking);
     setShowCancelBookingConfirm(true);
   };
@@ -545,7 +545,6 @@ export function ClientDashboard({
               <Badge variant="outline" className={`${getBookingStatusBadgeClass(displayStatus)} text-xs`}>
                 <span className="flex items-center gap-1">{getBookingStatusIcon(displayStatus)}{getBookingStatusText(displayStatus)}</span>
               </Badge>
-
             </div>
 
             <div>
