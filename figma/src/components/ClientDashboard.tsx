@@ -305,11 +305,7 @@ export function ClientDashboard({
   };
 
   const canReview = (contract: Contract): boolean => {
-    if (contract.status === 'completed') return true;
-    const eventDate = new Date(contract.terms.date);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return eventDate < today;
+    return contract.status === 'completed';
   };
 
   const hasReviewed = (contractId: string): boolean =>
@@ -576,7 +572,7 @@ export function ClientDashboard({
                   size="sm"
                   variant="ghost"
                   onClick={() => onReviewCreate(linkedContract.id)}
-                  className="h-7 w-7 p-0 text-[#D4AF37] hover:text-[#D4AF37]"
+                  className="h-7 w-7 p-0 text-[#D4AF37] hover:bg-[#D4AF37] hover:text-white"
                   title="Dejar reseña"
                 >
                   <Star className="w-4 h-4" />
@@ -911,7 +907,7 @@ export function ClientDashboard({
                                 <Eye className="w-4 h-4" />
                               </Button>
                               {canReview(contract) && !hasReviewed(contract.id) && (
-                                <Button variant="ghost" size="sm" onClick={() => onReviewCreate(contract.id)} className="h-8 w-8 p-0 text-[#D4AF37] hover:text-[#D4AF37]" title="Dejar reseña">
+                                <Button variant="ghost" size="sm" onClick={() => onReviewCreate(contract.id)} className="h-8 w-8 p-0 text-[#D4AF37] hover:bg-[#D4AF37] hover:text-white" title="Dejar reseña">
                                   <Star className="w-4 h-4" />
                                 </Button>
                               )}
