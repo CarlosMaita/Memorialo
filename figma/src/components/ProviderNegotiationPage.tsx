@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ContractView } from './ContractView';
+import { toast } from 'sonner@2.0.3';
 
 type ChatApi = {
   getChatConversations: () => Promise<ChatConversation[]>;
@@ -66,7 +67,7 @@ interface ProviderNegotiationPageProps {
   activeContractId: string | null;
   user: User;
   onNavigateToContract: (contractId: string) => void;
-  onContractUpdate: (contract: any) => void;
+  onContractUpdate: (contract: any) => void | Promise<void>;
   onBack: () => void;
   chatApi: ChatApi;
 }
@@ -139,6 +140,8 @@ export function ProviderNegotiationPage({
   const [counterpartTyping, setCounterpartTyping] = useState(false);
   const [counterpartOnline, setCounterpartOnline] = useState(false);
   const [showInterventionConfirm, setShowInterventionConfirm] = useState(false);
+  const [showCancelBookingConfirm, setShowCancelBookingConfirm] = useState(false);
+  const [cancellingBooking, setCancellingBooking] = useState(false);
   const [showMobileClientDetails, setShowMobileClientDetails] = useState(false);
   const [showContractDialog, setShowContractDialog] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
@@ -556,6 +559,22 @@ export function ProviderNegotiationPage({
     });
   };
 
+  const handleCancelNegotiationBooking = async () => {
+    if (!activeContract || activeContract.status !== 'en_negociacion' || cancellingBooking) return;
+    try {
+      setCancellingBooking(true);
+      await onContractUpdate({
+        ...activeContract,
+        status: 'cancelled',
+      });
+    } catch (error) {
+      console.error('Error cancelling negotiation booking:', error);
+      toast.error('No se pudo rechazar la solicitud. Inténtalo de nuevo.');
+    } finally {
+      setCancellingBooking(false);
+    }
+  };
+
   const renderAttachments = (attachments?: ChatAttachment[], mine?: boolean) => {
     if (!attachments || attachments.length === 0) return null;
     return (
@@ -845,6 +864,16 @@ export function ProviderNegotiationPage({
         cancelText="Volver al chat"
         variant="warning"
       />
+      <ConfirmDialog
+        open={showCancelBookingConfirm}
+        onOpenChange={setShowCancelBookingConfirm}
+        onConfirm={handleCancelNegotiationBooking}
+        title="¿Rechazar esta solicitud de reserva?"
+        description="La reserva se cancelará y esta negociación se cerrará para ambas partes."
+        confirmText={cancellingBooking ? 'Cancelando...' : 'Sí, rechazar'}
+        cancelText="No, volver"
+        variant="danger"
+      />
       <Dialog open={showMobileClientDetails} onOpenChange={setShowMobileClientDetails}>
         <DialogContent className="max-w-[calc(100vw-24px)] rounded-2xl p-0 sm:max-w-md">
           <DialogHeader className="border-b border-slate-100 px-4 py-3 text-left">
@@ -911,6 +940,18 @@ export function ProviderNegotiationPage({
                     onClick={() => setShowContractDialog(true)}
                   >
                     Enviar contrato
+                  </Button>
+                )}
+                {canSendContract && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={cancellingBooking}
+                    className="h-7 rounded-lg border-red-200 px-2 text-[10px] text-red-700 hover:bg-red-50 lg:h-8 lg:px-3 lg:text-xs"
+                    onClick={() => setShowCancelBookingConfirm(true)}
+                  >
+                    {cancellingBooking ? 'Cancelando...' : 'Cancelar'}
                   </Button>
                 )}
                 {conversation && !conversation.requiresAdminIntervention && (
