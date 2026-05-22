@@ -188,7 +188,7 @@ export function ClientDashboard({
     return userContractsById.get(booking.contractId) || null;
   };
 
-  const canClientAccessContract = (contract: Contract | null | undefined) => (
+  const canClientViewContract = (contract: Contract | null | undefined) => (
     Boolean(contract && contract.status !== 'en_negociacion')
   );
 
@@ -255,7 +255,7 @@ export function ClientDashboard({
 
     const focusedContract = userContracts.find((contract) => contract.id === focusContractId);
     if (focusedContract) {
-      if (canClientAccessContract(focusedContract)) {
+      if (canClientViewContract(focusedContract)) {
         setSelectedContract(focusedContract);
         setShowContractView(true);
       }
@@ -412,7 +412,7 @@ export function ClientDashboard({
     }
 
     const contract = userContracts.find((candidate) => candidate.id === booking.contractId);
-    if (!canClientAccessContract(contract)) {
+    if (!canClientViewContract(contract)) {
       return;
     }
 
@@ -426,7 +426,7 @@ export function ClientDashboard({
     }
 
     const contract = userContracts.find((candidate) => candidate.id === booking.contractId);
-    if (!canClientAccessContract(contract)) {
+    if (!canClientViewContract(contract)) {
       return;
     }
 
@@ -460,8 +460,8 @@ export function ClientDashboard({
     const linkedContract = getBookingContract(booking);
     const displayStatus = linkedContract?.status === 'en_negociacion' ? 'en_negociacion' : booking.status;
     const canLeaveReview = Boolean(linkedContract && canReview(linkedContract) && !hasReviewed(linkedContract.id));
-    const canAccessContract = Boolean(booking.contractId && canClientAccessContract(linkedContract));
-    const canDownloadContract = canAccessContract;
+    const canViewContract = Boolean(booking.contractId && canClientViewContract(linkedContract));
+    const canDownloadContract = canViewContract;
     const contractCode = booking.contractId ? String(booking.contractId).trim() : '';
     const createdAtRaw = booking.createdAt || `${booking.date}T${booking.startTime || '00:00'}`;
     const createdAtLabel = formatBookingDate(createdAtRaw, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -524,7 +524,7 @@ export function ClientDashboard({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
-                    {canAccessContract && (
+                    {canViewContract && (
                       <DropdownMenuItem onClick={() => handleViewContractFromBooking(booking)}>
                         <FileText className="w-4 h-4" />
                         {contractActionLabel}
@@ -624,7 +624,7 @@ export function ClientDashboard({
             </div>
 
             <div className="flex items-center justify-start gap-1 md:justify-end">
-              {canAccessContract && (
+              {canViewContract && (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -754,7 +754,7 @@ export function ClientDashboard({
     const eventDate = new Date(contract.terms.date);
     const isEventPassed = eventDate < new Date();
     const showReview = canReview(contract) && !hasReviewed(contract.id);
-    const canAccessContract = canClientAccessContract(contract);
+    const canViewContract = canClientViewContract(contract);
 
     return (
       <Card className="mb-4">
@@ -830,7 +830,7 @@ export function ClientDashboard({
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 pt-2">
-            {canAccessContract && (
+            {canViewContract && (
               <Button
                 variant="outline"
                 size="sm"
@@ -1012,7 +1012,7 @@ export function ClientDashboard({
                               <span className="text-sm font-semibold text-[#0A1F44] whitespace-nowrap mr-2">
                                 ${contract.terms.price.toFixed(2)}
                               </span>
-                              {canClientAccessContract(contract) && (
+                              {canClientViewContract(contract) && (
                                 <Button variant="ghost" size="sm" onClick={() => { setSelectedContract(contract); setShowContractView(true); }} className="h-8 w-8 p-0" title="Ver contrato">
                                   <FileText className="w-4 h-4" />
                                 </Button>
@@ -1302,7 +1302,7 @@ export function ClientDashboard({
       {selectedContract && (
         <ContractView
           contract={selectedContract}
-          open={showContractView && canClientAccessContract(selectedContract)}
+          open={showContractView && canClientViewContract(selectedContract)}
           onClose={() => { setShowContractView(false); setSelectedContract(null); }}
           onSign={(signedContract) => {
             onContractUpdate(signedContract);
