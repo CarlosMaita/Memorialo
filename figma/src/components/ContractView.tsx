@@ -212,6 +212,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     : !!contract.clientSignature;
 
   const bothPartiesSigned = Boolean(contract.clientSignature && contract.artistSignature);
+  const shouldShowSigningSection = !bothPartiesSigned && canSign && contract.status !== 'completed' && contract.status !== 'active' && contract.status !== 'cancelled';
   const { specialRequest, additionalTermsWithoutSpecialRequest } = extractSpecialRequest(contract);
   const clientLegalName = contract.metadata?.clientLegalName || contract.clientName;
   const providerBusinessName = contract.metadata?.providerBusinessName || contract.artistName;
@@ -409,6 +410,72 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
         </DialogHeader>
 
         <div className="space-y-6">
+          {shouldShowSigningSection && (
+            <Card className="border-primary">
+              <CardHeader>
+                <CardTitle className="text-sm">Firma del Contrato</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {userType === 'artist' && contract.clientSignature && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-start gap-2 text-blue-700">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm">
+                        El cliente ya firmó el contrato. Revisa los términos a continuación y firma para completar el acuerdo.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {otherPartyHasSigned && userType === 'client' && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="flex items-center gap-2 text-green-700">
+                      <CheckCircle className="w-4 h-4" />
+                      <p className="text-sm">
+                        La otra parte ya ha firmado el contrato. Revisa los términos y firma para completar el acuerdo.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="terms-top"
+                    checked={agreedToTerms}
+                    onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
+                  />
+                  <Label htmlFor="terms-top" className="text-sm cursor-pointer">
+                    He leído y acepto todos los términos y condiciones de este contrato. Entiendo que al firmar
+                    este documento, estoy estableciendo un acuerdo legalmente vinculante.
+                  </Label>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+                  <Button
+                    onClick={handleSign}
+                    disabled={!agreedToTerms || signing || rejecting}
+                  >
+                    {signing ? 'Firmando...' : 'Firmar Contrato'}
+                  </Button>
+                  {canRejectContract && (
+                    <Button
+                      variant="outline"
+                      onClick={handleRejectClick}
+                      disabled={signing || rejecting}
+                      className="border-red-600 text-red-600 hover:bg-red-50"
+                    >
+                      {rejecting ? 'Rechazando...' : 'Rechazar'}
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={onClose}
+                    disabled={signing || rejecting}
+                  >
+                    Revisar Después
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Partes del Contrato</CardTitle>
@@ -652,7 +719,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
             </CardContent>
           </Card>
 
-          {!bothPartiesSigned && canSign && contract.status !== 'completed' && contract.status !== 'active' && contract.status !== 'cancelled' && (
+          {shouldShowSigningSection && (
             <Card className="border-primary">
               <CardHeader>
                 <CardTitle className="text-sm">Firma del Contrato</CardTitle>
@@ -703,11 +770,10 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                   </Label>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
                   <Button
                     onClick={handleSign}
                     disabled={!agreedToTerms || signing || rejecting}
-                    className="flex-1"
                   >
                     {signing ? 'Firmando...' : 'Firmar Contrato'}
                   </Button>
@@ -716,7 +782,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                       variant="outline"
                       onClick={handleRejectClick}
                       disabled={signing || rejecting}
-                      className="flex-1 sm:flex-initial border-red-600 text-red-600 hover:bg-red-50"
+                      className="border-red-600 text-red-600 hover:bg-red-50"
                     >
                       {rejecting ? 'Rechazando...' : 'Rechazar'}
                     </Button>
