@@ -1888,87 +1888,67 @@ export function BusinessDashboard({
                               <p className="text-sm font-semibold text-green-600">${booking.totalPrice}</p>
                             </div>
 
-                            <div className="flex items-center justify-end gap-1">
-                              {booking.contractId && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    const c = booking.contractId ? providerContractsById.get(booking.contractId) : null;
-                                    if (c) handleViewContract(c);
-                                  }}
-                                  className="h-7 w-7 p-0"
-                                  title={contractActionLabel}
-                                >
-                                  <FileText className="w-4 h-4 text-gray-700" />
-                                </Button>
-                              )}
-                              {booking.contractId && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    const c = booking.contractId ? providerContractsById.get(booking.contractId) : null;
-                                    if (c) handleDownloadContractPDF(c, booking.eventType);
-                                  }}
-                                  className="h-7 w-7 p-0"
-                                  title="Descargar contrato"
-                                >
-                                  <Download className="w-4 h-4 text-gray-700" />
-                                </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleStartChatFromBooking(booking.id)}
-                                className="h-7 w-7 p-0"
-                                title="Abrir conversación"
-                              >
-                                <MessageCircle className="w-4 h-4 text-gray-700" />
-                              </Button>
-                              {(booking as any).archived ? (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleArchiveBooking(booking, false)}
-                                  className="h-7 w-7 p-0"
-                                  title="Desarchivar reserva"
-                                >
-                                  <ArchiveRestore className="w-4 h-4 text-blue-700" />
-                                </Button>
-                              ) : displayStatus === 'completed' ? (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleArchiveBooking(booking, true)}
-                                  className="h-7 w-7 p-0"
-                                  title="Archivar reserva"
-                                >
-                                  <Archive className="w-4 h-4 text-gray-700" />
-                                </Button>
-                              ) : null}
-                              {(displayStatus === 'pending' || displayStatus === 'en_negociacion') && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleEditBooking(booking)}
-                                  className="h-7 w-7 p-0"
-                                  title="Editar fecha y hora"
-                                >
-                                  <Edit className="w-4 h-4 text-gray-700" />
-                                </Button>
-                              )}
-                              {displayStatus === 'confirmed' && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleUpdateBookingStatus(booking.id, 'completed')}
-                                  className="h-7 w-7 p-0"
-                                  title="Marcar como completada"
-                                >
-                                  <CheckCircle2 className="w-4 h-4 text-gray-700" />
-                                </Button>
-                              )}
+                            <div className="flex items-center justify-end">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 rounded-full p-0"
+                                    title="Más opciones"
+                                    aria-label="Más opciones"
+                                  >
+                                    <MoreVertical className="w-4 h-4 text-gray-700" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56">
+                                  {booking.contractId && (
+                                    <DropdownMenuItem onClick={() => {
+                                      const c = booking.contractId ? providerContractsById.get(booking.contractId) : null;
+                                      if (c) handleViewContract(c);
+                                    }}>
+                                      <FileText className="w-4 h-4" />
+                                      {contractActionLabel}
+                                    </DropdownMenuItem>
+                                  )}
+                                  {booking.contractId && (
+                                    <DropdownMenuItem onClick={() => {
+                                      const c = booking.contractId ? providerContractsById.get(booking.contractId) : null;
+                                      if (c) handleDownloadContractPDF(c, booking.eventType);
+                                    }}>
+                                      <Download className="w-4 h-4" />
+                                      Descargar contrato
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem onClick={() => handleStartChatFromBooking(booking.id)}>
+                                    <MessageCircle className="w-4 h-4" />
+                                    Abrir conversación
+                                  </DropdownMenuItem>
+                                  {(booking as any).archived ? (
+                                    <DropdownMenuItem onClick={() => handleArchiveBooking(booking, false)}>
+                                      <ArchiveRestore className="w-4 h-4" />
+                                      Desarchivar reserva
+                                    </DropdownMenuItem>
+                                  ) : displayStatus === 'completed' ? (
+                                    <DropdownMenuItem onClick={() => handleArchiveBooking(booking, true)}>
+                                      <Archive className="w-4 h-4" />
+                                      Archivar reserva
+                                    </DropdownMenuItem>
+                                  ) : null}
+                                  {(displayStatus === 'pending' || displayStatus === 'en_negociacion') && (
+                                    <DropdownMenuItem onClick={() => handleEditBooking(booking)}>
+                                      <Edit className="w-4 h-4" />
+                                      Editar fecha y hora
+                                    </DropdownMenuItem>
+                                  )}
+                                  {displayStatus === 'confirmed' && (
+                                    <DropdownMenuItem onClick={() => handleUpdateBookingStatus(booking.id, 'completed')}>
+                                      <CheckCircle2 className="w-4 h-4" />
+                                      Marcar como completada
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </div>
                         </CardContent>
