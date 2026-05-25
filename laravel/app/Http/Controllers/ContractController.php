@@ -175,12 +175,34 @@ class ContractController extends Controller
                     'dedupeKey' => NotificationTypes::CONTRACT_APPROVED.':'.$freshContract->id,
                 ]);
             }
+
+            // If the service does not require a deposit, skip the payment step and go straight to reservado
+            $service = $this->resolveServiceForContract($freshContract);
+            $serviceMetadata = is_array($service?->metadata) ? $service->metadata : [];
+            $requiresDeposit = (bool) ($serviceMetadata['requiresDeposit'] ?? false);
+
+            if (! $requiresDeposit) {
+                $freshContract->update(['status' => 'reservado']);
+                $freshContract = $freshContract->fresh();
+
+                $clientUserForReserved = $this->resolveUserById($freshContract->client_id);
+                if ($clientUserForReserved) {
+                    $this->notifications->dispatchToUser($clientUserForReserved, NotificationTypes::PAYMENT_CONFIRMED, [
+                        'channels' => ['database'],
+                        'title' => 'Tu servicio está reservado',
+                        'body' => 'Tu reserva con '.$freshContract->artist_name.' ha sido confirmada. El servicio está reservado.',
+                        'ctaUrl' => '/me/reservas?contractId='.rawurlencode((string) $freshContract->id),
+                        'entity' => ['type' => 'contract', 'id' => (string) $freshContract->id],
+                        'dedupeKey' => NotificationTypes::PAYMENT_CONFIRMED.':'.$freshContract->id,
+                    ]);
+                }
+            }
         }
 
         $clientJustSigned = ! $hadClientSignature
             && ! empty($freshContract->client_signature)
             && $previousStatus === 'pending_client'
-            && in_array($freshContract->status, ['active', 'pending_artist'], true);
+            && in_array($freshContract->status, ['active', 'pending_artist', 'reservado'], true);
 
         if ($clientJustSigned) {
             $artistUser = $this->resolveUserById($freshContract->artist_user_id);
