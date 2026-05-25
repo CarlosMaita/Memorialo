@@ -53,6 +53,19 @@ export function ServiceDetailPage({
   const availabilityList = Array.isArray(artist.availability) ? artist.availability : [];
   const specialtiesList = Array.isArray(artist.specialties) ? artist.specialties : [];
 
+  const getAvailabilitySummary = (days: string[]): string => {
+    if (days.length === 0) return 'Por coordinar';
+    const allDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const weekdays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+    const weekend = ['Sábado', 'Domingo'];
+    const sorted = [...days].sort((a, b) => allDays.indexOf(a) - allDays.indexOf(b));
+    const sortedStr = sorted.join(',');
+    if (sortedStr === allDays.join(',')) return 'Todos los días';
+    if (sortedStr === weekdays.join(',')) return 'Días Hábiles';
+    if (sortedStr === weekend.join(',')) return 'Fines de semana';
+    return sorted.join(', ');
+  };
+
   const artistReviews = reviews.filter((r) => r.artistId === artist.id);
   const allImages = [artist.image, ...portfolioImages].filter(Boolean) as string[];
   const desktopGalleryImages = allImages.slice(0, MAX_DESKTOP_GALLERY_IMAGES);
@@ -302,7 +315,7 @@ export function ServiceDetailPage({
               <div className="text-center p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
                 <Calendar className="w-6 h-6 mx-auto mb-2" style={{ color: 'var(--gold)' }} />
                 <p className="text-sm text-gray-500">Disponibilidad</p>
-                <p className="text-sm font-medium">{availabilityList.slice(0, 2).join(', ') || 'Por coordinar'}</p>
+                <p className="text-sm font-medium">{getAvailabilitySummary(availabilityList)}</p>
               </div>
             </div>
 
