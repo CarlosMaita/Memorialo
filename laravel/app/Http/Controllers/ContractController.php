@@ -6,11 +6,16 @@ use App\Models\Contract;
 use App\Models\Service;
 use App\Models\User;
 use App\Models\Provider;
+use App\Models\ChatMessage;
+use App\Models\ChatMessageRead;
+use App\Models\ChatParticipant;
+use App\Models\ChatConversation;
 use App\Services\NotificationDispatchService;
 use App\Support\NotificationTypes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class ContractController extends Controller
 {
@@ -217,6 +222,14 @@ class ContractController extends Controller
                     'dedupeKey' => NotificationTypes::CONTRACT_CLIENT_SIGNED.':'.$freshContract->id,
                 ]);
             }
+
+            if ((string) $authUser->id === (string) $freshContract->client_id) {
+                $this->appendContractAuditMessageToChat(
+                    $freshContract,
+                    $authUser,
+                    'El cliente ha firmado el contrato [CONTRACT:{contractToken}].'
+                );
+            }
         }
 
         if (($payload['status'] ?? null) === 'pagado' && $previousStatus !== 'pagado') {
@@ -231,6 +244,14 @@ class ContractController extends Controller
                     'ctaUrl' => '/mi-negocio/negociacion/'.rawurlencode((string) $freshContract->id),
                     'dedupeKey' => NotificationTypes::PAYMENT_PROOF_UPLOADED.':'.$freshContract->id,
                 ]);
+            }
+
+            if ((string) $authUser->id === (string) $freshContract->client_id) {
+                $this->appendContractAuditMessageToChat(
+                    $freshContract,
+                    $authUser,
+                    'El cliente ha pagado el depósito del contrato [CONTRACT:{contractToken}].'
+                );
             }
         }
 
@@ -248,6 +269,14 @@ class ContractController extends Controller
                     'entity' => ['type' => 'contract', 'id' => (string) $freshContract->id],
                     'dedupeKey' => NotificationTypes::PAYMENT_CONFIRMED.':'.$freshContract->id,
                 ]);
+            }
+
+            if ($previousStatus === 'pagado' && (string) $authUser->id === (string) $freshContract->artist_user_id) {
+                $this->appendContractAuditMessageToChat(
+                    $freshContract,
+                    $authUser,
+                    'El proveedor ha confirmado el pago del contrato [CONTRACT:{contractToken}].'
+                );
             }
         }
 
@@ -390,6 +419,85 @@ class ContractController extends Controller
         }
 
         return User::find((int) $userId);
+    }
+
+    private function appendContractAuditMessageToChat(Contract $contract, User $author, string $messageTemplate): void
+    {
+        $bookingId = trim((string) $contract->booking_id);
+
+        if ($bookingId === '') {
+            return;
+        }
+
+        $conversation = $this->ensureContractConversation($contract, $bookingId);
+
+        if (! $conversation) {
+            return;
+        }
+
+        $encodedContractId = rawurlencode((string) $contract->id);
+        $body = str_replace('{contractToken}', $encodedContractId, $messageTemplate);
+
+        $message = ChatMessage::create([
+            'id' => (string) Str::uuid(),
+            'conversation_id' => $conversation->id,
+            'author_user_id' => $author->id,
+            'body' => $body,
+        ]);
+
+        $conversation->update([
+            'last_message_at' => $message->created_at,
+        ]);
+
+        ChatMessageRead::updateOrCreate([
+            'message_id' => $message->id,
+            'user_id' => $author->id,
+        ], [
+            'read_at' => now(),
+        ]);
+    }
+
+    private function ensureContractConversation(Contract $contract, string $bookingId): ?ChatConversation
+    {
+        $clientUserId = $this->toIntOrNull($contract->client_id);
+        $providerUserId = $this->toIntOrNull($contract->artist_user_id);
+
+        if (! $clientUserId || ! $providerUserId) {
+            return null;
+        }
+
+        $conversation = ChatConversation::query()->firstOrCreate(
+            ['booking_id' => $bookingId],
+            [
+                'id' => (string) Str::uuid(),
+                'booking_id' => $bookingId,
+                'client_user_id' => $clientUserId,
+                'provider_user_id' => $providerUserId,
+            ]
+        );
+
+        ChatParticipant::query()->firstOrCreate(
+            ['conversation_id' => $conversation->id, 'user_id' => $clientUserId],
+            ['role' => 'client', 'joined_at' => now()]
+        );
+
+        if ($providerUserId !== $clientUserId) {
+            ChatParticipant::query()->firstOrCreate(
+                ['conversation_id' => $conversation->id, 'user_id' => $providerUserId],
+                ['role' => 'provider', 'joined_at' => now()]
+            );
+        }
+
+        return $conversation;
+    }
+
+    private function toIntOrNull(?string $value): ?int
+    {
+        if (! $value || ! ctype_digit($value)) {
+            return null;
+        }
+
+        return (int) $value;
     }
 
     private function applyScope(Builder $query, Request $request): ?JsonResponse
