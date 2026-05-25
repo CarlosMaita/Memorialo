@@ -465,7 +465,9 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
     if (!file) return;
     if (paymentProofPreview) URL.revokeObjectURL(paymentProofPreview);
     setPaymentProofFile(file);
-    setPaymentProofPreview(URL.createObjectURL(file));
+    const objectUrl = URL.createObjectURL(file);
+    // createObjectURL always returns a blob: URL; validate before storing
+    setPaymentProofPreview(objectUrl.startsWith('blob:') ? objectUrl : null);
     e.target.value = '';
   };
 
