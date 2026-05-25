@@ -1928,12 +1928,9 @@ export default function App() {
         : semanticSlug;
 
       const semanticQuery = querySlug.replace(/-/g, ' ').trim();
-      const taxonomyFromQuerySlug = resolveTypeSlugFromText(semanticQuery);
-      const taxonomy = taxonomyFromQuerySlug ? taxonomySlugLookup.get(taxonomyFromQuerySlug) : undefined;
-
       return {
         city: citySuffix ? citySlugLookup.get(citySuffix) : undefined,
-        taxonomy,
+        taxonomy: undefined,
         query: semanticQuery,
         canonicalPath: `/s/${semanticSlug}`
       };
