@@ -86,6 +86,8 @@ class ContractController extends Controller
             'metadata' => ['sometimes', 'nullable', 'array'],
             'completedAt' => ['sometimes', 'nullable', 'date'],
             'completed_at' => ['sometimes', 'nullable', 'date'],
+            'paymentProofUrl' => ['sometimes', 'nullable', 'string', 'max:2048'],
+            'payment_proof_url' => ['sometimes', 'nullable', 'string', 'max:2048'],
         ]);
 
         $payload = $this->normalizePayload($validated);
@@ -146,6 +148,8 @@ class ContractController extends Controller
             'metadata' => ['sometimes', 'nullable', 'array'],
             'completedAt' => ['sometimes', 'nullable', 'date'],
             'completed_at' => ['sometimes', 'nullable', 'date'],
+            'paymentProofUrl' => ['sometimes', 'nullable', 'string', 'max:2048'],
+            'payment_proof_url' => ['sometimes', 'nullable', 'string', 'max:2048'],
         ]);
 
         $previousStatus = $contract->status;
@@ -193,6 +197,38 @@ class ContractController extends Controller
             }
         }
 
+        if (($payload['status'] ?? null) === 'pagado' && $previousStatus !== 'pagado') {
+            $artistUser = $this->resolveUserById($freshContract->artist_user_id);
+
+            if ($artistUser) {
+                $this->notifications->dispatchToUser($artistUser, NotificationTypes::PAYMENT_PROOF_UPLOADED, [
+                    'channels' => ['database'],
+                    'title' => 'El cliente ha cargado el comprobante de pago',
+                    'body' => "El cliente {$freshContract->client_name} ha cargado el comprobante de pago para el contrato {$freshContract->id}. Confirma la recepcion del pago.",
+                    'entity' => ['type' => 'contract', 'id' => (string) $freshContract->id],
+                    'ctaUrl' => '/mi-negocio/negociacion/'.rawurlencode((string) $freshContract->id),
+                    'dedupeKey' => NotificationTypes::PAYMENT_PROOF_UPLOADED.':'.$freshContract->id,
+                ]);
+            }
+        }
+
+        if (($payload['status'] ?? null) === 'reservado' && $previousStatus !== 'reservado') {
+            $clientUser = $this->resolveUserById($freshContract->client_id);
+
+            if ($clientUser) {
+                $this->notifications->dispatchToUser($clientUser, NotificationTypes::PAYMENT_CONFIRMED, [
+                    'channels' => ['database', 'mail'],
+                    'title' => 'Tu pago fue confirmado',
+                    'body' => 'El proveedor '.$freshContract->artist_name.' ha confirmado la recepcion del pago. Tu servicio esta reservado.',
+                    'mailSubject' => 'Tu pago fue confirmado - Servicio reservado',
+                    'mailBody' => "El proveedor {$freshContract->artist_name} ha confirmado la recepcion de tu pago.\n\nTu servicio esta oficialmente reservado.\n\nContrato: {$freshContract->id}\n",
+                    'ctaUrl' => '/me/reservas?contractId='.rawurlencode((string) $freshContract->id),
+                    'entity' => ['type' => 'contract', 'id' => (string) $freshContract->id],
+                    'dedupeKey' => NotificationTypes::PAYMENT_CONFIRMED.':'.$freshContract->id,
+                ]);
+            }
+        }
+
         if (($payload['status'] ?? null) === 'completed' && $previousStatus !== 'completed') {
             $contract->completed_at = now();
             $contract->save();
@@ -233,6 +269,7 @@ class ContractController extends Controller
             'artistSignature' => 'artist_signature',
             'clientSignature' => 'client_signature',
             'completedAt' => 'completed_at',
+            'paymentProofUrl' => 'payment_proof_url',
         ];
 
         foreach ($keyMap as $camelKey => $snakeKey) {
@@ -288,6 +325,7 @@ class ContractController extends Controller
             'artistSignature' => $contract->artist_signature,
             'clientSignature' => $contract->client_signature,
             'metadata' => $metadata,
+            'paymentProofUrl' => $contract->payment_proof_url,
             'completedAt' => optional($contract->completed_at)?->toISOString(),
             'createdAt' => optional($contract->created_at)?->toISOString(),
         ];

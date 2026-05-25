@@ -5064,6 +5064,7 @@ export default function App() {
                     onContractUpdate={handleContractUpdate}
                     onBack={() => navigateTo('/me/reservas')}
                     chatApi={supabase as any}
+                    onUploadImage={supabase.uploadImage as any}
                   />
                 );
               })()

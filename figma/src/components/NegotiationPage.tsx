@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, type ChangeEvent, useCallback } from 'react';
 import {
   ArrowLeft, AlertTriangle, Paperclip, Send, X, ShieldAlert,
-  Calendar, Clock, MapPin, DollarSign, FileText, ChevronDown, ChevronUp
+  Calendar, Clock, MapPin, DollarSign, FileText, ChevronDown, ChevronUp, Upload, CreditCard
 } from 'lucide-react';
 import { ChatConversation, ChatMessage, ChatAttachment, User } from '../types';
 import { Button } from './ui/button';
@@ -12,7 +12,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { Textarea } from './ui/textarea';
 import { Alert, AlertDescription } from './ui/alert';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ContractView } from './ContractView';
 
@@ -66,6 +66,7 @@ interface NegotiationPageProps {
   onContractUpdate: (contract: any) => void | Promise<void>;
   onBack: () => void;
   chatApi: ChatApi;
+  onUploadImage?: (file: File, folder: string) => Promise<string>;
 }
 
 function getInitials(name?: string): string {
@@ -81,6 +82,8 @@ function getStatusLabel(status: string): string {
     case 'pending_artist': return 'Esperando proveedor';
     case 'active': return 'Confirmado';
     case 'esperando_pago': return 'Esperando pago';
+    case 'pagado': return 'Pago cargado';
+    case 'reservado': return 'Reservado';
     case 'completed': return 'Completado';
     case 'cancelled': return 'Cancelado';
     default: return status;
@@ -94,6 +97,8 @@ function getStatusBadgeClass(status: string): string {
     case 'pending_artist': return 'bg-blue-50 text-blue-700 border-blue-300';
     case 'active': return 'bg-green-50 text-green-700 border-green-300';
     case 'esperando_pago': return 'bg-orange-50 text-orange-700 border-orange-300';
+    case 'pagado': return 'bg-orange-50 text-orange-700 border-orange-300';
+    case 'reservado': return 'bg-emerald-50 text-emerald-700 border-emerald-300';
     case 'completed': return 'bg-gray-50 text-gray-700 border-gray-300';
     case 'cancelled': return 'bg-red-50 text-red-700 border-red-300';
     default: return 'bg-gray-50 text-gray-700 border-gray-300';
@@ -118,7 +123,7 @@ function normalizeServiceDescription(description?: string): string {
 
 const CONTRACT_CHAT_LINK_TOKEN_REGEX = /\[CONTRACT:([^[\]]+)\]/i;
 
-export function NegotiationPage({ contract, booking, user, onContractUpdate, onBack, chatApi }: NegotiationPageProps) {
+export function NegotiationPage({ contract, booking, user, onContractUpdate, onBack, chatApi, onUploadImage }: NegotiationPageProps) {
   const [conversation, setConversation] = useState<ChatConversation | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
@@ -128,6 +133,10 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
   const [counterpartOnline, setCounterpartOnline] = useState(false);
   const [showInterventionConfirm, setShowInterventionConfirm] = useState(false);
   const [showMobileProviderDetails, setShowMobileProviderDetails] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
+  const [paymentProofPreview, setPaymentProofPreview] = useState<string | null>(null);
+  const [uploadingPayment, setUploadingPayment] = useState(false);
   const [showContractDialog, setShowContractDialog] = useState(false);
   const [serviceInfoOpen, setServiceInfoOpen] = useState(true);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
@@ -142,6 +151,7 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
   });
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const paymentProofInputRef = useRef<HTMLInputElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const pendingAttachmentsRef = useRef<PendingAttachment[]>([]);
   const hydrateMessagesTimeoutRef = useRef<number | null>(null);
@@ -450,6 +460,41 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
     });
   };
 
+  const handlePaymentProofSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (paymentProofPreview) URL.revokeObjectURL(paymentProofPreview);
+    setPaymentProofFile(file);
+    setPaymentProofPreview(URL.createObjectURL(file));
+    e.target.value = '';
+  };
+
+  const handlePaymentProofSubmit = async () => {
+    if (!paymentProofFile || !contract) return;
+    if (!onUploadImage) return;
+    setUploadingPayment(true);
+    try {
+      const url = await onUploadImage(paymentProofFile, 'payment-proof-images');
+      await onContractUpdate({ ...contract, status: 'pagado', paymentProofUrl: url });
+      setShowPaymentModal(false);
+      setPaymentProofFile(null);
+      if (paymentProofPreview) URL.revokeObjectURL(paymentProofPreview);
+      setPaymentProofPreview(null);
+    } catch (err: any) {
+      console.error('Error uploading payment proof:', err);
+    } finally {
+      setUploadingPayment(false);
+    }
+  };
+
+  const handleClosePaymentModal = () => {
+    if (uploadingPayment) return;
+    setShowPaymentModal(false);
+    setPaymentProofFile(null);
+    if (paymentProofPreview) URL.revokeObjectURL(paymentProofPreview);
+    setPaymentProofPreview(null);
+  };
+
   const handleRequestIntervention = async () => {
     if (!conversationId) return;
     try {
@@ -660,8 +705,46 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
           </CardContent>
         )}
       </Card>
+
+      {/* Payment action card — shown for client when contract is active or already pagado */}
+      {onUploadImage && contractStatus === 'active' && (
+        <Card className="border-white/40 shadow-sm">
+          <CardContent className="p-4">
+            <Button
+              onClick={() => setShowPaymentModal(true)}
+              className="w-full h-9 rounded-lg bg-[#D4AF37] text-[#1B2A47] hover:bg-[#c59f2f] font-medium text-sm gap-2"
+            >
+              <CreditCard className="w-4 h-4" />
+              Cargar pago
+            </Button>
+            <p className="mt-2 text-[10px] text-gray-400 text-center">Sube el comprobante de pago para confirmar tu reserva.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {contractStatus === 'pagado' && (
+        <Card className="border-orange-200 shadow-sm bg-orange-50">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-orange-800 flex items-center gap-1.5">
+              <CreditCard className="w-3.5 h-3.5" />
+              Pago cargado — esperando confirmación del proveedor
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {contractStatus === 'reservado' && (
+        <Card className="border-emerald-200 shadow-sm bg-emerald-50">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-emerald-800 flex items-center gap-1.5">
+              <CreditCard className="w-3.5 h-3.5" />
+              Pago confirmado — tu servicio está reservado
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
-  ), [providerName, contract, contractId, contractStatus, contractDate, contractStartTime, contractLocation, contractPrice, contractDescription, serviceInfoOpen]);
+  ), [providerName, contract, contractId, contractStatus, contractDate, contractStartTime, contractLocation, contractPrice, contractDescription, serviceInfoOpen, onUploadImage, setShowPaymentModal]);
 
   return (
     <div className="h-full min-h-0 overflow-hidden bg-transparent">
@@ -701,16 +784,29 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
                 <ArrowLeft className="h-3.5 w-3.5" />
                 Volver a contratos
               </button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowMobileProviderDetails(true)}
-                className="h-7 rounded-lg px-2 text-[10px] font-medium text-[#1B2A47]"
-              >
-                <FileText className="mr-1.5 h-3.5 w-3.5" />
-                Detalle
-              </Button>
+              <div className="flex items-center gap-1">
+                {onUploadImage && contractStatus === 'active' && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => setShowPaymentModal(true)}
+                    className="h-7 rounded-lg px-2 text-[10px] font-medium bg-[#D4AF37] text-[#1B2A47] hover:bg-[#c59f2f]"
+                  >
+                    <CreditCard className="mr-1 h-3 w-3" />
+                    Cargar pago
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowMobileProviderDetails(true)}
+                  className="h-7 rounded-lg px-2 text-[10px] font-medium text-[#1B2A47]"
+                >
+                  <FileText className="mr-1.5 h-3.5 w-3.5" />
+                  Detalle
+                </Button>
+              </div>
             </div>
 
             <Card className="flex flex-1 min-h-0 flex-col overflow-hidden rounded-none border-white/40 shadow-sm lg:h-full lg:rounded-2xl lg:border lg:border-white/70 lg:bg-white/95 lg:shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
@@ -931,6 +1027,62 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
           }}
         />
       )}
+
+      {/* Payment proof upload modal */}
+      <Dialog open={showPaymentModal} onOpenChange={(open) => { if (!open) handleClosePaymentModal(); }}>
+        <DialogContent className="max-w-[calc(100vw-24px)] rounded-2xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[#1B2A47]">Cargar comprobante de pago</DialogTitle>
+            <DialogDescription className="text-sm text-gray-500">
+              Sube la foto o captura de pantalla del pago. Es obligatoria para marcar la reserva como pagada.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <input
+              ref={paymentProofInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePaymentProofSelect}
+            />
+            {paymentProofPreview ? (
+              <div className="relative overflow-hidden rounded-xl border border-gray-200">
+                <img src={paymentProofPreview} alt="Comprobante de pago" className="w-full max-h-64 object-contain bg-gray-50" />
+                <button
+                  type="button"
+                  onClick={() => { setPaymentProofFile(null); if (paymentProofPreview) URL.revokeObjectURL(paymentProofPreview); setPaymentProofPreview(null); }}
+                  className="absolute right-2 top-2 rounded-full bg-white/90 p-1 text-gray-700 shadow"
+                  aria-label="Eliminar imagen"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => paymentProofInputRef.current?.click()}
+                className="w-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 py-8 text-sm text-gray-500 hover:border-[#D4AF37] hover:bg-[#D4AF37]/5 transition"
+              >
+                <Upload className="w-6 h-6 text-gray-400" />
+                <span>Toca para seleccionar imagen</span>
+                <span className="text-[11px] text-gray-400">JPG, PNG o WEBP · Máx. 5 MB</span>
+              </button>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={handleClosePaymentModal} disabled={uploadingPayment} className="flex-1 sm:flex-none">
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => { void handlePaymentProofSubmit(); }}
+              disabled={!paymentProofFile || uploadingPayment}
+              className="flex-1 sm:flex-none bg-[#D4AF37] text-[#1B2A47] hover:bg-[#c59f2f]"
+            >
+              {uploadingPayment ? 'Enviando...' : 'Marcar como pagado'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

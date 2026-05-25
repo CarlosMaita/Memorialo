@@ -4,7 +4,7 @@ import {
   AlertCircle, MessageSquare, FolderOpen, Package, Edit2, ChevronDown,
   ChevronUp, Eye, Archive, ArchiveRestore, CalendarDays, BookOpen, Activity, MessageCircle,
   MoreVertical,
-  Search, Download
+  Search, Download, CreditCard
 } from 'lucide-react';
 import { Booking, Contract, User, Review, Event } from '../types';
 import { Card, CardContent, CardHeader } from './ui/card';
@@ -291,6 +291,10 @@ export function ClientDashboard({
         return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">Esperando proveedor</Badge>;
       case 'active':
         return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">Confirmado</Badge>;
+      case 'pagado':
+        return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">Pago enviado</Badge>;
+      case 'reservado':
+        return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300">Reservado</Badge>;
       case 'completed':
         return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-300">Completado</Badge>;
       case 'cancelled':
@@ -364,6 +368,10 @@ export function ClientDashboard({
         return 'Pendiente';
       case 'confirmed':
         return 'Confirmada';
+      case 'pagado':
+        return 'Pago enviado';
+      case 'reservado':
+        return 'Reservado';
       case 'completed':
         return 'Completada';
       case 'cancelled':
@@ -381,6 +389,10 @@ export function ClientDashboard({
         return 'bg-yellow-50 text-yellow-700 border-yellow-300';
       case 'confirmed':
         return 'bg-blue-50 text-blue-700 border-blue-300';
+      case 'pagado':
+        return 'bg-orange-50 text-orange-700 border-orange-300';
+      case 'reservado':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-300';
       case 'completed':
         return 'bg-green-50 text-green-700 border-green-300';
       case 'cancelled':
@@ -396,6 +408,9 @@ export function ClientDashboard({
         return <Clock className="w-3 h-3" />;
       case 'pending':
         return <Clock className="w-3 h-3" />;
+      case 'pagado':
+        return <CreditCard className="w-3 h-3" />;
+      case 'reservado':
       case 'confirmed':
       case 'completed':
         return <CheckCircle className="w-3 h-3" />;
@@ -458,7 +473,10 @@ export function ClientDashboard({
   const renderBookingRow = (booking: any) => {
     const isFocused = expandedBookingId === booking.id;
     const linkedContract = getBookingContract(booking);
-    const displayStatus = linkedContract?.status === 'en_negociacion' ? 'en_negociacion' : booking.status;
+    const contractStatusOverride = linkedContract?.status && ['en_negociacion', 'pagado', 'reservado'].includes(linkedContract.status)
+      ? linkedContract.status
+      : null;
+    const displayStatus = contractStatusOverride ?? booking.status;
     const canLeaveReview = Boolean(linkedContract && canReview(linkedContract) && !hasReviewed(linkedContract.id));
     const canViewContract = Boolean(booking.contractId && canClientViewContract(linkedContract));
     const canDownloadContract = canViewContract;
@@ -540,6 +558,12 @@ export function ClientDashboard({
                       <MessageCircle className="w-4 h-4" />
                       Abrir conversación
                     </DropdownMenuItem>
+                    {linkedContract?.status === 'active' && onOpenNegotiation && (
+                      <DropdownMenuItem onClick={() => onOpenNegotiation(linkedContract.id)}>
+                        <CreditCard className="w-4 h-4" />
+                        Cargar pago
+                      </DropdownMenuItem>
+                    )}
                     {booking.archived ? (
                       <DropdownMenuItem onClick={() => onBookingUpdate?.({ ...booking, archived: false, archivedAt: null })}>
                         <ArchiveRestore className="w-4 h-4" />
@@ -655,6 +679,17 @@ export function ClientDashboard({
               >
                 <MessageCircle className="w-4 h-4 text-gray-700" />
               </Button>
+              {linkedContract?.status === 'active' && onOpenNegotiation && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onOpenNegotiation(linkedContract.id)}
+                  className="h-7 w-7 p-0"
+                  title="Cargar pago"
+                >
+                  <CreditCard className="w-4 h-4 text-orange-600" />
+                </Button>
+              )}
               {booking.archived ? (
                 <Button
                   size="sm"

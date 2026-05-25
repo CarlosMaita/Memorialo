@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, type ChangeEvent } from 'react';
 import {
   ArrowLeft, AlertTriangle, Paperclip, Send, X, ShieldAlert,
-  Calendar, Clock, MapPin, DollarSign, FileText, Search, ChevronRight
+  Calendar, Clock, MapPin, DollarSign, FileText, Search, ChevronRight, CreditCard, CheckCircle2
 } from 'lucide-react';
 import { ChatConversation, ChatMessage, ChatAttachment, User } from '../types';
 import { Button } from './ui/button';
@@ -13,7 +13,7 @@ import { Textarea } from './ui/textarea';
 import { Input } from './ui/input';
 import { Alert, AlertDescription } from './ui/alert';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from './ui/dialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ContractView } from './ContractView';
 import { toast } from 'sonner@2.0.3';
@@ -85,6 +85,8 @@ function getStatusLabel(status: string): string {
     case 'pending_artist': return 'Esperando proveedor';
     case 'active': return 'Confirmado';
     case 'esperando_pago': return 'Esperando pago';
+    case 'pagado': return 'Pago cargado';
+    case 'reservado': return 'Reservado';
     case 'completed': return 'Completado';
     case 'cancelled': return 'Cancelado';
     default: return status;
@@ -98,6 +100,8 @@ function getStatusBadgeClass(status: string): string {
     case 'pending_artist': return 'bg-blue-50 text-blue-700 border-blue-300';
     case 'active': return 'bg-green-50 text-green-700 border-green-300';
     case 'esperando_pago': return 'bg-orange-50 text-orange-700 border-orange-300';
+    case 'pagado': return 'bg-orange-50 text-orange-700 border-orange-300';
+    case 'reservado': return 'bg-emerald-50 text-emerald-700 border-emerald-300';
     case 'completed': return 'bg-gray-50 text-gray-700 border-gray-300';
     case 'cancelled': return 'bg-red-50 text-red-700 border-red-300';
     default: return 'bg-gray-50 text-gray-700 border-gray-300';
@@ -144,6 +148,8 @@ export function ProviderNegotiationPage({
   const [cancellingBooking, setCancellingBooking] = useState(false);
   const [showMobileClientDetails, setShowMobileClientDetails] = useState(false);
   const [showContractDialog, setShowContractDialog] = useState(false);
+  const [showPaymentConfirmModal, setShowPaymentConfirmModal] = useState(false);
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [contractSearch, setContractSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -575,6 +581,23 @@ export function ProviderNegotiationPage({
     }
   };
 
+  const handleConfirmPayment = async () => {
+    if (!activeContract || activeContract.status !== 'pagado' || confirmingPayment) return;
+    try {
+      setConfirmingPayment(true);
+      await onContractUpdate({
+        ...activeContract,
+        status: 'reservado',
+      });
+      setShowPaymentConfirmModal(false);
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+      toast.error('No se pudo confirmar el pago. Inténtalo de nuevo.');
+    } finally {
+      setConfirmingPayment(false);
+    }
+  };
+
   const renderAttachments = (attachments?: ChatAttachment[], mine?: boolean) => {
     if (!attachments || attachments.length === 0) return null;
     return (
@@ -758,6 +781,44 @@ export function ProviderNegotiationPage({
           )}
         </CardContent>
       </Card>
+
+      {/* Payment action card — shown for provider when contract is pagado */}
+      {contractStatus === 'pagado' && (
+        <Card className="border-orange-200 shadow-sm">
+          <CardContent className="p-4 space-y-3">
+            <div>
+              <p className="text-xs font-medium text-orange-800 flex items-center gap-1.5 mb-1">
+                <CreditCard className="w-3.5 h-3.5" />
+                El cliente ha cargado el comprobante de pago
+              </p>
+              {activeContract?.paymentProofUrl && (
+                <a href={activeContract.paymentProofUrl} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-orange-100 mt-2">
+                  <img src={activeContract.paymentProofUrl} alt="Comprobante de pago" className="w-full max-h-40 object-contain bg-gray-50" />
+                </a>
+              )}
+            </div>
+            <Button
+              onClick={() => setShowPaymentConfirmModal(true)}
+              disabled={confirmingPayment}
+              className="w-full h-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-medium text-sm gap-2"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Confirmar pago recibido
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {contractStatus === 'reservado' && (
+        <Card className="border-emerald-200 shadow-sm bg-emerald-50">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-emerald-800 flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Pago confirmado — servicio reservado
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 
@@ -904,16 +965,30 @@ export function ProviderNegotiationPage({
               <ArrowLeft className="w-3.5 h-3.5" />
               Volver a contratos
             </button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowMobileClientDetails(true)}
-              className="h-7 rounded-lg px-2 text-[10px] font-medium text-[#1B2A47]"
-            >
-              <FileText className="mr-1.5 h-3.5 w-3.5" />
-              Detalle
-            </Button>
+            <div className="flex items-center gap-1">
+              {contractStatus === 'pagado' && (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setShowPaymentConfirmModal(true)}
+                  disabled={confirmingPayment}
+                  className="h-7 rounded-lg px-2 text-[10px] font-medium bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  <CheckCircle2 className="mr-1 h-3 w-3" />
+                  Confirmar pago
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowMobileClientDetails(true)}
+                className="h-7 rounded-lg px-2 text-[10px] font-medium text-[#1B2A47]"
+              >
+                <FileText className="mr-1.5 h-3.5 w-3.5" />
+                Detalle
+              </Button>
+            </div>
           </div>
 
           <Card className="flex flex-1 min-h-0 flex-col overflow-hidden rounded-none shadow-sm lg:h-full lg:rounded-2xl lg:border lg:border-white/70 lg:bg-white/95 lg:shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
@@ -1149,6 +1224,54 @@ export function ProviderNegotiationPage({
           }}
         />
       )}
+
+      {/* Payment confirmation modal */}
+      <Dialog open={showPaymentConfirmModal} onOpenChange={(open) => { if (!confirmingPayment) setShowPaymentConfirmModal(open); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-emerald-600" />
+              Confirmar recepción de pago
+            </DialogTitle>
+            <DialogDescription>
+              Revisa el comprobante de pago del cliente y confirma si lo has recibido.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {activeContract?.paymentProofUrl ? (
+              <div>
+                <p className="text-sm text-gray-600 mb-2">Comprobante enviado por el cliente:</p>
+                <a href={activeContract.paymentProofUrl} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl border border-gray-200">
+                  <img
+                    src={activeContract.paymentProofUrl}
+                    alt="Comprobante de pago"
+                    className="w-full max-h-64 object-contain bg-gray-50"
+                  />
+                </a>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 italic">No se adjuntó comprobante.</p>
+            )}
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowPaymentConfirmModal(false)}
+              disabled={confirmingPayment}
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConfirmPayment}
+              disabled={confirmingPayment}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {confirmingPayment ? 'Confirmando...' : 'Confirmar pago'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

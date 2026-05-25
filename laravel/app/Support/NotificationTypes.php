@@ -34,6 +34,10 @@ class NotificationTypes
 
     public const PROVIDER_EVENT_REMINDER = 'provider_event_reminder';
 
+    public const PAYMENT_PROOF_UPLOADED = 'payment_proof_uploaded';
+
+    public const PAYMENT_CONFIRMED = 'payment_confirmed';
+
     public const ALL = [
         self::WELCOME,
         self::SERVICE_REQUEST_CREATED,
@@ -50,5 +54,7 @@ class NotificationTypes
         self::BILLING_PAYMENT_REJECTED,
         self::BILLING_ACCOUNT_SUSPENDED,
         self::PROVIDER_EVENT_REMINDER,
+        self::PAYMENT_PROOF_UPLOADED,
+        self::PAYMENT_CONFIRMED,
     ];
 }

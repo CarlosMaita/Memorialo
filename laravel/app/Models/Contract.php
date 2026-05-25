@@ -36,6 +36,7 @@ class Contract extends Model
         'client_signature',
         'completed_at',
         'metadata',
+        'payment_proof_url',
     ];
 
     protected function casts(): array
