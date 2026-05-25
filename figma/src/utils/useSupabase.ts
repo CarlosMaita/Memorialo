@@ -1614,7 +1614,7 @@ export function useSupabase() {
   };
 
   // Image upload function
-  const uploadImage = async (file: File, folder: 'service-images' | 'avatar-images' = 'service-images'): Promise<string> => {
+  const uploadImage = async (file: File, folder: 'service-images' | 'avatar-images' | 'payment-proof-images' = 'service-images'): Promise<string> => {
     try {
       if (!accessToken) {
         throw new Error('You must be logged in to upload images');

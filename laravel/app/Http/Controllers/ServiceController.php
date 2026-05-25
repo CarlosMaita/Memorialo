@@ -111,6 +111,7 @@ class ServiceController extends Controller
             'email' => ['nullable', 'string', 'max:255'],
             'customTerms' => ['nullable', 'array'],
             'isArchived' => ['sometimes', 'boolean'],
+            'requiresDeposit' => ['sometimes', 'boolean'],
             'metadata' => ['nullable', 'array'],
         ]);
 
@@ -146,7 +147,7 @@ class ServiceController extends Controller
             $metadata['publicCode'] = $this->buildPublicCode((string) $authUser->id);
         }
 
-        foreach (['responseTime', 'specialties', 'availability', 'servicePlans', 'allowCustomHourly', 'image', 'portfolio', 'whatsappNumber', 'email', 'customTerms', 'isArchived'] as $metadataKey) {
+        foreach (['responseTime', 'specialties', 'availability', 'servicePlans', 'allowCustomHourly', 'image', 'portfolio', 'whatsappNumber', 'email', 'customTerms', 'isArchived', 'requiresDeposit'] as $metadataKey) {
             if (array_key_exists($metadataKey, $validated)) {
                 $metadata[$metadataKey] = $validated[$metadataKey];
             }
@@ -219,6 +220,7 @@ class ServiceController extends Controller
             'email' => ['sometimes', 'nullable', 'string', 'max:255'],
             'customTerms' => ['sometimes', 'nullable', 'array'],
             'isArchived' => ['sometimes', 'boolean'],
+            'requiresDeposit' => ['sometimes', 'boolean'],
             'metadata' => ['sometimes', 'nullable', 'array'],
         ]);
 
@@ -274,7 +276,7 @@ class ServiceController extends Controller
             $metadata['publicCode'] = $this->buildPublicCode((string) $service->user_id);
         }
 
-        foreach (['responseTime', 'specialties', 'availability', 'servicePlans', 'allowCustomHourly', 'image', 'portfolio', 'whatsappNumber', 'email', 'customTerms', 'isArchived'] as $metadataKey) {
+        foreach (['responseTime', 'specialties', 'availability', 'servicePlans', 'allowCustomHourly', 'image', 'portfolio', 'whatsappNumber', 'email', 'customTerms', 'isArchived', 'requiresDeposit'] as $metadataKey) {
             if (array_key_exists($metadataKey, $validated)) {
                 $metadata[$metadataKey] = $validated[$metadataKey];
                 unset($validated[$metadataKey]);
@@ -401,6 +403,7 @@ class ServiceController extends Controller
             'email' => $metadata['email'] ?? null,
             'customTerms' => $isDetailed ? ($metadata['customTerms'] ?? null) : null,
             'isArchived' => (bool) ($metadata['isArchived'] ?? false),
+            'requiresDeposit' => (bool) ($metadata['requiresDeposit'] ?? false),
             'publicCode' => $metadata['publicCode'] ?? null,
             'providerBusinessName' => $provider?->business_name,
             'providerRepresentative' => [

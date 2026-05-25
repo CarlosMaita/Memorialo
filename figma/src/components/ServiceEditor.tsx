@@ -42,7 +42,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
     whatsappNumber: '',
     email: '',
     isPublished: true, // Por defecto los servicios están publicados
-    allowCustomHourly: false // Por defecto desactivado
+    allowCustomHourly: false, // Por defecto desactivado
+    requiresDeposit: false // Por defecto no requiere depósito
   });
 
   const [servicePlans, setServicePlans] = useState<ServicePlan[]>([]);
@@ -134,7 +135,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
         whatsappNumber: '',
         email: '',
         isPublished: true,
-        allowCustomHourly: false
+        allowCustomHourly: false,
+        requiresDeposit: false
       });
       setServicePlans([]);
       setCurrentPlan({
@@ -244,7 +246,8 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
           whatsappNumber: serviceData.whatsappNumber || '',
           email: serviceData.email || '',
           isPublished: serviceData.isPublished !== undefined ? serviceData.isPublished : true,
-          allowCustomHourly: serviceData.allowCustomHourly !== undefined ? serviceData.allowCustomHourly : false
+          allowCustomHourly: serviceData.allowCustomHourly !== undefined ? serviceData.allowCustomHourly : false,
+          requiresDeposit: serviceData.requiresDeposit !== undefined ? serviceData.requiresDeposit : false
         };
         
         setFormData(loadedFormData);
@@ -719,6 +722,7 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
         additionalTerms: customTerms.additionalTerms.filter(t => t.trim() !== '')
       },
       isPublished: formData.isPublished,
+      requiresDeposit: formData.requiresDeposit,
       isArchived: existingService?.isArchived || false // Preservar estado de archivado
     };
 
@@ -1516,6 +1520,27 @@ export function ServiceEditor({ open, onClose, onSave, existingService, categori
                       </div>
                     </CardContent>
                   </Card>
+
+                  <div className="flex items-center justify-between p-4 border rounded-lg" style={{ borderColor: formData.requiresDeposit ? '#f59e0b' : '#94a3b8', backgroundColor: formData.requiresDeposit ? '#fef3c7' : '#f8fafc' }}>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <DollarSign className={`w-5 h-5 ${formData.requiresDeposit ? 'text-yellow-600' : 'text-slate-400'}`} />
+                        <Label htmlFor="requiresDeposit" className="text-base cursor-pointer mb-0">
+                          {formData.requiresDeposit ? 'Requiere depósito de reserva' : 'Sin depósito de reserva'}
+                        </Label>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {formData.requiresDeposit
+                          ? 'El cliente deberá cargar un comprobante de pago antes de confirmar la reserva'
+                          : 'La reserva se confirma automáticamente una vez firmado el contrato, sin pago previo'}
+                      </p>
+                    </div>
+                    <Switch
+                      id="requiresDeposit"
+                      checked={formData.requiresDeposit}
+                      onCheckedChange={(checked) => setFormData({ ...formData, requiresDeposit: checked })}
+                    />
+                  </div>
 
                   <div className="flex items-center justify-between p-4 border rounded-lg" style={{ borderColor: formData.isPublished ? '#10b981' : '#f59e0b', backgroundColor: formData.isPublished ? '#f0fdf4' : '#fef3c7' }}>
                     <div className="flex-1">
