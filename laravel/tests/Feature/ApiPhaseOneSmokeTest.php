@@ -230,6 +230,78 @@ class ApiPhaseOneSmokeTest extends TestCase
             ->assertOk();
     }
 
+    public function test_client_and_provider_archived_states_are_isolated(): void
+    {
+        $provider = User::factory()->create([
+            'role' => 'provider',
+            'is_provider' => true,
+            'provider_request_status' => 'approved',
+            'provider_approved_at' => now(),
+        ]);
+        $client = User::factory()->create();
+
+        $service = Service::create([
+            'user_id' => $provider->id,
+            'title' => 'Servicio para archivado',
+            'description' => 'Servicio de prueba',
+            'category' => 'music',
+            'city' => 'CDMX',
+            'price' => 2000,
+            'is_active' => true,
+        ]);
+
+        Booking::create([
+            'id' => 'isolated-archive-booking-001',
+            'artist_id' => (string) $service->id,
+            'artist_user_id' => (string) $provider->id,
+            'artist_name' => 'Servicio para archivado',
+            'user_id' => (string) $client->id,
+            'client_name' => 'Cliente archivo',
+            'date' => '2026-09-01',
+            'start_time' => '19:00',
+            'duration' => 2,
+            'event_type' => 'Boda',
+            'location' => 'CDMX',
+            'total_price' => 2000,
+            'status' => 'completed',
+        ]);
+
+        Sanctum::actingAs($client);
+        $this->putJson('/api/bookings/isolated-archive-booking-001', [
+            'archived' => true,
+        ])
+            ->assertOk()
+            ->assertJsonPath('archived', true);
+
+        Sanctum::actingAs($provider);
+        $this->getJson('/api/bookings?scope=provider')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => 'isolated-archive-booking-001',
+                'archived' => false,
+            ]);
+
+        $this->putJson('/api/bookings/isolated-archive-booking-001', [
+            'archived' => false,
+        ])
+            ->assertOk()
+            ->assertJsonPath('archived', false);
+
+        Sanctum::actingAs($client);
+        $this->getJson('/api/bookings?scope=client')
+            ->assertOk()
+            ->assertJsonMissing([
+                'id' => 'isolated-archive-booking-001',
+            ]);
+
+        $this->getJson('/api/bookings?scope=client&include_archived=1')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => 'isolated-archive-booking-001',
+                'archived' => true,
+            ]);
+    }
+
     public function test_provider_and_service_endpoints_accept_camel_case_payloads(): void
     {
         $user = User::factory()->create([
