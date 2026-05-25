@@ -15,6 +15,7 @@ interface SmartSearchBarProps {
   value: string;
   onChange: (value: string) => void;
   onSubmit: (query: string) => void;
+  onInputFocus?: () => void;
   placeholder?: string;
   inputClassName?: string;
   wrapperClassName?: string;
@@ -26,6 +27,7 @@ export function SmartSearchBar({
   value,
   onChange,
   onSubmit,
+  onInputFocus,
   placeholder = 'Buscar proveedores de servicio...',
   inputClassName = '',
   wrapperClassName = '',
@@ -149,6 +151,7 @@ export function SmartSearchBar({
         }}
         onKeyDown={handleKeyDown}
         onFocus={() => {
+          onInputFocus?.();
           if (suggestions.length > 0) {
             setIsOpen(true);
           }

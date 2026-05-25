@@ -253,6 +253,7 @@ export default function App() {
   const [bookingArtist, setBookingArtist] = useState<Artist | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<ServicePlan | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileSearchExpanded, setMobileSearchExpanded] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [showAbout, setShowAbout] = useState(false);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
@@ -4394,7 +4395,7 @@ export default function App() {
           <div className="flex items-center justify-between gap-4">
             <button
               onClick={handleHeaderHomeRefresh}
-              className="flex items-center gap-3 cursor-pointer bg-transparent border-none p-0 hover:opacity-90 transition-opacity shrink-0"
+              className={`${mobileSearchExpanded ? 'hidden md:flex' : 'flex'} items-center gap-3 cursor-pointer bg-transparent border-none p-0 hover:opacity-90 transition-opacity shrink-0`}
             >
               {/* Logo: El Enlace Armónico */}
               <div className="relative" style={{ width: '48px', height: '48px' }}>
@@ -4434,7 +4435,7 @@ export default function App() {
             </button>
 
             {/* Header Search Bar */}
-            <div className="flex-1 max-w-2xl mx-2">
+            <div className={`flex-1 ${mobileSearchExpanded ? 'max-w-none mx-0' : 'max-w-2xl mx-2'}`}>
               {/* Desktop Search */}
               <div className="hidden md:block">
                 <SmartSearchBar
@@ -4453,20 +4454,44 @@ export default function App() {
 
               {/* Mobile Search */}
               <div className="md:hidden relative">
-                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10">
-                  <Search className="w-4 h-4" />
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10">
+                      <Search className="w-4 h-4" />
+                    </div>
+                    <SmartSearchBar
+                      value={headerSearchInput}
+                      onChange={setHeaderSearchInput}
+                      onInputFocus={() => {
+                        setMobileSearchExpanded(true);
+                        setMobileMenuOpen(false);
+                      }}
+                      onSubmit={(query) => {
+                        handleSearchCriteriaChange(buildTextSearchCriteria(query));
+                        setHeaderSearchInput('');
+                        setMobileSearchExpanded(false);
+                      }}
+                      placeholder="Estoy buscando..."
+                      inputClassName={`w-full ${mobileSearchExpanded ? 'h-12' : 'h-9'} pl-10 pr-4 rounded-sm text-sm focus:outline-none text-gray-900 placeholder:text-gray-400 bg-white`}
+                      inputStyle={{ borderRadius: '4px' }}
+                    />
+                  </div>
+                  {mobileSearchExpanded && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      type="button"
+                      onClick={() => {
+                        setHeaderSearchInput('');
+                        setMobileSearchExpanded(false);
+                      }}
+                      className="h-10 w-10 shrink-0 text-white hover:text-white hover:bg-white/10"
+                      aria-label="Cerrar buscador"
+                    >
+                      <X className="w-5 h-5" />
+                    </Button>
+                  )}
                 </div>
-                <SmartSearchBar
-                  value={headerSearchInput}
-                  onChange={setHeaderSearchInput}
-                  onSubmit={(query) => {
-                    handleSearchCriteriaChange(buildTextSearchCriteria(query));
-                    setHeaderSearchInput('');
-                  }}
-                  placeholder="Estoy buscando..."
-                  inputClassName="w-full h-9 pl-10 pr-4 rounded-sm text-sm focus:outline-none text-gray-900 placeholder:text-gray-400 bg-white"
-                  inputStyle={{ borderRadius: '4px' }}
-                />
               </div>
             </div>
 
@@ -4820,7 +4845,7 @@ export default function App() {
             <Button
               variant="ghost"
               size="sm"
-              className="md:hidden text-white hover:text-white hover:bg-white/10 shrink-0"
+              className={`${mobileSearchExpanded ? 'hidden' : 'md:hidden'} text-white hover:text-white hover:bg-white/10 shrink-0`}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -4828,7 +4853,7 @@ export default function App() {
           </div>
 
           {/* Mobile Navigation */}
-          {mobileMenuOpen && (
+          {mobileMenuOpen && !mobileSearchExpanded && (
             <div className="md:hidden mt-4 pt-4 border-t border-white/20 space-y-1">
               {/* Search Servicios */}
               <Button
