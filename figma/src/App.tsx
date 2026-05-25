@@ -7,6 +7,8 @@ import { mockContracts } from './data/mockContracts';
 import { VENEZUELAN_CITIES } from './data/cities';
 import { SERVICE_CATEGORIES } from './data/serviceCategories';
 import { useSupabase } from './utils/useSupabase';
+import { backendMode, laravelApiBaseUrl } from './utils/supabase/client';
+import { projectId } from './utils/supabase/info';
 import { ArtistCard } from './components/ArtistCard';
 import { AirbnbSearchBar, SearchCriteria } from './components/AirbnbSearchBar';
 // ArtistProfile modal replaced by ServiceDetailPage
@@ -108,6 +110,9 @@ type MarketplaceRouteContext = {
 };
 
 const SEO_LOCALE = 'es-VE';
+const BILLING_API_BASE = backendMode === 'laravel'
+  ? laravelApiBaseUrl
+  : `https://${projectId}.supabase.co/functions/v1/make-server-5d78aefb`;
 
 type HomeListingSnapshot = {
   path: string;
@@ -335,6 +340,7 @@ export default function App() {
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [billingModuleEnabled, setBillingModuleEnabled] = useState(true);
   const dismissedNotificationIdsRef = useRef<Set<string>>(new Set());
   const [providerDashboardSection, setProviderDashboardSection] = useState<ProviderDashboardSection | undefined>(undefined);
   const [providerFocusedBookingId, setProviderFocusedBookingId] = useState<string | null>(null);
@@ -702,6 +708,25 @@ export default function App() {
       clearInterval(intervalId);
     };
   }, [currentUser?.id, notificationsEnabled]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(`${BILLING_API_BASE}/billing/config`, { headers: { Accept: 'application/json' } })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((data) => {
+        if (!cancelled) {
+          setBillingModuleEnabled(data?.moduleEnabled !== false);
+        }
+      })
+      .catch(() => {
+        // If request fails, keep billing enabled by default.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!currentUser) {
@@ -4667,14 +4692,16 @@ export default function App() {
                             <Briefcase className="w-4 h-4 mr-2" />
                             Servicios
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => {
-                            setViewMode('business');
-                            setDashboardView('provider');
-                            navigateTo('/mi-negocio/facturacion');
-                          }}>
-                            <Receipt className="w-4 h-4 mr-2" />
-                            Facturación
-                          </DropdownMenuItem>
+                          {billingModuleEnabled && (
+                            <DropdownMenuItem onClick={() => {
+                              setViewMode('business');
+                              setDashboardView('provider');
+                              navigateTo('/mi-negocio/facturacion');
+                            }}>
+                              <Receipt className="w-4 h-4 mr-2" />
+                              Facturación
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={() => {
                             setViewMode('business');
                             setDashboardView('provider');
@@ -4886,14 +4913,16 @@ export default function App() {
                         <Briefcase className="w-4 h-4 mr-2" />
                         Servicios
                       </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={() => { setViewMode('business'); setDashboardView('provider'); navigateTo('/mi-negocio/facturacion'); setMobileMenuOpen(false); }}
-                        className="w-full justify-start text-white hover:text-white hover:bg-white/10"
-                      >
-                        <Receipt className="w-4 h-4 mr-2" />
-                        Facturación
-                      </Button>
+                      {billingModuleEnabled && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => { setViewMode('business'); setDashboardView('provider'); navigateTo('/mi-negocio/facturacion'); setMobileMenuOpen(false); }}
+                          className="w-full justify-start text-white hover:text-white hover:bg-white/10"
+                        >
+                          <Receipt className="w-4 h-4 mr-2" />
+                          Facturación
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         onClick={() => { setViewMode('business'); setDashboardView('provider'); navigateTo('/mi-negocio/configuracion'); setMobileMenuOpen(false); }}
