@@ -1928,12 +1928,9 @@ export default function App() {
         : semanticSlug;
 
       const semanticQuery = querySlug.replace(/-/g, ' ').trim();
-      const taxonomyFromQuerySlug = resolveTypeSlugFromText(semanticQuery);
-      const taxonomy = taxonomyFromQuerySlug ? taxonomySlugLookup.get(taxonomyFromQuerySlug) : undefined;
-
       return {
         city: citySuffix ? citySlugLookup.get(citySuffix) : undefined,
-        taxonomy,
+        taxonomy: undefined,
         query: semanticQuery,
         canonicalPath: `/s/${semanticSlug}`
       };
@@ -4738,7 +4735,7 @@ export default function App() {
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuContent align="end" className="w-[calc(100vw-1rem)] sm:w-80">
                   <div className="px-2 py-1.5 flex items-center justify-between">
                     <p className="text-sm font-semibold">Notificaciones</p>
                     <Button

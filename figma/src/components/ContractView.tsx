@@ -157,6 +157,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [showRejectDetailsDialog, setShowRejectDetailsDialog] = useState(false);
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [rejectAction, setRejectAction] = useState<'modification' | 'cancellation'>('modification');
   const [rejectReason, setRejectReason] = useState('');
   const [rejectImprovementComment, setRejectImprovementComment] = useState('');
   const [editableTerms, setEditableTerms] = useState({
@@ -184,6 +185,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     setRejectImprovementComment('');
     setShowRejectDetailsDialog(false);
     setShowRejectConfirm(false);
+    setRejectAction('modification');
     setAgreedToTerms(false);
   }, [contract, open]);
 
@@ -303,17 +305,18 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     setShowRejectDetailsDialog(true);
   };
 
-  const handleRejectDetailsContinue = () => {
+  const handleRejectDetailsContinue = (action: 'modification' | 'cancellation') => {
     if (!rejectReason.trim()) {
       toast.error('Debes indicar el motivo del rechazo');
       return;
     }
 
-    if (!rejectImprovementComment.trim()) {
+    if (action === 'modification' && !rejectImprovementComment.trim()) {
       toast.error('Debes indicar el comentario de mejora');
       return;
     }
 
+    setRejectAction(action);
     setShowRejectDetailsDialog(false);
     setShowRejectConfirm(true);
   };
@@ -349,12 +352,12 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
     setTimeout(() => {
       const rejectedContract: ContractRecord = {
         ...contract,
-        status: 'en_negociacion',
+        status: rejectAction === 'cancellation' ? 'cancelled' : 'en_negociacion',
         metadata: {
           ...contract.metadata,
           contractRejection: {
             reason: rejectReason.trim(),
-            improvementComment: rejectImprovementComment.trim(),
+            improvementComment: rejectImprovementComment.trim() ? rejectImprovementComment.trim() : undefined,
             rejectedAt: new Date().toISOString(),
             rejectedBy: userType,
           },
@@ -365,7 +368,11 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
         onReject(rejectedContract);
       }
 
-      toast.success('Contrato rechazado y enviado para ajustes');
+      toast.success(
+        rejectAction === 'cancellation'
+          ? 'Contrato rechazado y solicitud cancelada'
+          : 'Contrato rechazado y enviado para ajustes',
+      );
       setRejecting(false);
       onClose();
     }, 1000);
@@ -840,9 +847,11 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
         open={showRejectConfirm}
         onOpenChange={setShowRejectConfirm}
         onConfirm={handleRejectConfirmed}
-        title="¿Rechazar este contrato?"
-        description="Se notificará al proveedor por chat con el motivo y comentario de mejora para que ajuste y vuelva a enviar el contrato."
-        confirmText="Sí, rechazar"
+        title={rejectAction === 'cancellation' ? '¿Rechazar y cancelar solicitud?' : '¿Rechazar este contrato?'}
+        description={rejectAction === 'cancellation'
+          ? 'Se notificará al proveedor y la solicitud se cancelará de forma definitiva.'
+          : 'Se notificará al proveedor por chat con el motivo y comentario de mejora para que ajuste y vuelva a enviar el contrato.'}
+        confirmText={rejectAction === 'cancellation' ? 'Sí, cancelar solicitud' : 'Sí, rechazar'}
         cancelText="No, volver"
         variant="danger"
       />
@@ -873,7 +882,7 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
                 id="rejectImprovementCommentModal"
                 value={rejectImprovementComment}
                 onChange={(event) => setRejectImprovementComment(event.target.value)}
-                placeholder="Ej. Ajustar horarios, entregables y condiciones de pago."
+                placeholder="Ej. Ajustar horarios, entregables y condiciones de pago. (Opcional si cancelarás la solicitud)"
                 rows={3}
                 disabled={signing || rejecting}
               />
@@ -888,11 +897,18 @@ export function ContractView({ contract, open, onClose, userType, onSign, onReje
               Cancelar
             </Button>
             <Button
-              variant="destructive"
-              onClick={handleRejectDetailsContinue}
+              variant="outline"
+              onClick={() => handleRejectDetailsContinue('modification')}
               disabled={signing || rejecting}
             >
-              Continuar
+              Rechazar con cambios
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleRejectDetailsContinue('cancellation')}
+              disabled={signing || rejecting}
+            >
+              Rechazar y cancelar solicitud
             </Button>
           </DialogFooter>
         </DialogContent>

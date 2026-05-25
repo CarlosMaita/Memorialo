@@ -238,7 +238,7 @@ export function Footer({
                   <Facebook className="w-4 h-4" style={{ color: 'var(--gold)' }} />
                 </a>
                 <a 
-                  href="https://instagram.com/memorialo"
+                  href="https://instagram.com/_memorialo"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110"

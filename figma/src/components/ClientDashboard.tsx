@@ -12,6 +12,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { ContractView } from './ContractView';
+import { ConfirmDialog } from './ConfirmDialog';
 import { EventManager } from './EventManager';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
@@ -89,6 +90,8 @@ export function ClientDashboard({
   const [showEventBookings, setShowEventBookings] = useState(false);
   const [bookingStatusFilter, setBookingStatusFilter] = useState<'all' | 'en_negociacion' | 'pending' | 'confirmed' | 'completed'>('all');
   const [bookingOrder, setBookingOrder] = useState<'newest' | 'oldest'>('newest');
+  const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
+  const [showCancelBookingConfirm, setShowCancelBookingConfirm] = useState(false);
   const [mobileDetailBooking, setMobileDetailBooking] = useState<Booking | null>(null);
 
   const getMeasureType = (contract: any): 'time' | 'unit' => {
@@ -462,6 +465,33 @@ export function ClientDashboard({
     onUpdateEvent(eventId, { archived });
   };
 
+  const handleCancelBookingClick = (booking: Booking) => {
+    setBookingToCancel(booking);
+    setShowCancelBookingConfirm(true);
+  };
+
+  const handleCancelBookingConfirm = () => {
+    if (!bookingToCancel || !onBookingUpdate) {
+      return;
+    }
+
+    const linkedContract = getBookingContract(bookingToCancel);
+    if (linkedContract && linkedContract.status !== 'active' && linkedContract.status !== 'completed' && linkedContract.status !== 'cancelled') {
+      onContractUpdate({
+        ...linkedContract,
+        status: 'cancelled',
+      });
+    }
+
+    onBookingUpdate({
+      ...bookingToCancel,
+      status: 'cancelled' as const,
+    });
+
+    setShowCancelBookingConfirm(false);
+    setBookingToCancel(null);
+  };
+
   const handleEditEvent = (event: Event) => setEventToEdit(event);
   const handleEditComplete = () => setEventToEdit(null);
 
@@ -480,6 +510,7 @@ export function ClientDashboard({
     const canLeaveReview = Boolean(linkedContract && canReview(linkedContract) && !hasReviewed(linkedContract.id));
     const canViewContract = Boolean(booking.contractId && canClientViewContract(linkedContract));
     const canDownloadContract = canViewContract;
+    const canCancelBookingRequest = ['pending', 'en_negociacion'].includes(displayStatus);
     const contractCode = booking.contractId ? String(booking.contractId).trim() : '';
     const createdAtRaw = booking.createdAt || `${booking.date}T${booking.startTime || '00:00'}`;
     const createdAtLabel = formatBookingDate(createdAtRaw, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -581,6 +612,15 @@ export function ClientDashboard({
                         Calificar
                       </DropdownMenuItem>
                     )}
+                    {canCancelBookingRequest && onBookingUpdate && (
+                      <DropdownMenuItem
+                        onClick={() => handleCancelBookingClick(booking)}
+                        className="text-red-600 focus:text-red-700"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Cancelar solicitud
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -647,81 +687,70 @@ export function ClientDashboard({
               <p className="text-sm font-semibold text-green-600">${booking.totalPrice}</p>
             </div>
 
-            <div className="flex items-center justify-end gap-1">
-              {canViewContract && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleViewContractFromBooking(booking)}
-                  className="h-7 w-7 p-0"
-                  title={contractActionLabel}
-                >
-                  <FileText className="w-4 h-4 text-gray-700" />
-                </Button>
-              )}
-              {canDownloadContract && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleDownloadContractFromBooking(booking)}
-                  className="h-7 w-7 p-0"
-                  title="Descargar contrato"
-                >
-                  <Download className="w-4 h-4 text-gray-700" />
-                </Button>
-              )}
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => handleStartChatFromBooking(booking.id)}
-                className="h-7 w-7 p-0"
-                title="Abrir conversación"
-              >
-                <MessageCircle className="w-4 h-4 text-gray-700" />
-              </Button>
-              {linkedContract?.status === 'active' && onOpenNegotiation && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onOpenNegotiation(linkedContract.id)}
-                  className="h-7 w-7 p-0"
-                  title="Cargar pago"
-                >
-                  <CreditCard className="w-4 h-4 text-orange-600" />
-                </Button>
-              )}
-              {booking.archived ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onBookingUpdate?.({ ...booking, archived: false, archivedAt: null })}
-                  className="h-7 w-7 p-0"
-                  title="Desarchivar reserva"
-                >
-                  <ArchiveRestore className="w-4 h-4 text-blue-700" />
-                </Button>
-              ) : displayStatus === 'completed' ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onBookingUpdate?.({ ...booking, archived: true, archivedAt: new Date().toISOString() })}
-                  className="h-7 w-7 p-0"
-                  title="Archivar reserva"
-                >
-                  <Archive className="w-4 h-4 text-gray-700" />
-                </Button>
-              ) : null}
-              {canLeaveReview && linkedContract && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => onReviewCreate(linkedContract.id)}
-                  className="h-7 w-7 p-0 text-[#D4AF37] hover:bg-[#D4AF37] hover:text-white"
-                  title="Calificar"
-                >
-                  <Star className="w-4 h-4" />
-                </Button>
-              )}
+            <div className="flex items-center justify-end">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 rounded-full p-0"
+                    title="Más opciones"
+                    aria-label="Más opciones"
+                  >
+                    <MoreVertical className="w-4 h-4 text-gray-700" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {canViewContract && (
+                    <DropdownMenuItem onClick={() => handleViewContractFromBooking(booking)}>
+                      <FileText className="w-4 h-4" />
+                      {contractActionLabel}
+                    </DropdownMenuItem>
+                  )}
+                  {canDownloadContract && (
+                    <DropdownMenuItem onClick={() => handleDownloadContractFromBooking(booking)}>
+                      <Download className="w-4 h-4" />
+                      Descargar contrato
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => handleStartChatFromBooking(booking.id)}>
+                    <MessageCircle className="w-4 h-4" />
+                    Abrir conversación
+                  </DropdownMenuItem>
+                  {linkedContract?.status === 'active' && onOpenNegotiation && (
+                    <DropdownMenuItem onClick={() => onOpenNegotiation(linkedContract.id)}>
+                      <CreditCard className="w-4 h-4" />
+                      Cargar pago
+                    </DropdownMenuItem>
+                  )}
+                  {booking.archived ? (
+                    <DropdownMenuItem onClick={() => onBookingUpdate?.({ ...booking, archived: false, archivedAt: null })}>
+                      <ArchiveRestore className="w-4 h-4" />
+                      Desarchivar reserva
+                    </DropdownMenuItem>
+                  ) : displayStatus === 'completed' ? (
+                    <DropdownMenuItem onClick={() => onBookingUpdate?.({ ...booking, archived: true, archivedAt: new Date().toISOString() })}>
+                      <Archive className="w-4 h-4" />
+                      Archivar reserva
+                    </DropdownMenuItem>
+                  ) : null}
+                  {canLeaveReview && linkedContract && (
+                    <DropdownMenuItem onClick={() => onReviewCreate(linkedContract.id)}>
+                      <Star className="w-4 h-4" />
+                      Calificar
+                    </DropdownMenuItem>
+                  )}
+                  {canCancelBookingRequest && onBookingUpdate && (
+                    <DropdownMenuItem
+                      onClick={() => handleCancelBookingClick(booking)}
+                      className="text-red-600 focus:text-red-700"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Cancelar solicitud
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </CardContent>
@@ -1350,9 +1379,35 @@ export function ClientDashboard({
             setShowContractView(false);
             setSelectedContract(null);
           }}
+          onReject={(rejectedContract) => {
+            onContractUpdate(rejectedContract);
+            if (onBookingUpdate && bookings) {
+              const associatedBooking = bookings.find(b => b.contractId === rejectedContract.id);
+              if (associatedBooking && rejectedContract.status === 'cancelled') {
+                onBookingUpdate({ ...associatedBooking, status: 'cancelled' as const });
+              }
+            }
+            setShowContractView(false);
+            setSelectedContract(null);
+          }}
           userType="client"
         />
       )}
+      <ConfirmDialog
+        open={showCancelBookingConfirm}
+        onOpenChange={(open) => {
+          setShowCancelBookingConfirm(open);
+          if (!open) {
+            setBookingToCancel(null);
+          }
+        }}
+        onConfirm={handleCancelBookingConfirm}
+        title="¿Cancelar esta solicitud?"
+        description="Esta acción cancelará la reserva y no podrás continuar con esta solicitud desde Mis Reservas."
+        confirmText="Sí, cancelar solicitud"
+        cancelText="No, mantener"
+        variant="danger"
+      />
 
       <Dialog open={Boolean(mobileDetailBooking)} onOpenChange={(open) => !open && setMobileDetailBooking(null)}>
         {mobileDetailBooking && (
