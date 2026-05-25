@@ -195,7 +195,7 @@ export function SmartSearchBar({
               onMouseEnter={() => setActiveIndex(index)}
             >
               <Clock className="w-4 h-4 text-gray-400 shrink-0" />
-              <span className="flex-1 truncate">{suggestion.name}</span>
+              <span className="flex-1 truncate">{suggestion.name.charAt(0).toUpperCase() + suggestion.name.slice(1)}</span>
               {suggestion.category && (
                 <span className="text-xs text-gray-400 shrink-0 hidden sm:block">{suggestion.category}</span>
               )}
