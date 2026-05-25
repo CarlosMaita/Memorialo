@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Contract;
 use App\Models\Booking;
+use App\Models\ChatConversation;
 use App\Models\MarketplaceSetting;
 use App\Models\Provider;
 use App\Models\Service;
@@ -189,6 +190,100 @@ class NotificationGenerationTest extends TestCase
         $this->assertNotNull($providerNotification);
         $this->assertStringContainsString($contract->id, $providerNotification->data['body'] ?? '');
         $this->assertSame('/mi-negocio/negociaciones', $providerNotification->data['ctaUrl'] ?? null);
+    }
+
+    public function test_contract_signing_and_payment_status_changes_are_recorded_in_chat(): void
+    {
+        Mail::fake();
+
+        $providerUser = User::factory()->create([
+            'role' => 'provider',
+            'is_provider' => true,
+        ]);
+        $client = User::factory()->create();
+
+        $provider = Provider::create([
+            'user_id' => $providerUser->id,
+            'business_name' => 'Provider Test',
+            'category' => 'music',
+            'description' => 'Provider description',
+            'services' => [],
+        ]);
+
+        $service = Service::create([
+            'user_id' => $providerUser->id,
+            'provider_id' => $provider->id,
+            'title' => 'Mariachi',
+            'description' => 'Show',
+            'category' => 'music',
+            'city' => 'CDMX',
+            'price' => 2000,
+            'is_active' => true,
+            'metadata' => ['requiresDeposit' => true],
+        ]);
+
+        Booking::create([
+            'id' => 'booking-chat-audit-1',
+            'user_id' => (string) $client->id,
+            'artist_user_id' => (string) $providerUser->id,
+            'artist_id' => (string) $service->id,
+            'artist_name' => 'Proveedor Test',
+            'client_name' => $client->name,
+            'status' => 'pending',
+            'date' => now()->addDays(10)->toDateString(),
+        ]);
+
+        $contract = Contract::create([
+            'id' => 'contract-chat-audit-1',
+            'booking_id' => 'booking-chat-audit-1',
+            'artist_id' => (string) $service->id,
+            'artist_user_id' => (string) $providerUser->id,
+            'artist_name' => 'Proveedor Test',
+            'client_id' => (string) $client->id,
+            'client_name' => $client->name,
+            'client_email' => $client->email,
+            'status' => 'pending_client',
+            'artist_signature' => [
+                'signedBy' => 'Proveedor Test',
+                'signedAt' => now()->subHour()->toISOString(),
+            ],
+            'terms' => ['price' => 5000],
+        ]);
+
+        Sanctum::actingAs($client);
+        $this->putJson('/api/contracts/'.$contract->id, [
+            'status' => 'active',
+            'clientSignature' => [
+                'signedBy' => $client->name,
+                'signedAt' => now()->toISOString(),
+            ],
+        ])->assertOk();
+
+        $this->putJson('/api/contracts/'.$contract->id, [
+            'status' => 'pagado',
+            'paymentProofUrl' => 'https://example.test/proof.png',
+        ])->assertOk();
+
+        Sanctum::actingAs($providerUser);
+        $this->putJson('/api/contracts/'.$contract->id, [
+            'status' => 'reservado',
+        ])->assertOk();
+
+        $conversation = ChatConversation::query()
+            ->where('booking_id', 'booking-chat-audit-1')
+            ->first();
+
+        $this->assertNotNull($conversation);
+
+        $messages = \App\Models\ChatMessage::query()
+            ->where('conversation_id', $conversation->id)
+            ->orderBy('created_at')
+            ->pluck('body')
+            ->all();
+
+        $this->assertContains('El cliente ha firmado el contrato [CONTRACT:contract-chat-audit-1].', $messages);
+        $this->assertContains('El cliente ha pagado el depósito del contrato [CONTRACT:contract-chat-audit-1].', $messages);
+        $this->assertContains('El proveedor ha confirmado el pago del contrato [CONTRACT:contract-chat-audit-1].', $messages);
     }
 
     public function test_review_creation_generates_provider_in_app_notification(): void
