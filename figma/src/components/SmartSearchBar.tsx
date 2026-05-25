@@ -104,6 +104,7 @@ export function SmartSearchBar({
     setActiveIndex(-1);
     onChange('');
     onSubmit(suggestion.name);
+    inputRef.current?.blur();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -112,6 +113,7 @@ export function SmartSearchBar({
         e.preventDefault();
         setIsOpen(false);
         onSubmit(value);
+        inputRef.current?.blur();
       }
       return;
     }
@@ -129,6 +131,7 @@ export function SmartSearchBar({
       } else {
         setIsOpen(false);
         onSubmit(value);
+        inputRef.current?.blur();
       }
     } else if (e.key === 'Escape') {
       setIsOpen(false);
@@ -166,7 +169,7 @@ export function SmartSearchBar({
       {showSearchButton && (
         <button
           type="button"
-          onClick={() => { setIsOpen(false); onSubmit(value); }}
+          onClick={() => { setIsOpen(false); onSubmit(value); inputRef.current?.blur(); }}
           className="absolute right-0 top-0 h-10 w-12 flex items-center justify-center border-l border-gray-300 bg-white hover:bg-gray-50"
           aria-label="Buscar"
         >
