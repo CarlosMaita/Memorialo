@@ -36,6 +36,10 @@ class Booking extends Model
         'status',
         'archived',
         'archived_at',
+        'archived_by_client',
+        'archived_at_client',
+        'archived_by_provider',
+        'archived_at_provider',
         'plan_id',
         'plan_name',
         'contract_id',
@@ -49,6 +53,10 @@ class Booking extends Model
             'total_price' => 'decimal:2',
             'archived' => 'boolean',
             'archived_at' => 'datetime',
+            'archived_by_client' => 'boolean',
+            'archived_at_client' => 'datetime',
+            'archived_by_provider' => 'boolean',
+            'archived_at_provider' => 'datetime',
             'metadata' => 'array',
         ];
     }

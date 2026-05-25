@@ -21,11 +21,22 @@ class BookingController extends Controller
     {
         $query = Booking::query()->latest();
         $includeArchived = $request->boolean('include_archived');
+        $archiveScope = $this->resolveArchiveScope($request);
 
         if (! $includeArchived) {
-            $query->where(function (Builder $builder) {
-                $builder->where('archived', false)->orWhereNull('archived');
-            });
+            if ($archiveScope === 'client') {
+                $query->where(function (Builder $builder) {
+                    $builder->where('archived_by_client', false)->orWhereNull('archived_by_client');
+                });
+            } elseif ($archiveScope === 'provider') {
+                $query->where(function (Builder $builder) {
+                    $builder->where('archived_by_provider', false)->orWhereNull('archived_by_provider');
+                });
+            } else {
+                $query->where(function (Builder $builder) {
+                    $builder->where('archived', false)->orWhereNull('archived');
+                });
+            }
         }
 
         $scopeResponse = $this->applyScope($query, $request);
@@ -41,7 +52,7 @@ class BookingController extends Controller
 
             return response()->json([
                 'data' => collect($paginator->items())
-                    ->map(fn (Booking $booking) => $this->formatBooking($booking))
+                    ->map(fn (Booking $booking) => $this->formatBooking($booking, $archiveScope))
                     ->values(),
                 'meta' => [
                     'currentPage' => $paginator->currentPage(),
@@ -53,7 +64,7 @@ class BookingController extends Controller
             ]);
         }
 
-        $bookings = $query->get()->map(fn (Booking $booking) => $this->formatBooking($booking));
+        $bookings = $query->get()->map(fn (Booking $booking) => $this->formatBooking($booking, $archiveScope));
 
         return response()->json($bookings);
     }
@@ -97,7 +108,7 @@ class BookingController extends Controller
             ]);
         }
 
-        return response()->json($this->formatBooking($booking), 201);
+        return response()->json($this->formatBooking($booking, $this->resolveArchiveScope($request)), 201);
     }
 
     public function update(Request $request, string $id): JsonResponse
@@ -110,10 +121,43 @@ class BookingController extends Controller
 
         $validated = $this->validateBookingPayload($request, true);
         $payload = $this->normalizePayload($validated);
+        $archiveContext = $this->resolveArchiveContext($request, $booking);
+
+        if (array_key_exists('archived', $payload) && in_array($archiveContext, ['client', 'provider'], true)) {
+            $archived = (bool) $payload['archived'];
+            $archiveAt = $payload['archived_at'] ?? ($archived ? now() : null);
+
+            if ($archiveContext === 'client') {
+                $payload['archived_by_client'] = $archived;
+                $payload['archived_at_client'] = $archiveAt;
+            } else {
+                $payload['archived_by_provider'] = $archived;
+                $payload['archived_at_provider'] = $archiveAt;
+            }
+
+            $nextArchivedByClient = array_key_exists('archived_by_client', $payload)
+                ? (bool) $payload['archived_by_client']
+                : (bool) $booking->archived_by_client;
+            $nextArchivedByProvider = array_key_exists('archived_by_provider', $payload)
+                ? (bool) $payload['archived_by_provider']
+                : (bool) $booking->archived_by_provider;
+            $nextArchivedAtClient = $payload['archived_at_client'] ?? $booking->archived_at_client;
+            $nextArchivedAtProvider = $payload['archived_at_provider'] ?? $booking->archived_at_provider;
+
+            $payload['archived'] = $nextArchivedByClient || $nextArchivedByProvider;
+            if ($nextArchivedByClient) {
+                $payload['archived_at'] = $nextArchivedAtClient;
+            } elseif ($nextArchivedByProvider) {
+                $payload['archived_at'] = $nextArchivedAtProvider;
+            } else {
+                $payload['archived_at'] = null;
+            }
+        }
 
         $booking->update($payload);
 
-        return response()->json($this->formatBooking($booking->fresh()));
+        $freshBooking = $booking->fresh();
+        return response()->json($this->formatBooking($freshBooking, $this->resolveArchiveContext($request, $freshBooking)));
     }
 
     private function validateBookingPayload(Request $request, bool $partial): array
@@ -151,6 +195,14 @@ class BookingController extends Controller
             'archived' => ['sometimes', 'nullable', 'boolean'],
             'archivedAt' => ['sometimes', 'nullable', 'date'],
             'archived_at' => ['sometimes', 'nullable', 'date'],
+            'archivedByClient' => ['sometimes', 'nullable', 'boolean'],
+            'archived_by_client' => ['sometimes', 'nullable', 'boolean'],
+            'archivedAtClient' => ['sometimes', 'nullable', 'date'],
+            'archived_at_client' => ['sometimes', 'nullable', 'date'],
+            'archivedByProvider' => ['sometimes', 'nullable', 'boolean'],
+            'archived_by_provider' => ['sometimes', 'nullable', 'boolean'],
+            'archivedAtProvider' => ['sometimes', 'nullable', 'date'],
+            'archived_at_provider' => ['sometimes', 'nullable', 'date'],
             'planId' => ['sometimes', 'nullable', 'string', 'max:255'],
             'plan_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'planName' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -178,6 +230,10 @@ class BookingController extends Controller
             'specialRequests' => 'special_requests',
             'totalPrice' => 'total_price',
             'archivedAt' => 'archived_at',
+            'archivedByClient' => 'archived_by_client',
+            'archivedAtClient' => 'archived_at_client',
+            'archivedByProvider' => 'archived_by_provider',
+            'archivedAtProvider' => 'archived_at_provider',
             'planId' => 'plan_id',
             'planName' => 'plan_name',
             'contractId' => 'contract_id',
@@ -197,8 +253,19 @@ class BookingController extends Controller
         return $payload;
     }
 
-    private function formatBooking(Booking $booking): array
+    private function formatBooking(Booking $booking, ?string $archiveScope = null): array
     {
+        $archived = (bool) $booking->archived;
+        $archivedAt = optional($booking->archived_at)?->toISOString();
+
+        if ($archiveScope === 'client') {
+            $archived = (bool) $booking->archived_by_client;
+            $archivedAt = optional($booking->archived_at_client)?->toISOString();
+        } elseif ($archiveScope === 'provider') {
+            $archived = (bool) $booking->archived_by_provider;
+            $archivedAt = optional($booking->archived_at_provider)?->toISOString();
+        }
+
         return [
             'id' => (string) $booking->id,
             'artistId' => $booking->artist_id,
@@ -216,8 +283,8 @@ class BookingController extends Controller
             'specialRequests' => $booking->special_requests,
             'totalPrice' => (float) $booking->total_price,
             'status' => $booking->status,
-            'archived' => (bool) $booking->archived,
-            'archivedAt' => optional($booking->archived_at)?->toISOString(),
+            'archived' => $archived,
+            'archivedAt' => $archivedAt,
             'planId' => $booking->plan_id,
             'planName' => $booking->plan_name,
             'contractId' => $booking->contract_id,
@@ -240,6 +307,52 @@ class BookingController extends Controller
             if ($service && $service->user_id) {
                 return User::find((int) $service->user_id);
             }
+        }
+
+        return null;
+    }
+
+    private function resolveArchiveScope(Request $request): ?string
+    {
+        $scope = strtolower((string) $request->query('scope', ''));
+
+        if ($scope === 'mine') {
+            $authUser = $request->user('sanctum') ?? $request->user();
+            if (! $authUser) {
+                return null;
+            }
+
+            return $authUser->is_provider ? 'provider' : 'client';
+        }
+
+        return in_array($scope, ['client', 'provider'], true) ? $scope : null;
+    }
+
+    private function resolveArchiveContext(Request $request, Booking $booking): ?string
+    {
+        $scope = $this->resolveArchiveScope($request);
+        if (in_array($scope, ['client', 'provider'], true)) {
+            return $scope;
+        }
+
+        $authUser = $request->user('sanctum') ?? $request->user();
+        if (! $authUser) {
+            return null;
+        }
+
+        if ((string) $booking->user_id === (string) $authUser->id) {
+            return 'client';
+        }
+
+        if ((string) $booking->artist_user_id === (string) $authUser->id) {
+            return 'provider';
+        }
+
+        if ($booking->artist_id && Service::query()
+            ->where('id', (string) $booking->artist_id)
+            ->where('user_id', (string) $authUser->id)
+            ->exists()) {
+            return 'provider';
         }
 
         return null;
