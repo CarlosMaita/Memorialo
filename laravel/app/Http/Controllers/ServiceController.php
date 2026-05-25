@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\MarketplaceSetting;
 use App\Models\Provider;
+use App\Models\SearchTerm;
 use App\Models\Service;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +19,7 @@ class ServiceController extends Controller
         $query = Service::query()->with(['provider.user'])->latest();
 
         $this->applyListFilters($query, $request);
+        $this->trackSearchTerm((string) $request->query('q', ''));
 
         if ($perPage) {
             $paginator = $query->paginate($perPage)->appends($request->query());
@@ -328,6 +330,16 @@ class ServiceController extends Controller
 
         // Escape special LIKE wildcards to prevent unintended matches
         $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q);
+        $normalized = $this->normalizeSearchTerm($q);
+        $currentMonthStart = now()->startOfMonth()->toDateString();
+
+        $termSuggestions = SearchTerm::query()
+            ->where('month_start', $currentMonthStart)
+            ->where('term_normalized', 'like', "{$normalized}%")
+            ->orderByDesc('search_count')
+            ->orderByDesc('updated_at')
+            ->limit(6)
+            ->get(['id', 'term']);
 
         $services = Service::query()
             ->where('is_active', true)
@@ -342,13 +354,53 @@ class ServiceController extends Controller
             ->limit(6)
             ->get(['id', 'title', 'category', 'subcategory']);
 
-        $results = $services->map(fn (Service $service) => [
+        $termResults = $termSuggestions->map(fn (SearchTerm $term) => [
+            'id' => 'term-'.$term->id,
+            'name' => $term->term,
+            'category' => 'Término buscado',
+        ]);
+
+        $serviceResults = $services->map(fn (Service $service) => [
             'id' => (string) $service->id,
             'name' => $service->title,
             'category' => $service->subcategory ?: $service->category,
-        ])->values();
+        ]);
+
+        $results = $termResults
+            ->concat($serviceResults)
+            ->unique(fn (array $item) => $this->normalizeSearchTerm($item['name']))
+            ->take(6)
+            ->values();
 
         return response()->json($results);
+    }
+
+    private function trackSearchTerm(string $query): void
+    {
+        $term = trim($query);
+        if ($term === '') {
+            return;
+        }
+
+        $normalized = $this->normalizeSearchTerm($term);
+        if ($normalized === '') {
+            return;
+        }
+
+        $monthStart = now()->startOfMonth()->toDateString();
+        $searchTerm = SearchTerm::query()->firstOrNew([
+            'term_normalized' => $normalized,
+            'month_start' => $monthStart,
+        ]);
+
+        $searchTerm->term = $term;
+        $searchTerm->search_count = ((int) ($searchTerm->search_count ?? 0)) + 1;
+        $searchTerm->save();
+    }
+
+    private function normalizeSearchTerm(string $value): string
+    {
+        return (string) preg_replace('/\s+/u', ' ', mb_strtolower(trim($value)));
     }
 
     private function formatService(Service $service, string $view = 'detail'): array
