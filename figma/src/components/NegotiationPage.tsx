@@ -17,6 +17,13 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { ContractView } from './ContractView';
 
 type ChatApi = {
+  getContracts?: (options?: {
+    scope?: 'client' | 'provider' | 'mine' | 'all';
+    page?: number;
+    perPage?: number;
+    clientId?: string;
+    artistUserId?: string;
+  }) => Promise<any[]>;
   getChatConversations: () => Promise<ChatConversation[]>;
   ensureChatConversation: (payload: {
     bookingId?: string;
@@ -123,7 +130,21 @@ function normalizeServiceDescription(description?: string): string {
 
 const CONTRACT_CHAT_LINK_TOKEN_REGEX = /\[CONTRACT:([^[\]]+)\]/i;
 
-export function NegotiationPage({ contract, booking, user, onContractUpdate, onBack, chatApi, onUploadImage }: NegotiationPageProps) {
+function extractContractIdFromMessage(body?: string | null): string | null {
+  if (!body) return null;
+  const tokenMatch = body.match(CONTRACT_CHAT_LINK_TOKEN_REGEX);
+  if (!tokenMatch) return null;
+  const encodedContractId = String(tokenMatch[1] || '').trim();
+  if (!encodedContractId) return null;
+  try {
+    return decodeURIComponent(encodedContractId);
+  } catch {
+    return encodedContractId;
+  }
+}
+
+export function NegotiationPage({ contract: initialContract, booking, user, onContractUpdate, onBack, chatApi, onUploadImage }: NegotiationPageProps) {
+  const [contract, setContract] = useState<any | null>(initialContract);
   const [conversation, setConversation] = useState<ChatConversation | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
@@ -161,6 +182,10 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
   const sendTypingRef = useRef<(isTyping: boolean) => void>(() => undefined);
 
   const conversationId = conversation?.id || null;
+
+  useEffect(() => {
+    setContract(initialContract);
+  }, [initialContract]);
 
   const counterpart = useMemo(
     () => conversation?.participants.find(p => p.userId !== String(user.id)) || null,
@@ -279,6 +304,34 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
   }, [conversationId, counterpartUserId, chatApi, user.id]);
 
   // Subscribe to global chat stream
+  const refreshContractFromApi = useCallback(async () => {
+    const currentContractId = String(contract?.id || '').trim();
+    if (!currentContractId || !chatApi.getContracts) {
+      return;
+    }
+
+    const scope = user.role === 'admin'
+      ? 'all'
+      : user.isProvider
+        ? 'provider'
+        : 'client';
+
+    try {
+      const latestContracts = await chatApi.getContracts({ scope });
+      const latestContract = latestContracts.find((item: any) => String(item?.id || '').trim() === currentContractId);
+      if (latestContract) {
+        setContract(latestContract);
+      }
+    } catch (error) {
+      console.error('Error refreshing contract from chat:', error);
+    }
+  }, [chatApi, contract?.id, user.isProvider, user.role]);
+
+  useEffect(() => {
+    if (!showContractDialog) return;
+    void refreshContractFromApi();
+  }, [showContractDialog, refreshContractFromApi]);
+
   useEffect(() => {
     const unsubscribe = chatApi.subscribeChatStream((payload) => {
       if (payload.type !== 'chat.message.created' || !payload.message) return;
@@ -304,10 +357,18 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
             .catch(() => { /* keep optimistic state */ });
         }, 250);
       }
+
+      if (message.conversationId === conversationId) {
+        const linkedContractId = extractContractIdFromMessage(message.body);
+        const currentContractId = String(contract?.id || '').trim();
+        if (linkedContractId && currentContractId && linkedContractId === currentContractId) {
+          void refreshContractFromApi();
+        }
+      }
     });
 
     return () => unsubscribe();
-  }, [conversationId, chatApi]);
+  }, [conversationId, chatApi, contract?.id, refreshContractFromApi]);
 
   // Typing debounce
   useEffect(() => {
@@ -541,13 +602,7 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
     }
 
     const token = tokenMatch[0];
-    const encodedContractId = String(tokenMatch[1] || '').trim();
-    let contractId = encodedContractId;
-    try {
-      contractId = decodeURIComponent(encodedContractId);
-    } catch {
-      contractId = encodedContractId;
-    }
+    const contractId = extractContractIdFromMessage(token);
     const [before = '', after = ''] = body.split(token, 2);
 
     if (!contractId) {
@@ -1020,10 +1075,12 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
           onClose={() => setShowContractDialog(false)}
           userType="client"
           onSign={(signedContract) => {
+            setContract(signedContract);
             onContractUpdate(signedContract);
             setShowContractDialog(false);
           }}
           onReject={(rejectedContract) => {
+            setContract(rejectedContract);
             onContractUpdate(rejectedContract);
             setShowContractDialog(false);
           }}
