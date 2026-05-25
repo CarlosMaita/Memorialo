@@ -25,17 +25,35 @@ class SearchTermApiTest extends TestCase
         $this->getJson('/api/services?q=Mariachi')->assertOk();
         $this->getJson('/api/services?q=MARIACHI')->assertOk();
 
-        $this->assertDatabaseHas('search_terms', [
-            'term_normalized' => 'mariachi',
-            'month_start' => now()->startOfMonth()->toDateString(),
-            'search_count' => 2,
-        ]);
+        $this->assertSame(
+            2,
+            SearchTerm::query()
+                ->where('term_normalized', 'mariachi')
+                ->whereDate('month_start', now()->startOfMonth()->toDateString())
+                ->value('search_count')
+        );
 
-        $this->assertDatabaseHas('search_terms', [
-            'term_normalized' => 'mariachi',
-            'month_start' => now()->subMonth()->startOfMonth()->toDateString(),
-            'search_count' => 4,
-        ]);
+        $this->assertSame(
+            4,
+            SearchTerm::query()
+                ->where('term_normalized', 'mariachi')
+                ->whereDate('month_start', now()->subMonth()->startOfMonth()->toDateString())
+                ->value('search_count')
+        );
+    }
+
+    public function test_service_search_tracks_only_first_page_requests(): void
+    {
+        $this->getJson('/api/services?q=Mariachi&page=2')->assertOk();
+        $this->getJson('/api/services?q=Mariachi')->assertOk();
+
+        $this->assertSame(
+            1,
+            SearchTerm::query()
+                ->where('term_normalized', 'mariachi')
+                ->whereDate('month_start', now()->startOfMonth()->toDateString())
+                ->value('search_count')
+        );
     }
 
     public function test_suggestions_prioritize_popular_search_terms(): void

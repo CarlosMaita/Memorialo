@@ -6,6 +6,7 @@ use App\Models\MarketplaceSetting;
 use App\Models\Provider;
 use App\Models\SearchTerm;
 use App\Models\Service;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,9 @@ class ServiceController extends Controller
         $query = Service::query()->with(['provider.user'])->latest();
 
         $this->applyListFilters($query, $request);
-        $this->trackSearchTerm((string) $request->query('q', ''));
+        if ($this->shouldTrackSearchTerm($request)) {
+            $this->trackSearchTerm((string) $request->query('q', ''));
+        }
 
         if ($perPage) {
             $paginator = $query->paginate($perPage)->appends($request->query());
@@ -336,7 +339,7 @@ class ServiceController extends Controller
         $currentMonthStart = now()->startOfMonth()->toDateString();
 
         $termSuggestions = SearchTerm::query()
-            ->where('month_start', $currentMonthStart)
+            ->whereDate('month_start', $currentMonthStart)
             ->where('term_normalized', 'like', "{$normalized}%")
             ->orderByDesc('search_count')
             ->orderByDesc('updated_at')
@@ -390,14 +393,53 @@ class ServiceController extends Controller
         }
 
         $monthStart = now()->startOfMonth()->toDateString();
-        $searchTerm = SearchTerm::query()->firstOrNew([
-            'term_normalized' => $normalized,
-            'month_start' => $monthStart,
-        ]);
+        $searchTerm = SearchTerm::query()
+            ->where('term_normalized', $normalized)
+            ->whereDate('month_start', $monthStart)
+            ->first();
 
-        $searchTerm->term = $term;
-        $searchTerm->search_count = ((int) ($searchTerm->search_count ?? 0)) + 1;
-        $searchTerm->save();
+        if ($searchTerm) {
+            $searchTerm->term = $term;
+            $searchTerm->search_count = ((int) ($searchTerm->search_count ?? 0)) + 1;
+            $searchTerm->save();
+
+            return;
+        }
+
+        try {
+            SearchTerm::query()->create([
+                'term' => $term,
+                'term_normalized' => $normalized,
+                'month_start' => $monthStart,
+                'search_count' => 1,
+                'is_manual' => false,
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            $searchTerm = SearchTerm::query()
+                ->where('term_normalized', $normalized)
+                ->whereDate('month_start', $monthStart)
+                ->first();
+
+            if (! $searchTerm) {
+                return;
+            }
+
+            $searchTerm->term = $term;
+            $searchTerm->search_count = ((int) ($searchTerm->search_count ?? 0)) + 1;
+            $searchTerm->save();
+        }
+    }
+
+    private function shouldTrackSearchTerm(Request $request): bool
+    {
+        $term = trim((string) $request->query('q', ''));
+        if ($term === '') {
+            return false;
+        }
+
+        $page = max(1, (int) $request->query('page', 1));
+
+        return $page === 1;
     }
 
     private function normalizeSearchTerm(string $value): string
