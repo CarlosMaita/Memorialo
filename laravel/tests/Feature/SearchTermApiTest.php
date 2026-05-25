@@ -13,7 +13,7 @@ class SearchTermApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_service_search_tracks_terms_case_insensitive_per_month(): void
+    public function test_service_search_tracks_term_once_per_actor_each_month(): void
     {
         SearchTerm::query()->create([
             'term' => 'mariachi',
@@ -22,11 +22,13 @@ class SearchTermApiTest extends TestCase
             'search_count' => 4,
         ]);
 
+        $this->withHeader('User-Agent', 'test-browser');
         $this->getJson('/api/services?q=Mariachi')->assertOk();
+        $this->withHeader('User-Agent', 'test-browser');
         $this->getJson('/api/services?q=MARIACHI')->assertOk();
 
         $this->assertSame(
-            2,
+            1,
             SearchTerm::query()
                 ->where('term_normalized', 'mariachi')
                 ->whereDate('month_start', now()->startOfMonth()->toDateString())
@@ -44,11 +46,34 @@ class SearchTermApiTest extends TestCase
 
     public function test_service_search_tracks_only_first_page_requests(): void
     {
+        $this->withHeader('User-Agent', 'test-browser');
         $this->getJson('/api/services?q=Mariachi&page=2')->assertOk();
+        $this->withHeader('User-Agent', 'test-browser');
         $this->getJson('/api/services?q=Mariachi')->assertOk();
 
         $this->assertSame(
             1,
+            SearchTerm::query()
+                ->where('term_normalized', 'mariachi')
+                ->whereDate('month_start', now()->startOfMonth()->toDateString())
+                ->value('search_count')
+        );
+    }
+
+    public function test_service_search_tracks_once_per_user_for_same_term(): void
+    {
+        $firstUser = User::factory()->create();
+        $secondUser = User::factory()->create();
+
+        Sanctum::actingAs($firstUser);
+        $this->getJson('/api/services?q=Mariachi')->assertOk();
+        $this->getJson('/api/services?q=MARIACHI')->assertOk();
+
+        Sanctum::actingAs($secondUser);
+        $this->getJson('/api/services?q=mariachi')->assertOk();
+
+        $this->assertSame(
+            2,
             SearchTerm::query()
                 ->where('term_normalized', 'mariachi')
                 ->whereDate('month_start', now()->startOfMonth()->toDateString())
