@@ -31,6 +31,15 @@ const capitalizeCategory = (text: string): string => {
     .join(' ');
 };
 
+const formatSearchTerm = (text: string): string => {
+  const normalized = text.trim().toLowerCase();
+  if (!normalized) {
+    return '';
+  }
+
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+};
+
 // Busca la configuración de una categoría por su clave o por su título (compatible con valores en title-case provenientes del contexto de ruta)
 const getCategoryData = (cat: string) => {
   return (
@@ -615,7 +624,7 @@ export function AirbnbSearchBar({ onSearch, searchCriteria, availableCities = VE
           {query && (
             <div className="px-3 py-1 bg-white rounded-full text-sm border border-gray-200 flex items-center gap-2">
               <Search className="w-3 h-3" />
-              "{query}"
+              "{formatSearchTerm(query)}"
               <button 
                 onClick={() => {
                   setQuery('');
