@@ -15,6 +15,7 @@ use App\Http\Controllers\HomeCollectionSectionController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\SearchTermController;
 use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\UploadController;
 use App\Http\Controllers\UserController;
@@ -100,6 +101,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/banners', [BannerController::class, 'store']);
     Route::put('/admin/banners/{id}', [BannerController::class, 'update']);
     Route::delete('/admin/banners/{id}', [BannerController::class, 'destroy']);
+
+    Route::get('/admin/search-terms', [SearchTermController::class, 'index']);
+    Route::post('/admin/search-terms', [SearchTermController::class, 'store']);
+    Route::put('/admin/search-terms/{id}', [SearchTermController::class, 'update']);
+    Route::delete('/admin/search-terms/{id}', [SearchTermController::class, 'destroy']);
 
     Route::post('/upload-image', [UploadController::class, 'image']);
 

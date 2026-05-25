@@ -148,7 +148,15 @@ interface AdminDashboardProps {
   }) => Promise<void>;
 }
 
-type AdminSection = 'overview' | 'billing' | 'banners' | 'main-content' | 'relevant-services' | 'collections' | 'providers' | 'interested' | 'users' | 'services';
+type AdminSection = 'overview' | 'billing' | 'banners' | 'main-content' | 'relevant-services' | 'collections' | 'search-terms' | 'providers' | 'interested' | 'users' | 'services';
+
+type SearchTermAdminItem = {
+  id: string;
+  term: string;
+  month: string;
+  searchCount: number;
+  isManual: boolean;
+};
 
 const API_BASE = backendMode === 'laravel'
   ? laravelApiBaseUrl
@@ -161,6 +169,7 @@ const adminNavItems = [
   { id: 'main-content' as const, label: 'Contenido principal', icon: <Star className="w-5 h-5" /> },
   { id: 'relevant-services' as const, label: 'Servicios relevantes', icon: <Star className="w-5 h-5" /> },
   { id: 'collections' as const, label: 'Colecciones', icon: <Layers3 className="w-5 h-5" /> },
+  { id: 'search-terms' as const, label: 'Términos de búsqueda', icon: <TrendingUp className="w-5 h-5" /> },
   { id: 'providers' as const, label: 'Proveedores', icon: <Briefcase className="w-5 h-5" /> },
   { id: 'interested' as const, label: 'Interesados', icon: <FileText className="w-5 h-5" /> },
   { id: 'users' as const, label: 'Usuarios', icon: <Users className="w-5 h-5" /> },
@@ -295,6 +304,18 @@ export function AdminDashboard({
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<AdminSection>('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const [searchTerms, setSearchTerms] = useState<SearchTermAdminItem[]>([]);
+  const [loadingSearchTerms, setLoadingSearchTerms] = useState(false);
+  const [savingSearchTerm, setSavingSearchTerm] = useState(false);
+  const [editingSearchTermId, setEditingSearchTermId] = useState<string | null>(null);
+  const [searchTermDraft, setSearchTermDraft] = useState('');
+  const [searchTermMonthDraft, setSearchTermMonthDraft] = useState(currentMonth);
+  const [searchTermCountDraft, setSearchTermCountDraft] = useState('0');
+  const [searchTermIsManualDraft, setSearchTermIsManualDraft] = useState(true);
+  const [searchTermsMonthFilter, setSearchTermsMonthFilter] = useState(currentMonth);
+  const [searchTermsMinCountFilter, setSearchTermsMinCountFilter] = useState('0');
+  const [searchTermsSort, setSearchTermsSort] = useState<'frequency_desc' | 'frequency_asc' | 'recent'>('frequency_desc');
   const [interestedUsersCount, setInterestedUsersCount] = useState(0);
   const [loadingInterestedUsers, setLoadingInterestedUsers] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
@@ -444,6 +465,156 @@ export function AdminDashboard({
 
     loadInterestedUsers();
   }, [accessToken, currentUser.role]);
+
+  const resetSearchTermForm = () => {
+    setEditingSearchTermId(null);
+    setSearchTermDraft('');
+    setSearchTermMonthDraft(currentMonth);
+    setSearchTermCountDraft('0');
+    setSearchTermIsManualDraft(true);
+  };
+
+  const loadSearchTerms = async () => {
+    if (!accessToken || currentUser.role !== 'admin') {
+      setSearchTerms([]);
+      return;
+    }
+
+    setLoadingSearchTerms(true);
+    try {
+      const params = new URLSearchParams();
+      if (searchTermsMonthFilter) {
+        params.set('month', searchTermsMonthFilter);
+      }
+
+      const minCount = Number(searchTermsMinCountFilter || 0);
+      if (!Number.isNaN(minCount) && minCount > 0) {
+        params.set('min_count', String(minCount));
+      }
+
+      params.set('sort', searchTermsSort);
+      const response = await fetch(`${API_BASE}/admin/search-terms?${params.toString()}`, {
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+          Accept: 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}`);
+      }
+
+      const data = await response.json();
+      setSearchTerms(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error loading search terms', error);
+      setSearchTerms([]);
+      toast.error('No se pudieron cargar los términos de búsqueda.');
+    } finally {
+      setLoadingSearchTerms(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection !== 'search-terms') {
+      return;
+    }
+
+    loadSearchTerms();
+  }, [activeSection, accessToken, currentUser.role, searchTermsMonthFilter, searchTermsMinCountFilter, searchTermsSort]);
+
+  const handleSaveSearchTerm = async () => {
+    if (!accessToken) {
+      toast.error('No hay sesión activa para guardar términos.');
+      return;
+    }
+
+    const normalizedTerm = searchTermDraft.trim();
+    if (!normalizedTerm) {
+      toast.error('Debes indicar un término de búsqueda.');
+      return;
+    }
+
+    const parsedCount = Number(searchTermCountDraft || 0);
+    if (Number.isNaN(parsedCount) || parsedCount < 0) {
+      toast.error('La frecuencia debe ser un número válido mayor o igual a 0.');
+      return;
+    }
+
+    setSavingSearchTerm(true);
+    try {
+      const payload = {
+        term: normalizedTerm,
+        month: searchTermMonthDraft || currentMonth,
+        searchCount: parsedCount,
+        isManual: searchTermIsManualDraft,
+      };
+
+      const endpoint = editingSearchTermId
+        ? `${API_BASE}/admin/search-terms/${editingSearchTermId}`
+        : `${API_BASE}/admin/search-terms`;
+      const method = editingSearchTermId ? 'PUT' : 'POST';
+
+      const response = await fetch(endpoint, {
+        method,
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData?.message || `Error ${response.status}`);
+      }
+
+      resetSearchTermForm();
+      await loadSearchTerms();
+      toast.success(editingSearchTermId ? 'Término actualizado.' : 'Término creado.');
+    } catch (error: any) {
+      toast.error(error?.message || 'No se pudo guardar el término.');
+    } finally {
+      setSavingSearchTerm(false);
+    }
+  };
+
+  const handleEditSearchTerm = (item: SearchTermAdminItem) => {
+    setEditingSearchTermId(item.id);
+    setSearchTermDraft(item.term);
+    setSearchTermMonthDraft(item.month || currentMonth);
+    setSearchTermCountDraft(String(item.searchCount ?? 0));
+    setSearchTermIsManualDraft(Boolean(item.isManual));
+  };
+
+  const handleDeleteSearchTerm = async (item: SearchTermAdminItem) => {
+    if (!accessToken) return;
+
+    setConfirmModal({
+      open: true,
+      title: 'Eliminar término',
+      description: `¿Seguro que deseas eliminar "${item.term}"?`,
+      confirmText: 'Eliminar',
+      variant: 'danger',
+      onConfirm: async () => {
+        const response = await fetch(`${API_BASE}/admin/search-terms/${item.id}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: 'Bearer ' + accessToken,
+            Accept: 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}`);
+        }
+
+        await loadSearchTerms();
+        toast.success('Término eliminado.');
+      },
+    });
+  };
 
   // Check if current user is admin
   if (currentUser.role !== 'admin') {
@@ -2578,6 +2749,149 @@ export function AdminDashboard({
                   </CardContent>
                 </Card>
               )}
+            </div>
+          )}
+
+          {activeSection === 'search-terms' && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[#1B2A47] mb-1">Términos de búsqueda</h2>
+                <p className="text-gray-500 text-sm">Consulta tendencias mensuales y gestiona términos sugeridos manualmente.</p>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Nuevo término</CardTitle>
+                  <CardDescription>Crea o edita términos para inducir sugerencias de búsqueda.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-3 md:grid-cols-4">
+                    <Input
+                      placeholder="Ej: Mariachi"
+                      value={searchTermDraft}
+                      onChange={(event) => setSearchTermDraft(event.target.value)}
+                    />
+                    <Input
+                      type="month"
+                      value={searchTermMonthDraft}
+                      onChange={(event) => setSearchTermMonthDraft(event.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      value={searchTermCountDraft}
+                      onChange={(event) => setSearchTermCountDraft(event.target.value)}
+                    />
+                    <div className="flex items-center justify-between rounded-md border px-3">
+                      <Label htmlFor="search-term-manual">Manual</Label>
+                      <Switch
+                        id="search-term-manual"
+                        checked={searchTermIsManualDraft}
+                        onCheckedChange={(checked) => setSearchTermIsManualDraft(Boolean(checked))}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" onClick={handleSaveSearchTerm} disabled={savingSearchTerm}>
+                      {savingSearchTerm ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Guardando...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          {editingSearchTermId ? 'Actualizar término' : 'Crear término'}
+                        </>
+                      )}
+                    </Button>
+                    {editingSearchTermId && (
+                      <Button type="button" variant="outline" onClick={resetSearchTermForm}>
+                        Cancelar edición
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top términos</CardTitle>
+                  <CardDescription>Filtra por mes y frecuencia para revisar oportunidades de mercado.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <Input
+                      type="month"
+                      value={searchTermsMonthFilter}
+                      onChange={(event) => setSearchTermsMonthFilter(event.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      placeholder="Frecuencia mínima"
+                      value={searchTermsMinCountFilter}
+                      onChange={(event) => setSearchTermsMinCountFilter(event.target.value)}
+                    />
+                    <Select value={searchTermsSort} onValueChange={(value: 'frequency_desc' | 'frequency_asc' | 'recent') => setSearchTermsSort(value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Orden" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="frequency_desc">Frecuencia: mayor a menor</SelectItem>
+                        <SelectItem value="frequency_asc">Frecuencia: menor a mayor</SelectItem>
+                        <SelectItem value="recent">Mes más reciente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="border rounded-lg overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Término</TableHead>
+                          <TableHead>Mes</TableHead>
+                          <TableHead>Frecuencia</TableHead>
+                          <TableHead>Origen</TableHead>
+                          <TableHead className="text-right">Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {loadingSearchTerms ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center text-sm text-gray-500 py-6">Cargando términos...</TableCell>
+                          </TableRow>
+                        ) : searchTerms.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center text-sm text-gray-500 py-6">No hay términos para los filtros seleccionados.</TableCell>
+                          </TableRow>
+                        ) : (
+                          searchTerms.map((item) => (
+                            <TableRow key={item.id}>
+                              <TableCell className="font-medium">{item.term}</TableCell>
+                              <TableCell>{item.month}</TableCell>
+                              <TableCell>{item.searchCount}</TableCell>
+                              <TableCell>{item.isManual ? 'Manual' : 'Automático'}</TableCell>
+                              <TableCell>
+                                <div className="flex justify-end gap-2">
+                                  <Button type="button" variant="outline" size="sm" onClick={() => handleEditSearchTerm(item)}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Editar
+                                  </Button>
+                                  <Button type="button" variant="destructive" size="sm" onClick={() => handleDeleteSearchTerm(item)}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Eliminar
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
