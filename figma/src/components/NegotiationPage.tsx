@@ -1049,7 +1049,7 @@ export function NegotiationPage({ contract, booking, user, onContractUpdate, onB
             />
             {paymentProofPreview ? (
               <div className="relative overflow-hidden rounded-xl border border-gray-200">
-                <img src={paymentProofPreview} alt="Comprobante de pago" className="w-full max-h-64 object-contain bg-gray-50" />
+                <img src={paymentProofPreview.startsWith('blob:') ? paymentProofPreview : ''} alt="Comprobante de pago" className="w-full max-h-64 object-contain bg-gray-50" />
                 <button
                   type="button"
                   onClick={() => { setPaymentProofFile(null); if (paymentProofPreview) URL.revokeObjectURL(paymentProofPreview); setPaymentProofPreview(null); }}
