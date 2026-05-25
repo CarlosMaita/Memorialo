@@ -6,10 +6,11 @@ use App\Models\MarketplaceSetting;
 use App\Models\Provider;
 use App\Models\SearchTerm;
 use App\Models\Service;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class ServiceController extends Controller
 {
@@ -21,7 +22,7 @@ class ServiceController extends Controller
 
         $this->applyListFilters($query, $request);
         if ($this->shouldTrackSearchTerm($request)) {
-            $this->trackSearchTerm((string) $request->query('q', ''));
+            $this->trackSearchTerm($request, (string) $request->query('q', ''));
         }
 
         if ($perPage) {
@@ -354,7 +355,7 @@ class ServiceController extends Controller
                     ->orWhere('category', 'like', "%{$escaped}%")
                     ->orWhere('subcategory', 'like', "%{$escaped}%");
             })
-            ->orderByRaw("CASE WHEN title LIKE ? THEN 0 ELSE 1 END", ["{$escaped}%"])
+            ->orderByRaw('CASE WHEN title LIKE ? THEN 0 ELSE 1 END', ["{$escaped}%"])
             ->orderByDesc('rating')
             ->limit(6)
             ->get(['id', 'title', 'category', 'subcategory']);
@@ -380,7 +381,7 @@ class ServiceController extends Controller
         return response()->json($results);
     }
 
-    private function trackSearchTerm(string $query): void
+    private function trackSearchTerm(Request $request, string $query): void
     {
         $term = trim($query);
         if ($term === '') {
@@ -389,6 +390,10 @@ class ServiceController extends Controller
 
         $normalized = $this->normalizeSearchTerm($term);
         if ($normalized === '') {
+            return;
+        }
+
+        if (! $this->shouldCountSearchForActor($request, $normalized)) {
             return;
         }
 
@@ -428,6 +433,45 @@ class ServiceController extends Controller
             $searchTerm->search_count = ((int) ($searchTerm->search_count ?? 0)) + 1;
             $searchTerm->save();
         }
+    }
+
+    private function shouldCountSearchForActor(Request $request, string $normalizedTerm): bool
+    {
+        $actorKey = $this->resolveSearchActorKey($request);
+        if ($actorKey === '') {
+            return true;
+        }
+
+        $month = now()->format('Y-m');
+        $cacheKey = sprintf(
+            'search_terms:tracked:%s:%s:%s',
+            $month,
+            $actorKey,
+            sha1($normalizedTerm)
+        );
+
+        return Cache::add($cacheKey, true, now()->endOfMonth());
+    }
+
+    private function resolveSearchActorKey(Request $request): string
+    {
+        $userId = $request->user()?->id;
+        if ($userId) {
+            return 'user:'.$userId;
+        }
+
+        $cookieActor = trim((string) $request->cookie('memorialo_search_actor', ''));
+        if ($cookieActor !== '') {
+            return 'cookie:'.substr(hash('sha256', $cookieActor), 0, 24);
+        }
+
+        $ip = trim((string) $request->ip());
+        $userAgent = trim((string) $request->userAgent());
+        if ($ip === '' && $userAgent === '') {
+            return '';
+        }
+
+        return 'fingerprint:'.substr(hash('sha256', $ip.'|'.$userAgent), 0, 24);
     }
 
     private function shouldTrackSearchTerm(Request $request): bool
