@@ -138,9 +138,22 @@ export default async function middleware(request: Request): Promise<Response | u
   const urlParts = url.pathname.split('/').filter(Boolean);
   const urlServiceSegment = urlParts[1] ?? '';
   const urlTitleSlug = urlServiceSegment.replace(/^MEM-\d{7}-/i, '');
-  const serviceNameSlug = slugify(serviceData.name ?? '');
+  const serviceTitleSlugCandidates = new Set(
+    [
+      serviceData.name,
+      serviceData.description,
+      serviceData.bio,
+      serviceData.name || serviceData.description || serviceData.bio,
+    ]
+      .map((value) => slugify(value ?? ''))
+      .filter(Boolean)
+  );
 
-  if (serviceNameSlug && urlTitleSlug && serviceNameSlug !== urlTitleSlug) {
+  if (
+    urlTitleSlug &&
+    serviceTitleSlugCandidates.size > 0 &&
+    !serviceTitleSlugCandidates.has(urlTitleSlug)
+  ) {
     // The service returned by the API does not match the URL – fall through
     // so the SPA renders the page with default (site-level) OG tags rather
     // than injecting metadata from the wrong service.
