@@ -1726,7 +1726,7 @@ export function AdminDashboard({
                 <CardHeader>
                   <CardTitle>Aprobación automática de proveedores</CardTitle>
                   <CardDescription>
-                    Controla únicamente el formulario público de <code>/registro-proveedores</code>. El modal normal de registro/login sigue creando cuentas de cliente.
+                    Controla únicamente el formulario público de <code>/registro-proveedores</code>. El modal principal del sitio (Iniciar sesión / Registrarse en el header) sigue creando cuentas de cliente.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
