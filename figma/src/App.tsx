@@ -4099,9 +4099,9 @@ export default function App() {
     ? localSeoDescription
       || matchedMainCategory?.metaDescription
       || (marketplaceRouteContext.taxonomy
-        ? `Explora ${marketplaceRouteContext.taxonomy.label} en Memorialo. Compara proveedores, precios y disponibilidad para tu próximo evento en Venezuela.`
+        ? `Descubre los mejores ${marketplaceRouteContext.taxonomy.label} en Venezuela a través de Memorialo. Compara proveedores, precios y disponibilidad, y contrata de forma segura para tu próximo evento.`
         : marketplaceRouteContext.query
-          ? `Encuentra proveedores de ${capitalizeFirst(marketplaceRouteContext.query)} en Venezuela. Compara precios y disponibilidad en Memorialo.`
+          ? `Encuentra y contrata proveedores de ${capitalizeFirst(marketplaceRouteContext.query)} en Venezuela. Compara perfiles, precios y disponibilidad en Memorialo, y organiza tu evento de forma fácil y segura.`
           : HOME_SEO_DESCRIPTION)
     : (isVenezuelaCatalogRoute ? VENEZUELA_CATALOG_SEO_DESCRIPTION : undefined);
 
