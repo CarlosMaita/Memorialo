@@ -5314,9 +5314,9 @@ export default function App() {
                       }
                     >
                       <Badge asChild className="mb-3 bg-white/20 text-white border-white/30">
-                        <h2>
+                        <h1>
                           {mainContentAccent}
-                        </h2>
+                        </h1>
                       </Badge>
                       <p className="text-2xl md:text-3xl font-semibold mb-2">{mainContentTitle}</p>
                       <p className="text-sm md:text-base text-white/90 mb-4">
