@@ -13,6 +13,7 @@ use App\Services\NotificationDispatchService;
 use App\Support\NotificationTypes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {
@@ -326,6 +327,67 @@ class AdminController extends Controller
             ->update(['is_active' => false]);
 
         return response()->json($this->formatUser($user->fresh()));
+    }
+
+    public function transferServices(Request $request): JsonResponse
+    {
+        if ($error = $this->authorizeAdmin($request)) {
+            return $error;
+        }
+
+        $validated = $request->validate([
+            'sourceProviderId' => ['required', 'string'],
+            'destinationProviderId' => ['required', 'string', 'different:sourceProviderId'],
+            'serviceIds' => ['required', 'array', 'min:1'],
+            'serviceIds.*' => ['string'],
+        ]);
+
+        $sourceProvider = Provider::query()->find($validated['sourceProviderId']);
+        $destinationProvider = Provider::query()->find($validated['destinationProviderId']);
+
+        if (! $sourceProvider || ! $destinationProvider) {
+            return response()->json(['error' => 'Provider not found'], 404);
+        }
+
+        $serviceIds = collect($validated['serviceIds'])
+            ->map(fn (mixed $serviceId) => trim((string) $serviceId))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($serviceIds->isEmpty()) {
+            return response()->json(['error' => 'No services selected'], 422);
+        }
+
+        $services = Service::query()
+            ->whereIn('id', $serviceIds->all())
+            ->where('provider_id', $sourceProvider->id)
+            ->get();
+
+        if ($services->count() !== $serviceIds->count()) {
+            return response()->json([
+                'error' => 'Some services do not belong to source provider',
+            ], 422);
+        }
+
+        DB::transaction(function () use ($services, $destinationProvider): void {
+            foreach ($services as $service) {
+                $service->forceFill([
+                    'provider_id' => $destinationProvider->id,
+                    'user_id' => $destinationProvider->user_id,
+                ])->save();
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'transferredCount' => $services->count(),
+            'services' => $services->map(fn (Service $service) => [
+                'id' => (string) $service->id,
+                'userId' => (string) $destinationProvider->user_id,
+                'providerId' => (string) $destinationProvider->id,
+            ])->values(),
+        ]);
     }
 
     public function marketplaceConfig(): JsonResponse

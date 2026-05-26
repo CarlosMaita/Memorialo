@@ -3639,6 +3639,46 @@ export default function App() {
     }
   };
 
+  const handleTransferServices = async (payload: {
+    sourceProviderId: string;
+    destinationProviderId: string;
+    serviceIds: string[];
+  }) => {
+    try {
+      if (isDemoMode) {
+        const destinationProvider = providers.find((provider) => provider.id === payload.destinationProviderId);
+        if (destinationProvider) {
+          const selectedServiceIds = new Set(payload.serviceIds.map((serviceId) => String(serviceId)));
+          setArtists((prev) => prev.map((artist) => (
+            selectedServiceIds.has(String(artist.id))
+              ? { ...artist, userId: destinationProvider.userId }
+              : artist
+          )));
+          setMarketplaceArtists((prev) => prev.map((artist) => (
+            selectedServiceIds.has(String(artist.id))
+              ? { ...artist, userId: destinationProvider.userId }
+              : artist
+          )));
+        }
+        toast.success('Servicios transferidos exitosamente');
+        return;
+      }
+
+      await supabase.transferServices(payload);
+      const servicesData = await supabase.getServices({ view: 'summary' });
+      if (servicesData) {
+        setArtists((prev) => mergeArtistsById(prev, servicesData));
+        setMarketplaceArtists((prev) => mergeArtistsById(prev, servicesData));
+      }
+
+      toast.success('Servicios transferidos exitosamente');
+    } catch (error) {
+      console.error('Error transferring services:', error);
+      toast.error('Error al transferir servicios');
+      throw error;
+    }
+  };
+
   const handleUpdateMarketplaceCities = async (enabledCities: string[]) => {
     try {
       const config = await supabase.updateMarketplaceConfig(enabledCities);
@@ -5037,6 +5077,7 @@ export default function App() {
               onDeleteUser={handleDeleteUser}
               onApproveProviderAccess={handleApproveProviderAccess}
               onRevokeProviderAccess={handleRevokeProviderAccess}
+              onTransferServices={handleTransferServices}
               allCities={allMarketplaceCities}
               enabledCities={enabledMarketplaceCities}
               onUpdateEnabledCities={handleUpdateMarketplaceCities}
