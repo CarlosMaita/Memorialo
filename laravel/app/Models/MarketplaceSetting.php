@@ -39,6 +39,7 @@ class MarketplaceSetting extends Model
         'secondary_cta_bg_image_url',
         'secondary_cta_button_color',
         'provider_event_reminder_hours',
+        'provider_auto_approval_enabled',
     ];
 
     protected function casts(): array
@@ -49,6 +50,7 @@ class MarketplaceSetting extends Model
             'relevant_services_section_enabled' => 'boolean',
             'relevant_service_ids' => 'array',
             'secondary_cta_enabled' => 'boolean',
+            'provider_auto_approval_enabled' => 'boolean',
         ];
     }
 }

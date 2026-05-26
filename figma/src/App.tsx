@@ -333,6 +333,7 @@ export default function App() {
   const [secondaryCtaBgGradient, setSecondaryCtaBgGradient] = useState('linear-gradient(135deg, #F7B267 0%, #F4A261 100%)');
   const [secondaryCtaBgImageUrl, setSecondaryCtaBgImageUrl] = useState('');
   const [secondaryCtaButtonColor, setSecondaryCtaButtonColor] = useState<'blue' | 'yellow'>('blue');
+  const [providerAutoApprovalEnabled, setProviderAutoApprovalEnabled] = useState(false);
   const [marketplaceConfigLoaded, setMarketplaceConfigLoaded] = useState(false);
   const [homeContentLoading, setHomeContentLoading] = useState(true);
 
@@ -979,6 +980,8 @@ export default function App() {
       if (isProvider && result.user?.providerRequestStatus === 'pending') {
         toast.success('Tu solicitud de proveedor fue enviada y está pendiente de aprobación.');
       }
+
+      return result;
     } catch (error) {
       throw error;
     }
@@ -1023,8 +1026,8 @@ export default function App() {
   };
 
   const handleProviderLandingSignUp = async (email: string, password: string, name: string) => {
-    await handleSignUp(email, password, name, '', true);
-    navigateTo('/');
+    const result = await handleSignUp(email, password, name, '', true);
+    navigateTo(result?.user?.isProvider ? '/mi-negocio' : '/');
   };
 
   const handleProviderCreate = async (provider: Provider) => {
@@ -1606,6 +1609,7 @@ export default function App() {
             : 'linear-gradient(135deg, #F7B267 0%, #F4A261 100%)');
           setSecondaryCtaBgImageUrl(typeof config?.secondaryCtaBgImageUrl === 'string' ? config.secondaryCtaBgImageUrl : '');
           setSecondaryCtaButtonColor(config?.secondaryCtaButtonColor === 'yellow' ? 'yellow' : 'blue');
+          setProviderAutoApprovalEnabled(typeof config?.providerAutoApprovalEnabled === 'boolean' ? config.providerAutoApprovalEnabled : false);
         }
       } catch {
         if (!cancelled) {
@@ -3726,6 +3730,22 @@ export default function App() {
     }
   };
 
+  const handleToggleProviderAutoApproval = async (enabled: boolean) => {
+    try {
+      await supabase.updateMarketplaceConfig(enabledMarketplaceCities, { providerAutoApprovalEnabled: enabled });
+      setProviderAutoApprovalEnabled(enabled);
+      toast.success(
+        enabled
+          ? 'Aprobación automática de proveedores habilitada'
+          : 'Aprobación automática de proveedores deshabilitada',
+      );
+    } catch (error) {
+      console.error('Error updating provider auto approval config:', error);
+      toast.error('No se pudo actualizar la aprobación automática de proveedores');
+      throw error;
+    }
+  };
+
   const handleUpdateRelevantServicesConfig = async (config: {
     enabled: boolean;
     title: string;
@@ -5091,6 +5111,8 @@ export default function App() {
               onUpdateEnabledCities={handleUpdateMarketplaceCities}
               bannersSectionEnabled={bannersSectionEnabled}
               onToggleBannersSection={handleToggleBannersSection}
+              providerAutoApprovalEnabled={providerAutoApprovalEnabled}
+              onToggleProviderAutoApproval={handleToggleProviderAutoApproval}
               relevantServicesSectionEnabled={relevantServicesSectionEnabled}
               relevantServicesTitle={relevantServicesTitle}
               relevantServicesSubtitle={relevantServicesSubtitle}
