@@ -433,6 +433,7 @@ class AdminController extends Controller
             'secondaryCtaBgImageUrl' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'secondaryCtaButtonColor' => ['sometimes', 'nullable', 'string', 'in:blue,yellow'],
             'providerEventReminderHours' => ['sometimes', 'integer', 'min:1', 'max:720'],
+            'providerAutoApprovalEnabled' => ['sometimes', 'boolean'],
         ]);
 
         $allCities = $this->marketplaceCityCatalog();
@@ -461,6 +462,7 @@ class AdminController extends Controller
             'main_content_secondary_button_text' => 'Cómo funciona',
             'main_content_secondary_button_link' => '/como-funciona',
             'provider_event_reminder_hours' => 48,
+            'provider_auto_approval_enabled' => false,
         ]);
 
         $settings->enabled_cities = $enabledCities;
@@ -580,6 +582,10 @@ class AdminController extends Controller
 
         if (array_key_exists('providerEventReminderHours', $validated)) {
             $settings->provider_event_reminder_hours = (int) $validated['providerEventReminderHours'];
+        }
+
+        if (array_key_exists('providerAutoApprovalEnabled', $validated)) {
+            $settings->provider_auto_approval_enabled = (bool) $validated['providerAutoApprovalEnabled'];
         }
 
         $settings->save();
@@ -702,6 +708,7 @@ class AdminController extends Controller
             'secondaryCtaBgImageUrl' => $settings?->secondary_cta_bg_image_url ?: null,
             'secondaryCtaButtonColor' => $settings?->secondary_cta_button_color ?: 'blue',
             'providerEventReminderHours' => (int) ($settings?->provider_event_reminder_hours ?: 48),
+            'providerAutoApprovalEnabled' => (bool) $settings?->provider_auto_approval_enabled,
         ];
     }
 

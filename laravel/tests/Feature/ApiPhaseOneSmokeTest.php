@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\BillingInvoice;
 use App\Models\Booking;
 use App\Models\Contract;
+use App\Models\MarketplaceSetting;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -101,6 +102,35 @@ class ApiPhaseOneSmokeTest extends TestCase
             ->postJson('/api/auth/logout')
             ->assertOk()
             ->assertJsonPath('message', 'Sesion cerrada correctamente.');
+    }
+
+    public function test_auth_register_auto_approves_provider_when_enabled_in_marketplace_config(): void
+    {
+        MarketplaceSetting::query()->create([
+            'enabled_cities' => ['Caracas'],
+            'provider_auto_approval_enabled' => true,
+        ]);
+
+        $register = $this->postJson('/api/auth/register', [
+            'name' => 'Proveedor Auto',
+            'email' => 'proveedor-auto@example.com',
+            'password' => 'secret123',
+            'isProvider' => true,
+        ]);
+
+        $register
+            ->assertCreated()
+            ->assertJsonPath('user.email', 'proveedor-auto@example.com')
+            ->assertJsonPath('user.isProvider', true)
+            ->assertJsonPath('user.role', 'provider')
+            ->assertJsonPath('user.providerRequestStatus', 'approved');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'proveedor-auto@example.com',
+            'is_provider' => true,
+            'role' => 'provider',
+            'provider_request_status' => 'approved',
+        ]);
     }
 
     public function test_provider_scope_includes_legacy_bookings_linked_by_service_owner(): void

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MarketplaceSetting;
 use App\Models\User;
 use App\Services\NotificationDispatchService;
 use App\Support\NotificationTypes;
@@ -32,16 +33,24 @@ class AuthController extends Controller
         ]);
 
         $isProvider = (bool) ($validated['isProvider'] ?? $validated['is_provider'] ?? false);
+        $autoApproveProvider = false;
+
+        if ($isProvider) {
+            $settings = MarketplaceSetting::query()->first();
+            $autoApproveProvider = (bool) $settings?->provider_auto_approval_enabled;
+        }
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'phone' => $validated['phone'] ?? null,
-            'is_provider' => false,
-            'provider_request_status' => $isProvider ? 'pending' : 'none',
+            'is_provider' => $autoApproveProvider,
+            'provider_request_status' => $isProvider ? ($autoApproveProvider ? 'approved' : 'pending') : 'none',
             'provider_requested_at' => $isProvider ? now() : null,
-            'role' => 'user',
+            'provider_approved_at' => $autoApproveProvider ? now() : null,
+            'provider_approved_by' => null,
+            'role' => $autoApproveProvider ? 'provider' : 'user',
         ]);
 
         $this->notifications->dispatchToUser($user, NotificationTypes::WELCOME, [

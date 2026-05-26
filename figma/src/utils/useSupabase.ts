@@ -740,6 +740,7 @@ export function useSupabase() {
         secondaryCtaBgGradient: typeof data?.secondaryCtaBgGradient === 'string' ? data.secondaryCtaBgGradient : 'linear-gradient(135deg, #F7B267 0%, #F4A261 100%)',
         secondaryCtaBgImageUrl: typeof data?.secondaryCtaBgImageUrl === 'string' ? data.secondaryCtaBgImageUrl : '',
         secondaryCtaButtonColor: data?.secondaryCtaButtonColor === 'yellow' ? 'yellow' : 'blue',
+        providerAutoApprovalEnabled: typeof data?.providerAutoApprovalEnabled === 'boolean' ? data.providerAutoApprovalEnabled : false,
       };
     } catch (error) {
       console.error('Get marketplace config error:', error);
@@ -894,6 +895,7 @@ export function useSupabase() {
       secondaryCtaBgGradient?: string;
       secondaryCtaBgImageUrl?: string;
       secondaryCtaButtonColor?: string;
+      providerAutoApprovalEnabled?: boolean;
     },
   ) => {
     try {
@@ -978,6 +980,9 @@ export function useSupabase() {
       }
       if (typeof options?.secondaryCtaButtonColor === 'string') {
         payload.secondaryCtaButtonColor = options.secondaryCtaButtonColor;
+      }
+      if (typeof options?.providerAutoApprovalEnabled === 'boolean') {
+        payload.providerAutoApprovalEnabled = options.providerAutoApprovalEnabled;
       }
       return await apiRequest('/admin/marketplace-config', 'PATCH', payload, accessToken || undefined);
     } catch (error) {

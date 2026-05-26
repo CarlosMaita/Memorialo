@@ -74,6 +74,8 @@ interface AdminDashboardProps {
   onUpdateEnabledCities: (cities: string[]) => Promise<void>;
   bannersSectionEnabled: boolean;
   onToggleBannersSection: (enabled: boolean) => Promise<void>;
+  providerAutoApprovalEnabled: boolean;
+  onToggleProviderAutoApproval: (enabled: boolean) => Promise<void>;
   relevantServicesSectionEnabled: boolean;
   relevantServicesTitle: string;
   relevantServicesSubtitle: string;
@@ -203,6 +205,8 @@ export function AdminDashboard({
   onUpdateEnabledCities,
   bannersSectionEnabled,
   onToggleBannersSection,
+  providerAutoApprovalEnabled,
+  onToggleProviderAutoApproval,
   relevantServicesSectionEnabled,
   relevantServicesTitle,
   relevantServicesSubtitle,
@@ -1717,6 +1721,34 @@ export function AdminDashboard({
                 <h2 className="text-2xl font-bold text-[#1B2A47] mb-1">Proveedores</h2>
                 <p className="text-gray-500 text-sm">Verifica y modera los proveedores del marketplace</p>
               </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Aprobación automática de proveedores</CardTitle>
+                  <CardDescription>
+                    Controla únicamente el formulario público de <code>/registro-proveedores</code>. El modal normal de registro/login sigue creando cuentas de cliente.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-[#1B2A47]">Activar aprobación automática</p>
+                      <p className="text-xs text-gray-500">
+                        Si está activo, las cuentas registradas desde ese formulario se aprueban como proveedor y pueden continuar a Mi Negocio.
+                      </p>
+                    </div>
+                    <Switch
+                      id="provider-auto-approval-toggle"
+                      checked={providerAutoApprovalEnabled}
+                      onCheckedChange={(checked) => {
+                        onToggleProviderAutoApproval(checked).catch(() => {
+                          // handled by parent toast
+                        });
+                      }}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
 
           <Card>
             <CardHeader>
