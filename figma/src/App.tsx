@@ -4390,14 +4390,7 @@ export default function App() {
     return (
       <ForProvidersPage
         onClose={() => navigateTo('/')}
-        onGetStarted={() => {
-          if (!currentUser) {
-            navigateTo('/registro-proveedores');
-          } else if (!currentUser.isProvider) {
-            navigateTo('/');
-            toast.info('Completa tu perfil de proveedor para comenzar');
-          }
-        }}
+        onGetStarted={() => navigateTo('/registro-proveedores')}
       />
     );
   }
@@ -5921,11 +5914,7 @@ export default function App() {
           onClose={() => setShowForProviders(false)}
           onGetStarted={() => {
             setShowForProviders(false);
-            if (!currentUser) {
-              navigateTo('/registro-proveedores');
-            } else if (!currentUser.isProvider) {
-              toast.info('Completa tu perfil de proveedor para comenzar');
-            }
+            navigateTo('/registro-proveedores');
           }}
         />
       )}
