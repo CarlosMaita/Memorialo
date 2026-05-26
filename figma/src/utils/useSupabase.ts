@@ -1292,6 +1292,19 @@ export function useSupabase() {
     }
   };
 
+  const transferServices = async (payload: {
+    sourceProviderId: string;
+    destinationProviderId: string;
+    serviceIds: string[];
+  }) => {
+    try {
+      return await apiRequest('/admin/services/transfer', 'POST', payload, accessToken || undefined);
+    } catch (error) {
+      console.error('Transfer services error:', error);
+      throw error;
+    }
+  };
+
   const getAllUsers = async () => {
     try {
       const data = await apiRequest('/admin/users', 'GET', undefined, accessToken || undefined);
@@ -1729,6 +1742,7 @@ export function useSupabase() {
     requestProviderAccess,
     approveProviderAccess,
     revokeProviderAccess,
+    transferServices,
     getAllUsers,
     getNotifications,
     getUnreadNotificationsCount,

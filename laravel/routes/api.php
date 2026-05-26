@@ -95,6 +95,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/admin/users/{id}/unarchive', [AdminController::class, 'unarchiveUser']);
     Route::post('/admin/users/{id}/provider-access/approve', [AdminController::class, 'approveProviderAccess']);
     Route::post('/admin/users/{id}/provider-access/revoke', [AdminController::class, 'revokeProviderAccess']);
+    Route::post('/admin/services/transfer', [AdminController::class, 'transferServices']);
     Route::delete('/admin/users/{id}', [AdminController::class, 'deleteUser']);
 
     Route::get('/admin/banners', [BannerController::class, 'index']);

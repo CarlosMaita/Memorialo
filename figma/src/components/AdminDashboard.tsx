@@ -68,6 +68,7 @@ interface AdminDashboardProps {
   onDeleteUser: (userId: string) => Promise<void>;
   onApproveProviderAccess: (userId: string) => Promise<void>;
   onRevokeProviderAccess: (userId: string) => Promise<void>;
+  onTransferServices: (payload: { sourceProviderId: string; destinationProviderId: string; serviceIds: string[] }) => Promise<void>;
   allCities: string[];
   enabledCities: string[];
   onUpdateEnabledCities: (cities: string[]) => Promise<void>;
@@ -148,7 +149,7 @@ interface AdminDashboardProps {
   }) => Promise<void>;
 }
 
-type AdminSection = 'overview' | 'billing' | 'banners' | 'main-content' | 'relevant-services' | 'collections' | 'search-terms' | 'providers' | 'interested' | 'users' | 'services';
+type AdminSection = 'overview' | 'billing' | 'banners' | 'main-content' | 'relevant-services' | 'collections' | 'search-terms' | 'providers' | 'interested' | 'users' | 'services' | 'service-transfers';
 
 type SearchTermAdminItem = {
   id: string;
@@ -174,6 +175,7 @@ const adminNavItems = [
   { id: 'interested' as const, label: 'Interesados', icon: <FileText className="w-5 h-5" /> },
   { id: 'users' as const, label: 'Usuarios', icon: <Users className="w-5 h-5" /> },
   { id: 'services' as const, label: 'Servicios', icon: <BookOpen className="w-5 h-5" /> },
+  { id: 'service-transfers' as const, label: 'Transferencias de servicio', icon: <Briefcase className="w-5 h-5" /> },
 ];
 
 export function AdminDashboard({
@@ -195,6 +197,7 @@ export function AdminDashboard({
   onDeleteUser,
   onApproveProviderAccess,
   onRevokeProviderAccess,
+  onTransferServices,
   allCities,
   enabledCities,
   onUpdateEnabledCities,
@@ -244,6 +247,11 @@ export function AdminDashboard({
   const [userAccessFilter, setUserAccessFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'none'>('all');
   const [userTypeFilter, setUserTypeFilter] = useState<'all' | 'admin' | 'provider' | 'client'>('all');
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
+  const [transferServiceSearchQuery, setTransferServiceSearchQuery] = useState('');
+  const [sourceProviderId, setSourceProviderId] = useState('');
+  const [destinationProviderId, setDestinationProviderId] = useState('');
+  const [selectedTransferServiceIds, setSelectedTransferServiceIds] = useState<string[]>([]);
+  const [transferringServices, setTransferringServices] = useState(false);
   const [relevantServiceSearchQuery, setRelevantServiceSearchQuery] = useState('');
   const [selectedEnabledCities, setSelectedEnabledCities] = useState<string[]>(enabledCities);
   const [savingEnabledCities, setSavingEnabledCities] = useState(false);
@@ -771,6 +779,42 @@ export function AdminDashboard({
     });
   }, [artists, providers, serviceSearchQuery]);
 
+  const providerOptions = useMemo(
+    () => providers.slice().sort((left, right) => left.businessName.localeCompare(right.businessName, 'es')),
+    [providers]
+  );
+
+  const filteredTransferServices = useMemo(() => {
+    if (!sourceProviderId) {
+      return [];
+    }
+
+    const query = transferServiceSearchQuery.trim().toLowerCase();
+
+    return artists.filter((service) => {
+      const serviceProvider = providers.find((provider) => provider.userId === service.userId);
+      if (!serviceProvider || serviceProvider.id !== sourceProviderId) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      return (
+        service.name.toLowerCase().includes(query) ||
+        (service.category || '').toLowerCase().includes(query) ||
+        (service.subcategory || '').toLowerCase().includes(query) ||
+        (service.location || '').toLowerCase().includes(query)
+      );
+    });
+  }, [artists, providers, sourceProviderId, transferServiceSearchQuery]);
+
+  const filteredTransferServiceIds = useMemo(
+    () => filteredTransferServices.map((service) => String(service.id)),
+    [filteredTransferServices]
+  );
+
   const filteredRelevantServices = useMemo(() => {
     const query = relevantServiceSearchQuery.trim().toLowerCase();
     if (!query) {
@@ -971,6 +1015,11 @@ export function AdminDashboard({
     setVisibleServicesCount(ADMIN_TABLE_BATCH_SIZE);
   }, [serviceSearchQuery, filteredServices.length]);
 
+  useEffect(() => {
+    setSelectedTransferServiceIds([]);
+    setTransferServiceSearchQuery('');
+  }, [sourceProviderId]);
+
   const handleVerifyProvider = async (providerId: string) => {
     try {
       await onVerifyProvider(providerId);
@@ -1043,6 +1092,44 @@ export function AdminDashboard({
       await onUpdateEnabledCities(selectedEnabledCities);
     } finally {
       setSavingEnabledCities(false);
+    }
+  };
+
+  const toggleTransferService = (serviceId: string) => {
+    setSelectedTransferServiceIds((previous) => (
+      previous.includes(serviceId)
+        ? previous.filter((id) => id !== serviceId)
+        : [...previous, serviceId]
+    ));
+  };
+
+  const handleTransferServices = async () => {
+    if (!sourceProviderId || !destinationProviderId) {
+      toast.error('Selecciona proveedor origen y destino');
+      return;
+    }
+
+    if (sourceProviderId === destinationProviderId) {
+      toast.error('El proveedor origen y destino deben ser diferentes');
+      return;
+    }
+
+    if (selectedTransferServiceIds.length === 0) {
+      toast.error('Selecciona al menos una publicación para transferir');
+      return;
+    }
+
+    try {
+      setTransferringServices(true);
+      await onTransferServices({
+        sourceProviderId,
+        destinationProviderId,
+        serviceIds: selectedTransferServiceIds,
+      });
+      setSelectedTransferServiceIds([]);
+      setTransferServiceSearchQuery('');
+    } finally {
+      setTransferringServices(false);
     }
   };
 
@@ -3229,6 +3316,155 @@ export function AdminDashboard({
               )}
             </CardContent>
           </Card>
+            </div>
+          )}
+
+          {activeSection === 'service-transfers' && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[#1B2A47] mb-1">Transferencias de servicio</h2>
+                <p className="text-gray-500 text-sm">Transfiere publicaciones de un proveedor origen a un proveedor destino.</p>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Transferir publicaciones</CardTitle>
+                  <CardDescription>
+                    Selecciona proveedor origen, publicaciones y proveedor destino para aprobar la transferencia.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Proveedor origen</Label>
+                      <Select value={sourceProviderId} onValueChange={setSourceProviderId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar proveedor origen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {providerOptions.map((provider) => (
+                            <SelectItem key={provider.id} value={provider.id}>
+                              {provider.businessName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Proveedor destino</Label>
+                      <Select value={destinationProviderId} onValueChange={setDestinationProviderId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar proveedor destino" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {providerOptions.map((provider) => (
+                            <SelectItem key={provider.id} value={provider.id} disabled={provider.id === sourceProviderId}>
+                              {provider.businessName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Buscar publicaciones del proveedor origen..."
+                      value={transferServiceSearchQuery}
+                      onChange={(event) => setTransferServiceSearchQuery(event.target.value)}
+                      className="pl-10"
+                      disabled={!sourceProviderId}
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-gray-600">
+                      Seleccionadas: {selectedTransferServiceIds.length} de {filteredTransferServices.length}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={filteredTransferServiceIds.length === 0}
+                        onClick={() => setSelectedTransferServiceIds(filteredTransferServiceIds)}
+                      >
+                        Seleccionar visibles
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={selectedTransferServiceIds.length === 0}
+                        onClick={() => setSelectedTransferServiceIds([])}
+                      >
+                        Limpiar selección
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-12"></TableHead>
+                          <TableHead>Publicación</TableHead>
+                          <TableHead>Categoría</TableHead>
+                          <TableHead>Ciudad</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {!sourceProviderId ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                              Selecciona primero un proveedor origen.
+                            </TableCell>
+                          </TableRow>
+                        ) : filteredTransferServices.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                              No hay publicaciones para transferir con los filtros actuales.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredTransferServices.map((service) => {
+                            const serviceId = String(service.id);
+                            const checked = selectedTransferServiceIds.includes(serviceId);
+                            return (
+                              <TableRow key={serviceId}>
+                                <TableCell>
+                                  <Checkbox
+                                    checked={checked}
+                                    onCheckedChange={() => toggleTransferService(serviceId)}
+                                    aria-label={`Seleccionar ${service.name}`}
+                                  />
+                                </TableCell>
+                                <TableCell className="font-medium text-[#1B2A47]">{service.name}</TableCell>
+                                <TableCell>{service.category || service.subcategory || 'Sin categoría'}</TableCell>
+                                <TableCell>{service.location || 'Sin ciudad'}</TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button onClick={handleTransferServices} disabled={transferringServices}>
+                      {transferringServices ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Transfiriendo...
+                        </>
+                      ) : (
+                        'Aprobar transferencia'
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
