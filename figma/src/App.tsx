@@ -4365,7 +4365,7 @@ export default function App() {
     return (
       <ForProvidersPage
         onClose={() => navigateTo('/')}
-        onGetStarted={() => {}}
+        onGetStarted={() => navigateTo('/registro-proveedores')}
         showRegistrationForm
         onProviderSignUp={handleProviderLandingSignUp}
       />

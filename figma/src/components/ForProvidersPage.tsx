@@ -38,6 +38,7 @@ export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm =
     e.preventDefault();
 
     if (!onProviderSignUp) {
+      toast.error('No se pudo procesar el registro en este momento');
       return;
     }
 
@@ -60,8 +61,9 @@ export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm =
         password: '',
         confirmPassword: '',
       });
-    } catch (error: any) {
-      toast.error(error?.message || 'Error al crear la cuenta');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error al crear la cuenta';
+      toast.error(errorMessage);
     } finally {
       setRegistering(false);
     }
