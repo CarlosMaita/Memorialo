@@ -4059,7 +4059,7 @@ export default function App() {
 
   const marketplaceKeywords = marketplaceRouteContext
     ? [
-        marketplaceRouteContext.taxonomy?.label,
+        marketplaceRouteContext.query || marketplaceRouteContext.taxonomy?.label,
         marketplaceRouteContext.city,
         'proveedores de eventos',
         'eventos en Venezuela'
@@ -4072,10 +4072,16 @@ export default function App() {
       : matchedMainCategory
         ? matchedMainCategory.title
         : marketplaceRouteContext.taxonomy && marketplaceRouteContext.city
-      ? `${marketplaceRouteContext.taxonomy.label} en ${marketplaceRouteContext.city}`
-      : marketplaceRouteContext.city
-        ? `Proveedores en ${marketplaceRouteContext.city}`
-        : `Proveedores de ${marketplaceRouteContext.taxonomy?.label}`
+          ? `${marketplaceRouteContext.taxonomy.label} en ${marketplaceRouteContext.city}`
+          : marketplaceRouteContext.taxonomy
+            ? capitalizeFirst(marketplaceRouteContext.taxonomy.label)
+            : marketplaceRouteContext.query && marketplaceRouteContext.city
+              ? `Servicios de ${capitalizeFirst(marketplaceRouteContext.query)} en ${marketplaceRouteContext.city}`
+              : marketplaceRouteContext.query
+                ? `Servicios de ${capitalizeFirst(marketplaceRouteContext.query)}`
+                : marketplaceRouteContext.city
+                  ? `Proveedores en ${marketplaceRouteContext.city}`
+                  : 'Todos los Servicios'
     : (isFavoritesRoute ? 'Tus Favoritos' : 'Tu Evento Inolvidable Empieza Aquí');
   const seoSecondaryCategory = marketplaceRouteContext?.taxonomy?.filterBy === 'subcategory'
     ? capitalizeFirst(marketplaceRouteContext.taxonomy.label)
@@ -4094,7 +4100,9 @@ export default function App() {
       || matchedMainCategory?.metaDescription
       || (marketplaceRouteContext.taxonomy
         ? `Explora ${marketplaceRouteContext.taxonomy.label} en Memorialo. Compara proveedores, precios y disponibilidad para tu próximo evento en Venezuela.`
-        : HOME_SEO_DESCRIPTION)
+        : marketplaceRouteContext.query
+          ? `Encuentra proveedores de ${capitalizeFirst(marketplaceRouteContext.query)} en Venezuela. Compara precios y disponibilidad en Memorialo.`
+          : HOME_SEO_DESCRIPTION)
     : (isVenezuelaCatalogRoute ? VENEZUELA_CATALOG_SEO_DESCRIPTION : undefined);
 
   const visibleArtists = useMemo(() => {
@@ -4435,7 +4443,7 @@ export default function App() {
                 </svg>
               </div>
               <div className="hidden md:block text-left">
-                <h1 className="text-sm font-bold text-white" style={{ fontFamily: 'system-ui, -apple-system, sans-serif', letterSpacing: '0.02em' }}>Memorialo</h1>
+                <span className="text-sm font-bold text-white" style={{ fontFamily: 'system-ui, -apple-system, sans-serif', letterSpacing: '0.02em' }}>Memorialo</span>
                 <p className="text-xs" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>El inicio de lo inolvidable</p>
               </div>
             </button>
@@ -5549,9 +5557,9 @@ export default function App() {
                 {/* Search & Filters */}
                 <div className="mb-5 md:mb-8">
                   <div className="mb-4 text-center hidden md:block">
-                    <h2 className="mb-2 font-[Carattere] text-[24px]">
+                    <h1 className="mb-2 font-[Carattere] text-[24px]">
                       {marketplaceHeading}
-                    </h2>
+                    </h1>
                   </div>
 
                   <AirbnbSearchBar
