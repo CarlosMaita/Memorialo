@@ -24,16 +24,6 @@ export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm =
   });
   const [registering, setRegistering] = useState(false);
 
-  const scrollToRegistration = () => {
-    const formSection = document.getElementById('provider-registration-form');
-    if (formSection) {
-      formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
-
-    onGetStarted();
-  };
-
   const handleProviderRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -148,19 +138,21 @@ export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm =
               Gestiona tus reservas, construye tu reputación y aumenta tus ingresos.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg"
-                style={{ 
-                  backgroundColor: 'var(--gold)',
-                  color: 'var(--navy-blue)'
-                }}
-                onClick={showRegistrationForm ? scrollToRegistration : onGetStarted}
-              >
-                {showRegistrationForm ? 'Registrarme como Proveedor' : 'Solicitar ser Proveedor'}
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </div>
+            {!showRegistrationForm && (
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  size="lg"
+                  style={{ 
+                    backgroundColor: 'var(--gold)',
+                    color: 'var(--navy-blue)'
+                  }}
+                  onClick={onGetStarted}
+                >
+                  Solicitar ser Proveedor
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -558,30 +550,117 @@ export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm =
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20" style={{ backgroundColor: 'var(--navy-blue)' }}>
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-white mb-6">
-              ¿Listo para hacer crecer tu negocio?
-            </h2>
-            <p className="text-xl text-white/80 mb-8">
-              Regístrate, envía tu solicitud desde <strong className="text-white">Mi Perfil</strong> y nuestro equipo estará en contacto contigo para conocer tu negocio.
-            </p>
-            <Button 
-              size="lg"
-              style={{ 
-                backgroundColor: 'var(--gold)',
-                color: 'var(--navy-blue)'
-              }}
-              onClick={showRegistrationForm ? scrollToRegistration : onGetStarted}
-            >
-              {showRegistrationForm ? 'Completar Registro' : 'Solicitar ser Proveedor'}
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
+      {showRegistrationForm && onProviderSignUp ? (
+        <section className="py-16" style={{ backgroundColor: 'var(--navy-blue)' }}>
+          <div className="container mx-auto px-4">
+            <div className="max-w-xl mx-auto">
+              <h2 className="text-white text-center mb-2">¿Listo para hacer crecer tu negocio?</h2>
+              <p className="text-center text-white/80 mb-6">
+                Crea tu cuenta y enviaremos tu solicitud de proveedor automáticamente.
+              </p>
+              <div className="rounded-xl border bg-white shadow-sm p-6 md:p-8">
+                <form onSubmit={handleProviderRegister} className="space-y-4">
+                  <div>
+                    <Label htmlFor="provider-register-name-bottom" className="mb-1 block">Nombre Completo</Label>
+                    <div className="relative">
+                      <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        id="provider-register-name-bottom"
+                        required
+                        value={registerForm.name}
+                        onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
+                        placeholder="Juan Pérez"
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="provider-register-email-bottom" className="mb-1 block">Correo Electrónico</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        id="provider-register-email-bottom"
+                        type="email"
+                        required
+                        value={registerForm.email}
+                        onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+                        placeholder="tu@email.com"
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="provider-register-password-bottom" className="mb-1 block">Contraseña</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        id="provider-register-password-bottom"
+                        type="password"
+                        required
+                        value={registerForm.password}
+                        onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
+                        placeholder="••••••••"
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="provider-register-confirm-password-bottom" className="mb-1 block">Confirmar Contraseña</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        id="provider-register-confirm-password-bottom"
+                        type="password"
+                        required
+                        value={registerForm.confirmPassword}
+                        onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
+                        placeholder="••••••••"
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={registering}
+                    style={{ backgroundColor: 'var(--gold)', color: 'var(--navy-blue)' }}
+                  >
+                    {registering ? 'Creando cuenta...' : 'Crear cuenta y solicitar perfil proveedor'}
+                  </Button>
+                </form>
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <section className="py-20" style={{ backgroundColor: 'var(--navy-blue)' }}>
+          <div className="container mx-auto px-4">
+            <div className="max-w-3xl mx-auto text-center">
+              <h2 className="text-white mb-6">
+                ¿Listo para hacer crecer tu negocio?
+              </h2>
+              <p className="text-xl text-white/80 mb-8">
+                Regístrate, envía tu solicitud desde <strong className="text-white">Mi Perfil</strong> y nuestro equipo estará en contacto contigo para conocer tu negocio.
+              </p>
+              <Button 
+                size="lg"
+                style={{ 
+                  backgroundColor: 'var(--gold)',
+                  color: 'var(--navy-blue)'
+                }}
+                onClick={onGetStarted}
+              >
+                Solicitar ser Proveedor
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
