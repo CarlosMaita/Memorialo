@@ -136,18 +136,32 @@ export function ServiceDetailPage({
       .slice(0, 2);
   };
 
+  const minPrice = artist.servicePlans?.length
+    ? Math.min(...artist.servicePlans.map((p) => p.price))
+    : artist.pricePerHour;
+
   const handleShare = async () => {
+    const shareTitle = `${artist.name} - ${artist.subcategory || artist.category} en ${artist.location}`;
+    const shareText = artist.bio?.slice(0, 120) || `Contrata a ${artist.name}, servicio profesional de ${artist.subcategory || artist.category} en ${artist.location}. Desde $${minPrice}.`;
+    const shareUrl = window.location.href;
+
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: shareTitle, text: shareText, url: shareUrl });
+        return;
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return; // User cancelled, no feedback needed
+        // Fall through to clipboard fallback
+      }
+    }
+
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(shareUrl);
       toast.success('Enlace copiado al portapapeles');
     } catch {
       toast.error('No se pudo copiar el enlace');
     }
   };
-
-  const minPrice = artist.servicePlans?.length
-    ? Math.min(...artist.servicePlans.map((p) => p.price))
-    : artist.pricePerHour;
 
   const ratingDistribution = [5, 4, 3, 2, 1].map((star) => ({
     star,
@@ -554,9 +568,9 @@ export function ServiceDetailPage({
               <Card className="p-6 shadow-lg border-gray-200">
                 <div className="hidden lg:block mb-5">
                   <div className="flex items-start gap-2 mb-1">
-                    <h1 className="text-2xl font-bold text-gray-900 leading-tight">
+                     <h2 className="text-2xl font-bold text-gray-900 leading-tight">
                       {artist.name}
-                    </h1>
+                    </h2>
                     {artist.verified && (
                       <div
                         className="p-1 rounded-full mt-1"

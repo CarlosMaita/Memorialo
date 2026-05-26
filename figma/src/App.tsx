@@ -5014,8 +5014,8 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className={mainContentClassName}>
+      {/* Main Content – hidden from DOM when service detail page is active to avoid duplicate heading structures */}
+      {!serviceArtist && <main className={mainContentClassName}>
         {viewMode === 'admin' ? (
           currentUser && currentUser.role === 'admin' ? (
             <AdminDashboard
@@ -5715,10 +5715,10 @@ export default function App() {
             )
           )
         )}
-      </main>
+      </main>}
 
-          {/* Footer */}
-          <div className={isNegotiationWorkspaceRoute ? 'hidden lg:block' : ''}>
+          {/* Footer – hidden from DOM when service detail page is active */}
+          {!serviceArtist && <div className={isNegotiationWorkspaceRoute ? 'hidden lg:block' : ''}>
           <Footer
             onAboutClick={() => navigateTo('/nosotros')}
             onHowItWorksClick={() => navigateTo('/como-funciona')}
@@ -5731,7 +5731,7 @@ export default function App() {
             onConductClick={() => navigateTo('/codigo-conducta')}
             onNavigate={navigateTo}
           />
-          </div>
+          </div>}
         </>
       )}
 
