@@ -71,7 +71,7 @@ export function ArtistCard({ artist, onViewProfile }: ArtistCardProps) {
       
       <CardContent className="px-3 pt-2 pb-3">
         <div className="min-h-0 md:min-h-[2.25rem] mb-0">
-          <h3 className="line-clamp-2 leading-snug text-[12px] font-normal">{artist.name}</h3>
+          <h2 className="line-clamp-2 leading-snug text-[12px] font-normal">{artist.name}</h2>
         </div>
         <p className="md:hidden mt-1 text-[14px] font-semibold">Planes desde ${cheapestPlanPrice}</p>
       </CardContent>
