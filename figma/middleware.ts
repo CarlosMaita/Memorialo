@@ -86,7 +86,7 @@ export default async function middleware(request: Request): Promise<Response | u
   } | null = null;
 
   try {
-    const apiUrl = `${apiBase}/services?public_code=${encodeURIComponent(memCode)}&per_page=1&view=summary`;
+    const apiUrl = `${apiBase}/services?public_code=${encodeURIComponent(memCode)}&per_page=1&view=detail`;
     const apiRes = await fetch(apiUrl, {
       headers: { Accept: 'application/json' },
       // Edge fetch – short timeout so we don't block the response for too long
@@ -117,8 +117,8 @@ export default async function middleware(request: Request): Promise<Response | u
   const category = serviceData.subcategory ?? serviceData.category ?? '';
   const location = serviceData.location ?? serviceData.city ?? '';
   const rawDesc =
-    serviceData.bio ??
-    serviceData.description ??
+    serviceData.bio ||
+    serviceData.description ||
     `Contrata a ${serviceName}, servicio profesional de ${category} en ${location}.`;
 
   const ogTitle = escapeAttr(
