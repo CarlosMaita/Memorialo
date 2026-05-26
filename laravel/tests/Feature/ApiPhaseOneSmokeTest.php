@@ -801,4 +801,68 @@ class ApiPhaseOneSmokeTest extends TestCase
                 'id' => (string) $serviceId,
             ]);
     }
+
+    public function test_two_services_from_same_user_get_unique_public_codes_and_filter_returns_correct_service(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'provider',
+            'is_provider' => true,
+            'provider_request_status' => 'approved',
+            'provider_approved_at' => now(),
+        ]);
+
+        Sanctum::actingAs($user);
+
+        $provider = $this->postJson('/api/providers', [
+            'businessName' => 'Producciones Test',
+            'category' => 'photography',
+            'description' => 'Servicios audiovisuales',
+            'representative' => [
+                'type' => 'person',
+                'name' => 'Fotógrafo Test',
+                'documentType' => 'CI',
+                'documentNumber' => 'V-99999999',
+            ],
+        ])->assertCreated();
+
+        $providerId = $provider->json('id');
+
+        $karaoke = $this->postJson('/api/services', [
+            'providerId' => $providerId,
+            'title' => 'Cabina de karaoke',
+            'description' => 'Karaoke para eventos',
+            'category' => 'entertainment',
+            'city' => 'Caracas',
+            'price' => 1000,
+        ])->assertCreated();
+
+        $photography = $this->postJson('/api/services', [
+            'providerId' => $providerId,
+            'title' => 'Fotografías para bodas',
+            'description' => 'Sesión fotográfica completa',
+            'category' => 'photography',
+            'city' => 'Caracas',
+            'price' => 2500,
+        ])->assertCreated();
+
+        $karaokeCode = $karaoke->json('publicCode');
+        $photoCode = $photography->json('publicCode');
+
+        // Each service must have a non-null unique publicCode
+        $this->assertNotNull($karaokeCode);
+        $this->assertNotNull($photoCode);
+        $this->assertNotEquals($karaokeCode, $photoCode);
+
+        // Filtering by karaoke's code must return only the karaoke service
+        $this->getJson('/api/services?public_code='.$karaokeCode.'&per_page=10')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $karaoke->json('id')])
+            ->assertJsonMissing(['id' => $photography->json('id')]);
+
+        // Filtering by photography's code must return only the photography service
+        $this->getJson('/api/services?public_code='.$photoCode.'&per_page=10')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $photography->json('id')])
+            ->assertJsonMissing(['id' => $karaoke->json('id')]);
+    }
 }

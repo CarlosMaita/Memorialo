@@ -31,6 +31,21 @@ function truncate(str: string, max: number): string {
   return str.length <= max ? str : str.slice(0, max - 1) + '…';
 }
 
+/**
+ * Slugify a string to match the frontend App.tsx `slugify` function so that
+ * the middleware can compare the service name against the URL path segment.
+ */
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
 // --------------------------------------------------------------------------
 // Pattern that matches a service-detail path
 // --------------------------------------------------------------------------
@@ -83,6 +98,7 @@ export default async function middleware(request: Request): Promise<Response | u
     location?: string;
     pricePerHour?: number;
     price?: number;
+    publicCode?: string;
   } | null = null;
 
   try {
@@ -108,6 +124,27 @@ export default async function middleware(request: Request): Promise<Response | u
 
   if (!serviceData) {
     return undefined; // Service not found – let default SPA handle the 404
+  }
+
+  // ------------------------------------------------------------------
+  // Validate that the fetched service actually corresponds to this URL.
+  // Multiple services from the same provider can share the same publicCode
+  // when codes were previously derived from the user ID rather than the
+  // service's own ID.  Guard against that by comparing the service's name
+  // slug with the title segment embedded in the URL path.
+  // e.g. /fotografia-y-video/MEM-0000001-fotografias-para-bodas
+  //       → expected title slug: "fotografias-para-bodas"
+  // ------------------------------------------------------------------
+  const urlParts = url.pathname.split('/').filter(Boolean);
+  const urlServiceSegment = urlParts[1] ?? '';
+  const urlTitleSlug = urlServiceSegment.replace(/^MEM-\d{7}-/i, '');
+  const serviceNameSlug = slugify(serviceData.name ?? '');
+
+  if (serviceNameSlug && urlTitleSlug && serviceNameSlug !== urlTitleSlug) {
+    // The service returned by the API does not match the URL – fall through
+    // so the SPA renders the page with default (site-level) OG tags rather
+    // than injecting metadata from the wrong service.
+    return undefined;
   }
 
   // ------------------------------------------------------------------

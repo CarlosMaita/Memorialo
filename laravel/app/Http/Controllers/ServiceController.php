@@ -149,8 +149,16 @@ class ServiceController extends Controller
 
         $metadata = is_array($validated['metadata'] ?? null) ? $validated['metadata'] : [];
 
-        if (! array_key_exists('publicCode', $metadata) || ! is_string($metadata['publicCode']) || trim((string) $metadata['publicCode']) === '') {
-            $metadata['publicCode'] = $this->buildPublicCode((string) $authUser->id);
+        // Determine whether the caller explicitly supplied a publicCode.
+        // If not, we will assign one after creation using the service's own auto-increment ID
+        // so that every service gets a unique code even when the same user owns multiple services.
+        $hasExplicitCode = array_key_exists('publicCode', $metadata)
+            && is_string($metadata['publicCode'])
+            && trim((string) $metadata['publicCode']) !== '';
+
+        if (! $hasExplicitCode) {
+            // Remove any empty/null publicCode key so it is not stored prematurely.
+            unset($metadata['publicCode']);
         }
 
         foreach (['responseTime', 'specialties', 'availability', 'servicePlans', 'allowCustomHourly', 'image', 'portfolio', 'whatsappNumber', 'email', 'customTerms', 'isArchived', 'requiresDeposit'] as $metadataKey) {
@@ -172,6 +180,15 @@ class ServiceController extends Controller
             'bookings_completed' => $validated['bookings_completed'] ?? 0,
             'metadata' => $metadata,
         ]);
+
+        // Assign a unique publicCode based on the service's own ID to guarantee uniqueness
+        // across all services regardless of how many services the same user creates.
+        if (! $hasExplicitCode) {
+            $freshMeta = is_array($service->metadata) ? $service->metadata : [];
+            $freshMeta['publicCode'] = 'MEM-'.str_pad((string) $service->id, 7, '0', STR_PAD_LEFT);
+            $service->update(['metadata' => $freshMeta]);
+            $service->refresh();
+        }
 
         return response()->json($this->formatService($service), 201);
     }
@@ -279,7 +296,7 @@ class ServiceController extends Controller
         }
 
         if (! array_key_exists('publicCode', $metadata) || ! is_string($metadata['publicCode']) || trim((string) $metadata['publicCode']) === '') {
-            $metadata['publicCode'] = $this->buildPublicCode((string) $service->user_id);
+            $metadata['publicCode'] = 'MEM-'.str_pad((string) $service->id, 7, '0', STR_PAD_LEFT);
         }
 
         foreach (['responseTime', 'specialties', 'availability', 'servicePlans', 'allowCustomHourly', 'image', 'portfolio', 'whatsappNumber', 'email', 'customTerms', 'isArchived', 'requiresDeposit'] as $metadataKey) {
@@ -581,7 +598,8 @@ class ServiceController extends Controller
         }
 
         if ($request->filled('public_code')) {
-            $query->where('metadata', 'like', '%"publicCode":"'.str_replace('"', '', (string) $request->query('public_code')).'"%');
+            $code = strtoupper(str_replace('"', '', trim((string) $request->query('public_code'))));
+            $query->where('metadata', 'like', '%"publicCode":"'.$code.'"%');
         }
 
         if ($request->filled('q')) {
