@@ -5396,6 +5396,7 @@ export default function App() {
                               <ArtistCard
                                 artist={artist}
                                 onViewProfile={handleViewProfile}
+                                titleHeadingLevel={3}
                               />
                             </div>
                           ))}
@@ -5505,6 +5506,7 @@ export default function App() {
                                 <ArtistCard
                                   artist={artist}
                                   onViewProfile={handleViewProfile}
+                                  titleHeadingLevel={3}
                                 />
                               </div>
                             ))}
