@@ -59,6 +59,8 @@ export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm =
     }
   };
 
+  const isFormVisible = showRegistrationForm && !!onProviderSignUp;
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: 'var(--cream-white)' }}>
       <SEOHead
@@ -97,7 +99,7 @@ export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm =
                 </svg>
               </div>
               <div>
-                <h1 className="text-white">Memorialo</h1>
+                <span className="text-white font-bold text-xl block">Memorialo</span>
                 <p className="text-xs text-white/80">Para Proveedores</p>
               </div>
             </div>
@@ -114,137 +116,136 @@ export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm =
       </div>
 
       {/* Hero Section */}
-      <section className="py-20" style={{ backgroundColor: 'var(--navy-blue)' }}>
+      <section className="py-16" style={{ backgroundColor: 'var(--navy-blue)' }}>
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <Badge 
-              className="mb-6 px-4 py-2 text-sm"
-              style={{ 
-                backgroundColor: 'rgba(212, 175, 55, 0.2)',
-                color: 'var(--gold)',
-                border: '1px solid var(--gold)'
-              }}
-            >
-              <Briefcase className="w-4 h-4 mr-2 inline" />
-              Plataforma para Profesionales
-            </Badge>
-            
-            <h1 className="text-white mb-6">
-              Digitaliza tu negocio y multiplica tus contratos de eventos.
-            </h1>
-            
-            <p className="text-xl text-white/80 mb-8 leading-relaxed">
-              Conecta con miles de clientes que buscan servicios como el tuyo. 
-              Gestiona tus reservas, construye tu reputación y aumenta tus ingresos.
-            </p>
+          <div className={isFormVisible ? 'max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center' : 'max-w-4xl mx-auto text-center'}>
+            {/* Text content */}
+            <div className={isFormVisible ? 'text-center lg:text-left' : ''}>
+              <Badge 
+                className="mb-6 px-4 py-2 text-sm"
+                style={{ 
+                  backgroundColor: 'rgba(212, 175, 55, 0.2)',
+                  color: 'var(--gold)',
+                  border: '1px solid var(--gold)'
+                }}
+              >
+                <Briefcase className="w-4 h-4 mr-2 inline" />
+                Plataforma para Profesionales
+              </Badge>
+              
+              <h1 className="text-white mb-6">
+                Digitaliza tu negocio y multiplica tus contratos de eventos.
+              </h1>
+              
+              <p className="text-xl text-white/80 mb-8 leading-relaxed">
+                Conecta con miles de clientes que buscan servicios como el tuyo. 
+                Gestiona tus reservas, construye tu reputación y aumenta tus ingresos.
+              </p>
 
-            {!showRegistrationForm && (
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button 
-                  size="lg"
-                  style={{ 
-                    backgroundColor: 'var(--gold)',
-                    color: 'var(--navy-blue)'
-                  }}
-                  onClick={onGetStarted}
-                >
-                  Solicitar ser Proveedor
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </Button>
+              {!isFormVisible && (
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button 
+                    size="lg"
+                    style={{ 
+                      backgroundColor: 'var(--gold)',
+                      color: 'var(--navy-blue)'
+                    }}
+                    onClick={onGetStarted}
+                  >
+                    Solicitar ser Proveedor
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {isFormVisible && (
+              <div id="provider-registration-form" className="rounded-xl border bg-white shadow-sm p-6 md:p-8">
+                <h2 className="mb-2 text-center" style={{ color: 'var(--navy-blue)' }}>
+                  Registro de Proveedores
+                </h2>
+                <p className="text-center text-gray-600 mb-6">
+                  Crea tu cuenta y enviaremos tu solicitud de proveedor automáticamente.
+                </p>
+
+                <form onSubmit={handleProviderRegister} className="space-y-4">
+                  <div>
+                    <Label htmlFor="provider-register-name" className="mb-1 block">Nombre Completo</Label>
+                    <div className="relative">
+                      <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        id="provider-register-name"
+                        required
+                        value={registerForm.name}
+                        onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
+                        placeholder="Juan Pérez"
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="provider-register-email" className="mb-1 block">Correo Electrónico</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        id="provider-register-email"
+                        type="email"
+                        required
+                        value={registerForm.email}
+                        onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+                        placeholder="tu@email.com"
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="provider-register-password" className="mb-1 block">Contraseña</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        id="provider-register-password"
+                        type="password"
+                        required
+                        value={registerForm.password}
+                        onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
+                        placeholder="••••••••"
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="provider-register-confirm-password" className="mb-1 block">Confirmar Contraseña</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        id="provider-register-confirm-password"
+                        type="password"
+                        required
+                        value={registerForm.confirmPassword}
+                        onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
+                        placeholder="••••••••"
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={registering}
+                    style={{ backgroundColor: 'var(--gold)', color: 'var(--navy-blue)' }}
+                  >
+                    {registering ? 'Creando cuenta...' : 'Crear cuenta y solicitar perfil proveedor'}
+                  </Button>
+                </form>
               </div>
             )}
           </div>
         </div>
       </section>
-
-      {showRegistrationForm && onProviderSignUp && (
-        <section id="provider-registration-form" className="py-16">
-          <div className="container mx-auto px-4">
-            <div className="max-w-xl mx-auto rounded-xl border bg-white shadow-sm p-6 md:p-8">
-              <h2 className="mb-2 text-center" style={{ color: 'var(--navy-blue)' }}>
-                Registro de Proveedores
-              </h2>
-              <p className="text-center text-gray-600 mb-6">
-                Crea tu cuenta y enviaremos tu solicitud de proveedor automáticamente.
-              </p>
-
-              <form onSubmit={handleProviderRegister} className="space-y-4">
-                <div>
-                  <Label htmlFor="provider-register-name" className="mb-1 block">Nombre Completo</Label>
-                  <div className="relative">
-                    <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      id="provider-register-name"
-                      required
-                      value={registerForm.name}
-                      onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
-                      placeholder="Juan Pérez"
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="provider-register-email" className="mb-1 block">Correo Electrónico</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      id="provider-register-email"
-                      type="email"
-                      required
-                      value={registerForm.email}
-                      onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-                      placeholder="tu@email.com"
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="provider-register-password" className="mb-1 block">Contraseña</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      id="provider-register-password"
-                      type="password"
-                      required
-                      value={registerForm.password}
-                      onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
-                      placeholder="••••••••"
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="provider-register-confirm-password" className="mb-1 block">Confirmar Contraseña</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <Input
-                      id="provider-register-confirm-password"
-                      type="password"
-                      required
-                      value={registerForm.confirmPassword}
-                      onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
-                      placeholder="••••••••"
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={registering}
-                  style={{ backgroundColor: 'var(--gold)', color: 'var(--navy-blue)' }}
-                >
-                  {registering ? 'Creando cuenta...' : 'Crear cuenta y solicitar perfil proveedor'}
-                </Button>
-              </form>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Benefits Section */}
       <section className="py-16">
