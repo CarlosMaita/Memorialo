@@ -14,7 +14,7 @@ interface SEOHeadProps {
 const SITE_NAME = 'Memorialo';
 const DEFAULT_DESCRIPTION =
   'Memorialo es el marketplace para conectar proveedores de eventos con clientes en Venezuela. Encuentra los mejores servicios para bodas, fiestas, eventos corporativos y celebraciones.';
-const DEFAULT_OG_IMAGE = 'https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&h=630&fit=crop';
+const DEFAULT_OG_IMAGE = 'https://memorialo.com/og-image.jpg';
 const forceNoindexByEnv = String((import.meta as any).env?.VITE_NOINDEXE ?? (import.meta as any).env?.VITE_NOINDEX ?? 'false').toLowerCase() === 'true';
 const escapedSiteName = SITE_NAME.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const siteNamePattern = new RegExp(`\\b${escapedSiteName}\\b`, 'i');
