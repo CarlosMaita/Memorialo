@@ -4082,7 +4082,7 @@ export default function App() {
                 : marketplaceRouteContext.city
                   ? `Proveedores en ${marketplaceRouteContext.city}`
                   : 'Todos los Servicios'
-    : (isFavoritesRoute ? 'Tus Favoritos' : 'Tu Evento Inolvidable Empieza Aquí');
+    : (isFavoritesRoute ? 'Tus Favoritos' : 'Servicios para eventos inovidables en venezuela');
   const seoSecondaryCategory = marketplaceRouteContext?.taxonomy?.filterBy === 'subcategory'
     ? capitalizeFirst(marketplaceRouteContext.taxonomy.label)
     : '';
