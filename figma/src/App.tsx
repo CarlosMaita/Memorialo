@@ -1022,6 +1022,11 @@ export default function App() {
     }
   };
 
+  const handleProviderLandingSignUp = async (email: string, password: string, name: string) => {
+    await handleSignUp(email, password, name, '', true);
+    navigateTo('/');
+  };
+
   const handleProviderCreate = async (provider: Provider) => {
     try {
       if (!currentUser) {
@@ -4386,13 +4391,23 @@ export default function App() {
       <ForProvidersPage
         onClose={() => navigateTo('/')}
         onGetStarted={() => {
-          navigateTo('/');
           if (!currentUser) {
-            setShowAuthDialog(true);
+            navigateTo('/registro-proveedores');
           } else if (!currentUser.isProvider) {
+            navigateTo('/');
             toast.info('Completa tu perfil de proveedor para comenzar');
           }
         }}
+      />
+    );
+  }
+  if (currentRoute === '/registro-proveedores') {
+    return (
+      <ForProvidersPage
+        onClose={() => navigateTo('/')}
+        onGetStarted={() => navigateTo('/registro-proveedores')}
+        showRegistrationForm
+        onProviderSignUp={handleProviderLandingSignUp}
       />
     );
   }
@@ -5907,7 +5922,7 @@ export default function App() {
           onGetStarted={() => {
             setShowForProviders(false);
             if (!currentUser) {
-              setShowAuthDialog(true);
+              navigateTo('/registro-proveedores');
             } else if (!currentUser.isProvider) {
               toast.info('Completa tu perfil de proveedor para comenzar');
             }
