@@ -2088,6 +2088,12 @@ export default function App() {
     () => parseMarketplaceRoute(currentRoute),
     [currentRoute, citySlugLookup, taxonomySlugLookup]
   );
+  const isUnfilteredVenezuelaCatalogPath = /^\/servicios\/venezuela\/?$/.test(currentRoute);
+  const isMarketplaceListingRoute =
+    currentRoute === '/' ||
+    currentRoute === '/favoritos' ||
+    Boolean(marketplaceRouteContext) ||
+    isUnfilteredVenezuelaCatalogPath;
 
   const collectionRouteSlug = useMemo(() => {
     const normalizedPath = (currentRoute.split('?')[0] || '/').replace(/\/+$/, '') || '/';
@@ -2144,7 +2150,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    const isListingRoute = currentRoute === '/' || currentRoute === '/favoritos' || Boolean(marketplaceRouteContext);
+    const isListingRoute = isMarketplaceListingRoute;
     const cameFromServiceDetail = isServiceDetailPath(previousRouteRef.current);
 
     if (!isListingRoute || viewMode !== 'client' || selectedArtist) {
@@ -2247,7 +2253,7 @@ export default function App() {
   }, [collectionRouteSlug]);
 
   useEffect(() => {
-    const isListingRoute = currentRoute === '/' || currentRoute === '/favoritos' || Boolean(marketplaceRouteContext);
+    const isListingRoute = isMarketplaceListingRoute;
 
     if (!isListingRoute || viewMode !== 'client' || selectedArtist || marketplacePage <= 0) {
       return;
@@ -2281,7 +2287,7 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    const isListingRoute = currentRoute === '/' || currentRoute === '/favoritos' || Boolean(marketplaceRouteContext);
+    const isListingRoute = isMarketplaceListingRoute;
 
     if (!isListingRoute || viewMode !== 'client' || selectedArtist || marketplacePage <= 0) {
       return;
@@ -2417,7 +2423,7 @@ export default function App() {
   }, [marketplaceRouteContext, viewMode]);
 
   useEffect(() => {
-    const isListingRoute = currentRoute === '/' || currentRoute === '/favoritos' || Boolean(marketplaceRouteContext);
+    const isListingRoute = isMarketplaceListingRoute;
 
     if (!isListingRoute || viewMode !== 'client' || selectedArtist) {
       return;
@@ -2451,7 +2457,7 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    const isListingRoute = currentRoute === '/' || currentRoute === '/favoritos' || Boolean(marketplaceRouteContext);
+    const isListingRoute = isMarketplaceListingRoute;
 
     if (!isListingRoute || viewMode !== 'client' || selectedArtist) {
       return;
@@ -4019,7 +4025,7 @@ export default function App() {
   const VENEZUELA_CATALOG_SEO_TITLE = 'Servicios para Eventos en Venezuela | Catálogo Memorialo';
   const VENEZUELA_CATALOG_SEO_DESCRIPTION = 'Explora y contrata de forma segura los mejores servicios para eventos en Venezuela. Locaciones, música, catering y más con contratos unificados en un solo lugar.';
   const isHomePageRoute = currentRoute === '/' && !isFavoritesRoute && !marketplaceRouteContext;
-  const isVenezuelaCatalogRoute = !marketplaceRouteContext && /^\/servicios\/venezuela\/?$/.test(currentRoute);
+  const isVenezuelaCatalogRoute = !marketplaceRouteContext && isUnfilteredVenezuelaCatalogPath;
   const matchedMainCategory = marketplaceRouteContext?.taxonomy?.filterBy === 'category'
     ? getMainCategoryConfig(marketplaceRouteContext.taxonomy.label)
     : null;
@@ -4181,7 +4187,7 @@ export default function App() {
     const isRemoteMarketplaceRoute = viewMode === 'client'
       && !selectedArtist
       && currentRoute !== '/favoritos'
-      && (currentRoute === '/' || Boolean(marketplaceRouteContext));
+      && (currentRoute === '/' || Boolean(marketplaceRouteContext) || isUnfilteredVenezuelaCatalogPath);
 
     if (!isRemoteMarketplaceRoute || marketplaceLoading || !marketplaceHasMore) {
       return;
