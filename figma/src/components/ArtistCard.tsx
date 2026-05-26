@@ -7,9 +7,10 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 interface ArtistCardProps {
   artist: Artist;
   onViewProfile: (artist: Artist, anchorElement?: HTMLElement | null) => void;
+  titleHeadingLevel?: 2 | 3;
 }
 
-export function ArtistCard({ artist, onViewProfile }: ArtistCardProps) {
+export function ArtistCard({ artist, onViewProfile, titleHeadingLevel = 2 }: ArtistCardProps) {
   const cheapestPlanPrice = artist.servicePlans?.length
     ? Math.min(...artist.servicePlans.map((plan) => plan.price))
     : artist.pricePerHour;
@@ -18,6 +19,7 @@ export function ArtistCard({ artist, onViewProfile }: ArtistCardProps) {
   const city = artist.location || (artist as any).city || 'Sin ciudad';
   const completedServices = (artist as any).bookingsCompleted || (artist as any).servicesCompleted || 0;
   const responseTime = artist.responseTime || 'No disponible';
+  const TitleTag = titleHeadingLevel === 3 ? 'h3' : 'h2';
   const handleOpenDetail = (event: MouseEvent<HTMLElement>) => {
     onViewProfile(artist, event.currentTarget as HTMLElement);
   };
@@ -71,7 +73,7 @@ export function ArtistCard({ artist, onViewProfile }: ArtistCardProps) {
       
       <CardContent className="px-3 pt-2 pb-3">
         <div className="min-h-0 md:min-h-[2.25rem] mb-0">
-          <h2 className="line-clamp-2 leading-snug text-[12px] font-normal">{artist.name}</h2>
+          <TitleTag className="line-clamp-2 leading-snug text-[12px] font-normal">{artist.name}</TitleTag>
         </div>
         <p className="md:hidden mt-1 text-[14px] font-semibold">Planes desde ${cheapestPlanPrice}</p>
       </CardContent>
