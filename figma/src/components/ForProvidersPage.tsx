@@ -1,15 +1,72 @@
-import { ArrowRight, CheckCircle, Users, Star, Briefcase, Calendar, BarChart3, HeartHandshake, Music, X, ClipboardCheck } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowRight, CheckCircle, Users, Star, Briefcase, Calendar, BarChart3, HeartHandshake, Music, X, ClipboardCheck, User as UserIcon, Mail, Lock } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { SEOHead } from './SEOHead';
+import { toast } from 'sonner@2.0.3';
 
 interface ForProvidersPageProps {
   onClose: () => void;
   onGetStarted: () => void;
+  showRegistrationForm?: boolean;
+  onProviderSignUp?: (email: string, password: string, name: string) => Promise<void>;
 }
 
-export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProps) {
+export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm = false, onProviderSignUp }: ForProvidersPageProps) {
+  const [registerForm, setRegisterForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [registering, setRegistering] = useState(false);
+
+  const scrollToRegistration = () => {
+    const formSection = document.getElementById('provider-registration-form');
+    if (formSection) {
+      formSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
+    onGetStarted();
+  };
+
+  const handleProviderRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!onProviderSignUp) {
+      return;
+    }
+
+    if (registerForm.password !== registerForm.confirmPassword) {
+      toast.error('Las contraseñas no coinciden');
+      return;
+    }
+
+    if (registerForm.password.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    setRegistering(true);
+    try {
+      await onProviderSignUp(registerForm.email, registerForm.password, registerForm.name);
+      setRegisterForm({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+      });
+    } catch (error: any) {
+      toast.error(error?.message || 'Error al crear la cuenta');
+    } finally {
+      setRegistering(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto" style={{ backgroundColor: 'var(--cream-white)' }}>
       <SEOHead
@@ -96,15 +153,104 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
                   backgroundColor: 'var(--gold)',
                   color: 'var(--navy-blue)'
                 }}
-                onClick={onGetStarted}
+                onClick={showRegistrationForm ? scrollToRegistration : onGetStarted}
               >
-                Solicitar ser Proveedor
+                {showRegistrationForm ? 'Registrarme como Proveedor' : 'Solicitar ser Proveedor'}
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             </div>
           </div>
         </div>
       </section>
+
+      {showRegistrationForm && onProviderSignUp && (
+        <section id="provider-registration-form" className="py-16">
+          <div className="container mx-auto px-4">
+            <div className="max-w-xl mx-auto rounded-xl border bg-white shadow-sm p-6 md:p-8">
+              <h2 className="mb-2 text-center" style={{ color: 'var(--navy-blue)' }}>
+                Registro de Proveedores
+              </h2>
+              <p className="text-center text-gray-600 mb-6">
+                Crea tu cuenta y enviaremos tu solicitud de proveedor automáticamente.
+              </p>
+
+              <form onSubmit={handleProviderRegister} className="space-y-4">
+                <div>
+                  <Label htmlFor="provider-register-name" className="mb-1 block">Nombre Completo</Label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="provider-register-name"
+                      required
+                      value={registerForm.name}
+                      onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
+                      placeholder="Juan Pérez"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="provider-register-email" className="mb-1 block">Correo Electrónico</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="provider-register-email"
+                      type="email"
+                      required
+                      value={registerForm.email}
+                      onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+                      placeholder="tu@email.com"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="provider-register-password" className="mb-1 block">Contraseña</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="provider-register-password"
+                      type="password"
+                      required
+                      value={registerForm.password}
+                      onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
+                      placeholder="••••••••"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="provider-register-confirm-password" className="mb-1 block">Confirmar Contraseña</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      id="provider-register-confirm-password"
+                      type="password"
+                      required
+                      value={registerForm.confirmPassword}
+                      onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
+                      placeholder="••••••••"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={registering}
+                  style={{ backgroundColor: 'var(--gold)', color: 'var(--navy-blue)' }}
+                >
+                  {registering ? 'Creando cuenta...' : 'Crear cuenta y solicitar perfil proveedor'}
+                </Button>
+              </form>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Benefits Section */}
       <section className="py-16">
@@ -328,7 +474,9 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
                 </div>
                 <h3 className="mb-3" style={{ color: 'var(--navy-blue)' }}>Solicita ser Proveedor</h3>
                 <p className="text-gray-600 text-sm">
-                  En <strong>Mi Perfil</strong>, envía tu solicitud para ser proveedor con la información de tu negocio.
+                  {showRegistrationForm
+                    ? 'Tu solicitud se enviará automáticamente al registrarte desde este formulario.'
+                    : <>En <strong>Mi Perfil</strong>, envía tu solicitud para ser proveedor con la información de tu negocio.</>}
                 </p>
               </div>
 
@@ -424,9 +572,9 @@ export function ForProvidersPage({ onClose, onGetStarted }: ForProvidersPageProp
                 backgroundColor: 'var(--gold)',
                 color: 'var(--navy-blue)'
               }}
-              onClick={onGetStarted}
+              onClick={showRegistrationForm ? scrollToRegistration : onGetStarted}
             >
-              Solicitar ser Proveedor
+              {showRegistrationForm ? 'Completar Registro' : 'Solicitar ser Proveedor'}
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </div>
