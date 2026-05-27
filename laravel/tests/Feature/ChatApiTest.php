@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Booking;
+use App\Models\Contract;
 use App\Models\User;
+use App\Support\NotificationTypes;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
@@ -21,6 +23,19 @@ class ChatApiTest extends TestCase
         $client = User::factory()->create(['role' => 'user']);
         $provider = User::factory()->create(['role' => 'provider', 'is_provider' => true]);
 
+        Contract::create([
+            'id' => 'contract-chat-001',
+            'booking_id' => 'booking-chat-001',
+            'artist_id' => 'service-chat-001',
+            'artist_user_id' => (string) $provider->id,
+            'artist_name' => 'Proveedor Demo',
+            'client_id' => (string) $client->id,
+            'client_name' => $client->name,
+            'client_email' => $client->email,
+            'status' => 'pending_client',
+            'terms' => ['price' => 5000],
+        ]);
+
         Booking::create([
             'id' => 'booking-chat-001',
             'user_id' => (string) $client->id,
@@ -29,6 +44,7 @@ class ChatApiTest extends TestCase
             'client_name' => 'Cliente Demo',
             'status' => 'confirmed',
             'date' => now()->addDay()->toDateString(),
+            'contract_id' => 'contract-chat-001',
         ]);
 
         Sanctum::actingAs($client);
@@ -50,6 +66,13 @@ class ChatApiTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('attachments.0.fileName', 'comprobante.png');
 
+        $providerNotification = $provider->notifications()
+            ->where('type', NotificationTypes::CHAT_MESSAGE_RECEIVED)
+            ->latest()
+            ->first();
+
+        $this->assertSame('/mi-negocio/negociacion/contract-chat-001', $providerNotification?->data['ctaUrl'] ?? null);
+
         Sanctum::actingAs($provider);
 
         $this->getJson('/api/chat/conversations')
@@ -63,6 +86,17 @@ class ChatApiTest extends TestCase
             ->assertJsonPath('conversationId', $conversationId)
             ->assertJsonPath('unreadCount', 0)
             ->assertJsonPath('readCount', 1);
+
+        $this->postJson('/api/chat/conversations/'.$conversationId.'/messages', [
+            'body' => 'Perfecto, seguimos por la mesa de negociacion.',
+        ])->assertCreated();
+
+        $clientNotification = $client->notifications()
+            ->where('type', NotificationTypes::CHAT_MESSAGE_RECEIVED)
+            ->latest()
+            ->first();
+
+        $this->assertSame('/me/negociacion/contract-chat-001', $clientNotification?->data['ctaUrl'] ?? null);
     }
 
     public function test_admin_can_only_participate_after_intervention_is_requested(): void

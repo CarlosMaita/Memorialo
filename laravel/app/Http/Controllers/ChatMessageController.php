@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\ChatMessageCreated;
+use App\Models\Booking;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\ChatMessageAttachment;
@@ -146,6 +147,9 @@ class ChatMessageController extends Controller
         });
 
         $conversation->load('participants.user');
+        $bookingContractId = $conversation->booking_id
+            ? Booking::query()->whereKey((string) $conversation->booking_id)->value('contract_id')
+            : null;
 
         foreach ($conversation->participants as $participant) {
             if ((int) $participant->user_id === (int) $user->id) {
@@ -165,7 +169,7 @@ class ChatMessageController extends Controller
                     'id' => (string) $conversation->id,
                     'messageId' => (string) $message->id,
                 ],
-                'ctaUrl' => '/',
+                'ctaUrl' => $this->resolveNotificationCtaUrl($participant->user, $bookingContractId),
                 'dedupeKey' => NotificationTypes::CHAT_MESSAGE_RECEIVED.':'.$message->id.':'.$participant->user_id,
             ]);
         }
@@ -179,6 +183,20 @@ class ChatMessageController extends Controller
         ));
 
         return response()->json($formattedMessage, 201);
+    }
+
+    private function resolveNotificationCtaUrl(User $recipient, mixed $contractId): string
+    {
+        $normalizedContractId = trim((string) $contractId);
+        $isProvider = (bool) ($recipient->is_provider ?? false) || $recipient->role === 'provider';
+
+        if ($normalizedContractId !== '') {
+            $basePath = $isProvider ? '/mi-negocio/negociacion/' : '/me/negociacion/';
+
+            return $basePath.rawurlencode($normalizedContractId);
+        }
+
+        return $isProvider ? '/mi-negocio/negociaciones' : '/me/reservas';
     }
 
     public function markRead(Request $request, string $conversationId): JsonResponse
