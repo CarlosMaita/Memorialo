@@ -2541,8 +2541,10 @@ export default function App() {
         setProviderDashboardSection('billing');
         setNegotiationContractId(null);
       } else if (normalizedPath === '/mi-negocio/negociaciones') {
+        setProviderDashboardSection('contracts');
         setNegotiationContractId(null);
       } else if (normalizedPath.startsWith('/mi-negocio/negociacion/')) {
+        setProviderDashboardSection('contracts');
         const contractId = normalizedPath.slice('/mi-negocio/negociacion/'.length) || null;
         setNegotiationContractId(contractId);
       } else {
@@ -2898,7 +2900,8 @@ export default function App() {
     if (!providerAccountCreated) return '/mi-negocio/create';
     if (section === 'settings') return '/mi-negocio/configuracion';
     if (section === 'services') return '/mi-negocio/mis-servicios';
-    if (section === 'bookings' || section === 'contracts') return '/mi-negocio/reservas';
+    if (section === 'bookings') return '/mi-negocio/reservas';
+    if (section === 'contracts') return '/mi-negocio/negociaciones';
     if (section === 'billing') return '/mi-negocio/facturacion';
     return '/mi-negocio';
   };
