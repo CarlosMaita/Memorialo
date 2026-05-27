@@ -55,6 +55,22 @@ const navItems: { id: SidebarSection; label: string; icon: React.ReactNode }[] =
   { id: 'events', label: 'Eventos', icon: <CalendarDays className="w-5 h-5" /> },
 ];
 
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  wedding: 'Boda',
+  birthday: 'Cumpleaños',
+  corporate: 'Corporativo',
+  quinceanera: 'Quinceañera',
+  concert: 'Concierto',
+  party: 'Fiesta',
+  private: 'Privado',
+  public: 'Público',
+  'baby shower': 'Baby Shower',
+  graduation: 'Graduación',
+  anniversary: 'Aniversario',
+  festival: 'Festival',
+  other: 'Otro',
+};
+
 export function ClientDashboard({
   contracts,
   user,
@@ -93,6 +109,8 @@ export function ClientDashboard({
   const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
   const [showCancelBookingConfirm, setShowCancelBookingConfirm] = useState(false);
   const [mobileDetailBooking, setMobileDetailBooking] = useState<Booking | null>(null);
+  const [contractToAssignEvent, setContractToAssignEvent] = useState<Contract | null>(null);
+  const [selectedAssignmentEventId, setSelectedAssignmentEventId] = useState('none');
 
   const getMeasureType = (contract: any): 'time' | 'unit' => {
     if (contract?.metadata?.saleType === 'unit' || contract?.terms?.measureType === 'unit') {
@@ -149,6 +167,36 @@ export function ClientDashboard({
     }
 
     return booking.status;
+  };
+
+  const formatEventTypeLabel = (value?: string | null) => {
+    if (!value) return 'Sin especificar';
+
+    const normalized = value
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+    if (EVENT_TYPE_LABELS[normalized]) {
+      return EVENT_TYPE_LABELS[normalized];
+    }
+
+    if (normalized.includes('anniversary') || normalized.includes('aniversario')) return EVENT_TYPE_LABELS.anniversary;
+    if (normalized.includes('baby shower')) return EVENT_TYPE_LABELS['baby shower'];
+    if (normalized.includes('graduation') || normalized.includes('graduacion')) return EVENT_TYPE_LABELS.graduation;
+    if (normalized.includes('festival')) return EVENT_TYPE_LABELS.festival;
+    if (normalized.includes('corporate') || normalized.includes('corporativ') || normalized.includes('empresa')) return EVENT_TYPE_LABELS.corporate;
+    if (normalized.includes('birthday') || normalized.includes('cumple')) return EVENT_TYPE_LABELS.birthday;
+    if (normalized.includes('quince')) return EVENT_TYPE_LABELS.quinceanera;
+    if (normalized.includes('concert') || normalized.includes('concierto')) return EVENT_TYPE_LABELS.concert;
+    if (normalized.includes('wedding') || normalized.includes('boda')) return EVENT_TYPE_LABELS.wedding;
+    if (normalized.includes('party') || normalized.includes('fiesta')) return EVENT_TYPE_LABELS.party;
+    if (normalized.includes('private') || normalized.includes('privad')) return EVENT_TYPE_LABELS.private;
+    if (normalized.includes('public') || normalized.includes('publico')) return EVENT_TYPE_LABELS.public;
+    if (normalized.includes('other') || normalized.includes('otro')) return EVENT_TYPE_LABELS.other;
+
+    return value;
   };
 
   const filteredUserBookingsBySearchAndStatus = userBookings.filter((booking: any) => {
@@ -494,6 +542,23 @@ export function ClientDashboard({
 
   const handleEditEvent = (event: Event) => setEventToEdit(event);
   const handleEditComplete = () => setEventToEdit(null);
+  const handleOpenAssignEventDialog = (contract: Contract) => {
+    setContractToAssignEvent(contract);
+    setSelectedAssignmentEventId(contract.eventId || 'none');
+  };
+
+  const handleAssignEventConfirm = () => {
+    if (!contractToAssignEvent) {
+      return;
+    }
+
+    onAssignContractToEvent(
+      contractToAssignEvent.id,
+      selectedAssignmentEventId === 'none' ? null : selectedAssignmentEventId
+    );
+    setContractToAssignEvent(null);
+    setSelectedAssignmentEventId('none');
+  };
 
   const handleNavClick = (section: SidebarSection) => {
     setActiveSection(section);
@@ -536,7 +601,7 @@ export function ClientDashboard({
                   )}
                 </div>
                 <p className="mt-0.5 truncate text-xs text-gray-500">
-                  {booking.eventType || 'Evento'}
+                  {formatEventTypeLabel(booking.eventType)}
                   {booking.location ? ` · ${booking.location}` : ''}
                 </p>
                 <p className="mt-0.5 text-[11px] text-gray-400">Creada: {createdAtLabel}</p>
@@ -646,7 +711,7 @@ export function ClientDashboard({
                 )}
               </div>
               <p className="mt-0.5 truncate text-xs text-gray-500">
-                {booking.eventType || 'Evento'}
+                {formatEventTypeLabel(booking.eventType)}
                 {booking.location ? ` · ${booking.location}` : ''}
               </p>
               <p className="mt-0.5 text-[11px] text-gray-400">Creada: {createdAtLabel}</p>
@@ -831,30 +896,31 @@ export function ClientDashboard({
               </div>
               <p className="text-sm text-gray-600 mb-1">ID: {contract.bookingId}</p>
             </div>
+            {showEventSelector && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 rounded-full p-0"
+                    title="Más opciones"
+                    aria-label="Más opciones"
+                  >
+                    <MoreVertical className="w-4 h-4 text-gray-700" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => handleOpenAssignEventDialog(contract)}>
+                    <CalendarDays className="w-4 h-4" />
+                    {contract.eventId ? 'Cambiar evento' : 'Asignar evento'}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </CardHeader>
 
         <CardContent className="space-y-3">
-          {showEventSelector && (
-            <div>
-              <Label className="text-xs text-gray-500 mb-1 block">Asignar a Evento</Label>
-              <Select
-                value={contract.eventId || 'none'}
-                onValueChange={(value) => onAssignContractToEvent(contract.id, value === 'none' ? null : value)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Sin asignar" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin asignar</SelectItem>
-                  {userEvents.map(event => (
-                    <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           <div className="grid grid-cols-2 gap-3">
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="w-4 h-4 text-gray-500 shrink-0" />
@@ -1002,18 +1068,33 @@ export function ClientDashboard({
                     {eventContracts.length} {eventContracts.length === 1 ? 'servicio' : 'servicios'}
                   </Badge>
                 </div>
-                {event.eventType && <p className="text-sm text-gray-600 mb-1">{event.eventType}</p>}
+                {event.eventType && <p className="text-sm text-gray-600 mb-1">{formatEventTypeLabel(event.eventType)}</p>}
                 {event.description && <p className="text-sm text-gray-500 line-clamp-2">{event.description}</p>}
               </div>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="sm" onClick={() => handleEditEvent(event)} className="h-8 w-8 p-0" title="Editar evento">
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </Button>
-                </CollapsibleTrigger>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 rounded-full p-0"
+                      title="Más opciones"
+                      aria-label="Más opciones"
+                    >
+                      <MoreVertical className="w-4 h-4 text-gray-700" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => handleEditEvent(event)}>
+                      <Edit2 className="w-4 h-4" />
+                      Editar evento
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleArchiveEvent(event.id, !event.archived)}>
+                      {event.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+                      {event.archived ? 'Desarchivar evento' : 'Archivar evento'}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
 
@@ -1054,6 +1135,20 @@ export function ClientDashboard({
                   </div>
                 </div>
               )}
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 rounded-full p-0"
+                  title={isExpanded ? 'Ocultar detalles' : 'Ver detalles'}
+                  aria-label={isExpanded ? 'Ocultar detalles' : 'Ver detalles'}
+                >
+                  {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </Button>
+              </CollapsibleTrigger>
             </div>
 
             <CollapsibleContent className="mt-4 space-y-2">
@@ -1102,20 +1197,6 @@ export function ClientDashboard({
                   </div>
                 )}
               </div>
-              {!event.archived && (
-                <div className="pt-2">
-                  <Button variant="outline" size="sm" onClick={() => handleArchiveEvent(event.id, true)} className="w-full text-gray-600 hover:text-gray-800">
-                    <Archive className="w-4 h-4 mr-2" />Archivar evento
-                  </Button>
-                </div>
-              )}
-              {event.archived && (
-                <div className="pt-2">
-                  <Button variant="outline" size="sm" onClick={() => handleArchiveEvent(event.id, false)} className="w-full text-blue-600 hover:text-blue-800">
-                    <Archive className="w-4 h-4 mr-2" />Desarchivar evento
-                  </Button>
-                </div>
-              )}
             </CollapsibleContent>
           </Collapsible>
         </CardHeader>
@@ -1449,7 +1530,7 @@ export function ClientDashboard({
               <div className="grid grid-cols-1 gap-3 rounded-xl bg-slate-50 p-3 text-sm sm:grid-cols-2">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Evento</p>
-                  <p className="mt-1 text-slate-700">{mobileDetailBooking.eventType || 'Sin especificar'}</p>
+                  <p className="mt-1 text-slate-700">{formatEventTypeLabel(mobileDetailBooking.eventType)}</p>
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Contrato</p>
@@ -1481,6 +1562,60 @@ export function ClientDashboard({
                     })}
                   </p>
                 </div>
+              </div>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
+      <Dialog
+        open={Boolean(contractToAssignEvent)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setContractToAssignEvent(null);
+            setSelectedAssignmentEventId('none');
+          }
+        }}
+      >
+        {contractToAssignEvent && (
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Asignar evento</DialogTitle>
+              <DialogDescription>
+                Selecciona el evento al que quieres vincular esta reserva.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                {contractToAssignEvent.artistName}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="assign-event-select">Evento</Label>
+                <Select value={selectedAssignmentEventId} onValueChange={setSelectedAssignmentEventId}>
+                  <SelectTrigger id="assign-event-select">
+                    <SelectValue placeholder="Selecciona un evento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sin asignar</SelectItem>
+                    {userEvents.map(event => (
+                      <SelectItem key={event.id} value={event.id}>{event.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setContractToAssignEvent(null);
+                    setSelectedAssignmentEventId('none');
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button onClick={handleAssignEventConfirm}>Guardar</Button>
               </div>
             </div>
           </DialogContent>
