@@ -2931,7 +2931,15 @@ export default function App() {
     const hasExplicitCta = !!ctaUrl && ctaUrl !== '/';
 
     if (hasExplicitCta) {
-      return { path: ctaUrl };
+      const dest: NotificationDestination = { path: ctaUrl };
+      if (ctaUrl.startsWith('/mi-negocio/')) {
+        dest.viewMode = 'business';
+        dest.dashboardView = 'provider';
+      } else if (ctaUrl.startsWith('/me/')) {
+        dest.viewMode = 'business';
+        dest.dashboardView = 'client';
+      }
+      return dest;
     }
 
     const openProviderDashboard = (section: ProviderDashboardSection, bookingId: string | null = null): NotificationDestination => ({
