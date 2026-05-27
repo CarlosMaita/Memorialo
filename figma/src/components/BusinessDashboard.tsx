@@ -100,6 +100,7 @@ const navItems: { id: SidebarSection; label: string; icon: React.ReactNode }[] =
   { id: 'dashboard', label: 'Resumen', icon: <LayoutDashboard className="w-5 h-5" /> },
   { id: 'services', label: 'Mis Servicios', icon: <Briefcase className="w-5 h-5" /> },
   { id: 'bookings', label: 'Reservas', icon: <Calendar className="w-5 h-5" /> },
+  { id: 'contracts', label: 'Negociaciones', icon: <MessageCircle className="w-5 h-5" /> },
   { id: 'billing', label: 'Facturación', icon: <Receipt className="w-5 h-5" /> },
   { id: 'settings', label: 'Configuración', icon: <Edit className="w-5 h-5" /> },
 ];
@@ -421,7 +422,7 @@ export function BusinessDashboard({
 
   useEffect(() => {
     if (initialSection) {
-      setActiveSection(initialSection === 'contracts' ? 'bookings' : initialSection);
+      setActiveSection(initialSection);
     }
   }, [initialSection]);
 
