@@ -15,7 +15,7 @@ import { ContractView } from './ContractView';
 import { ConfirmDialog } from './ConfirmDialog';
 import { EventManager } from './EventManager';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
@@ -230,6 +230,7 @@ export function ClientDashboard({
     : allUserEvents.filter(e => !e.archived);
   const userContractsById = new Map(userContracts.map(contract => [contract.id, contract]));
   const userEventsById = new Map(userEvents.map(event => [event.id, event]));
+  const bookingByContractId = new Map(userBookings.map((booking: any) => [booking.contractId, booking]));
 
   const getBookingContract = (booking: any) => {
     if (!booking.contractId) {
@@ -669,6 +670,15 @@ export function ClientDashboard({
                         Cargar pago
                       </DropdownMenuItem>
                     )}
+                    {linkedContract && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleOpenAssignEventDialog(linkedContract)}>
+                          <CalendarDays className="w-4 h-4" />
+                          {linkedContract.eventId ? 'Cambiar evento' : 'Asignar evento'}
+                        </DropdownMenuItem>
+                      </>
+                    )}
                     {booking.archived ? (
                       <DropdownMenuItem onClick={() => onBookingUpdate?.({ ...booking, archived: false, archivedAt: null })}>
                         <ArchiveRestore className="w-4 h-4" />
@@ -796,6 +806,15 @@ export function ClientDashboard({
                       <CreditCard className="w-4 h-4" />
                       Cargar pago
                     </DropdownMenuItem>
+                  )}
+                  {linkedContract && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => handleOpenAssignEventDialog(linkedContract)}>
+                        <CalendarDays className="w-4 h-4" />
+                        {linkedContract.eventId ? 'Cambiar evento' : 'Asignar evento'}
+                      </DropdownMenuItem>
+                    </>
                   )}
                   {booking.archived ? (
                     <DropdownMenuItem onClick={() => onBookingUpdate?.({ ...booking, archived: false, archivedAt: null })}>
@@ -1045,18 +1064,9 @@ export function ClientDashboard({
     const eventContracts = contractsByEvent.get(event.id) || [];
     const totalSpent = eventContracts.reduce((sum, c) => sum + c.terms.price, 0);
     const isExpanded = expandedEvents.has(event.id);
-
-    const getStatusIcon = (status: Contract['status']) => {
-      switch (status) {
-        case 'en_negociacion': return <Clock className="w-4 h-4 text-blue-600" />;
-        case 'active':    return <CheckCircle className="w-4 h-4 text-green-600" />;
-        case 'pending_client': return <AlertCircle className="w-4 h-4 text-yellow-600" />;
-        case 'pending_artist': return <Clock className="w-4 h-4 text-blue-600" />;
-        case 'completed': return <CheckCircle className="w-4 h-4 text-gray-600" />;
-        case 'cancelled': return <XCircle className="w-4 h-4 text-red-600" />;
-        default: return <AlertCircle className="w-4 h-4 text-gray-600" />;
-      }
-    };
+    const eventBookingsForCard = eventContracts
+      .map(contract => bookingByContractId.get(contract.id))
+      .filter(Boolean);
 
     return (
       <Card className="mb-4">
@@ -1163,46 +1173,11 @@ export function ClientDashboard({
             <CollapsibleContent className="mt-4 space-y-2">
               <Separator />
               <div className="pt-2">
-                {eventContracts.length === 0 ? (
+                {eventBookingsForCard.length === 0 ? (
                   <p className="text-sm text-gray-500 text-center py-4">No hay servicios asignados a este evento</p>
                 ) : (
                   <div className="space-y-2">
-                    {eventContracts.map(contract => {
-                      const isContractExpanded = expandedContracts.has(contract.id);
-                      return (
-                        <div key={contract.id}>
-                          <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-200">
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              {getStatusIcon(contract.status)}
-                              <span className="text-sm font-medium truncate">{contract.artistName}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold text-[#0A1F44] whitespace-nowrap mr-2">
-                                ${contract.terms.price.toFixed(2)}
-                              </span>
-                              {canClientViewContract(contract) && (
-                                <Button variant="ghost" size="sm" onClick={() => { setSelectedContract(contract); setShowContractView(true); }} className="h-8 w-8 p-0" title="Ver contrato">
-                                  <FileText className="w-4 h-4" />
-                                </Button>
-                              )}
-                              <Button variant="ghost" size="sm" onClick={() => toggleContractExpanded(contract.id)} className="h-8 w-8 p-0" title="Ver detalles">
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              {canReview(contract) && !hasReviewed(contract.id) && (
-                                <Button variant="ghost" size="sm" onClick={() => onReviewCreate(contract.id)} className="h-8 w-8 p-0 text-[#D4AF37] hover:bg-[#D4AF37] hover:text-white" title="Dejar reseña">
-                                  <Star className="w-4 h-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                          {isContractExpanded && (
-                            <div className="mt-2 ml-4">
-                              <ContractCard contract={contract} showEventSelector={true} />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {eventBookingsForCard.map((booking) => renderBookingRow(booking))}
                   </div>
                 )}
               </div>
