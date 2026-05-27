@@ -857,6 +857,12 @@ export function ProviderNegotiationPage({
             const booking = bookings.find(b => String(b.id) === String(contract.bookingId));
             const clientDisplayName = contract.clientName || booking?.clientName || 'Cliente';
             const unreadCount = booking ? (bookingUnreadMap[String(booking.id)] || 0) : 0;
+            const eventDateRaw = contract?.terms?.date || booking?.date || '';
+            const eventTime = contract?.terms?.startTime || booking?.startTime || '';
+            const eventLocation = contract?.terms?.location || booking?.location || '';
+            const eventDateLabel = eventDateRaw
+              ? new Date(eventDateRaw).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+              : '';
             return (
               <button
                 key={contract.id}
@@ -880,7 +886,26 @@ export function ProviderNegotiationPage({
                       <p className={`truncate text-[10px] lg:text-xs ${isActive ? 'text-white/70' : 'text-gray-400'}`}>{contract.id?.slice(-12) || ''}</p>
                       <Badge
                         variant="outline"
-                        className={`rounded px-1 py-0.5 text-[9px] lg:px-1.5 lg:text-[10px] ${isActive ? 'border-white/30 text-white/80' : getStatusBadgeClass(contract.status)}`}
+                        className={`rounded px-1 py-0.5 text-[9px] lg:hidden lg:px-1.5 lg:text-[10px] ${isActive ? 'border-white/30 text-white/80' : getStatusBadgeClass(contract.status)}`}
+                      >
+                        {getStatusLabel(contract.status)}
+                      </Badge>
+                    </div>
+                    <div className={`hidden lg:mt-1 lg:flex lg:items-center lg:gap-1.5 ${isActive ? 'text-white/80' : 'text-gray-500'}`}>
+                      <Calendar className="h-3 w-3 shrink-0" />
+                      <p className="truncate text-[11px]">
+                        {eventDateLabel || 'Fecha por definir'}
+                        {eventTime ? ` · ${eventTime}` : ''}
+                      </p>
+                    </div>
+                    <div className={`hidden lg:mt-0.5 lg:flex lg:items-center lg:gap-1.5 ${isActive ? 'text-white/80' : 'text-gray-500'}`}>
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      <p className="truncate text-[11px]">{eventLocation || 'Ubicación por definir'}</p>
+                    </div>
+                    <div className="mt-1 hidden lg:block">
+                      <Badge
+                        variant="outline"
+                        className={`rounded whitespace-nowrap px-1.5 py-0.5 text-[10px] ${isActive ? 'border-white/30 text-white/80' : getStatusBadgeClass(contract.status)}`}
                       >
                         {getStatusLabel(contract.status)}
                       </Badge>
@@ -905,9 +930,11 @@ export function ProviderNegotiationPage({
   // ── Mobile: list-only view (no active contract) ────────────────────────
   if (!activeContractId) {
     return (
-      <div className="h-full min-h-0 overflow-hidden bg-transparent">
-        <div className="h-full min-h-0 bg-transparent">
-          {renderContractsSidebar()}
+      <div className="min-h-[calc(100dvh-64px)] bg-gray-50 px-3 py-3 sm:px-4">
+        <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-white/70 bg-white/95 shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+          <div className="h-full min-h-0">
+            {renderContractsSidebar()}
+          </div>
         </div>
       </div>
     );
