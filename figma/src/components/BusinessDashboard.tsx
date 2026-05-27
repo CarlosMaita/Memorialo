@@ -160,6 +160,8 @@ export function BusinessDashboard({
   const [searchBooking, setSearchBooking] = useState('');
   const [bookingStatusFilter, setBookingStatusFilter] = useState<'all' | 'en_negociacion' | 'pending' | 'confirmed' | 'completed'>('all');
   const [bookingOrder, setBookingOrder] = useState<'newest' | 'oldest'>('newest');
+  const [contractStatusFilter, setContractStatusFilter] = useState<'all' | 'en_negociacion' | 'pending_artist' | 'pending_client' | 'active' | 'completed' | 'cancelled'>('all');
+  const [contractOrder, setContractOrder] = useState<'newest' | 'oldest'>('newest');
   const BOOKINGS_BATCH_SIZE = 16;
   const [visibleBookingsCount, setVisibleBookingsCount] = useState(BOOKINGS_BATCH_SIZE);
 
@@ -340,16 +342,24 @@ export function BusinessDashboard({
   const confirmedBookings = providerBookings.filter(b => b.status === 'confirmed').length;
   const completedBookings = providerBookings.filter(b => b.status === 'completed').length;
 
-  // Sort contracts
+  // Get timestamp for contracts (for ordering)
+  const getContractTimestamp = (contract: Contract) => {
+    const createdAt = (contract as any).createdAt ? new Date((contract as any).createdAt).getTime() : NaN;
+    if (!Number.isNaN(createdAt)) {
+      return createdAt;
+    }
+
+    const contractDate = new Date(contract.terms.date).getTime();
+    return Number.isNaN(contractDate) ? 0 : contractDate;
+  };
+
+  // Sort contracts by order preference
   const sortedContracts = [...providerContracts].sort((a, b) => {
-    const statusOrder: { [key: string]: number } = {
-      'pending_artist': 1,
-      'pending_client': 2,
-      'active': 3,
-      'completed': 4,
-      'cancelled': 5
-    };
-    return (statusOrder[a.status] || 6) - (statusOrder[b.status] || 6);
+    if (contractOrder === 'newest') {
+      return getContractTimestamp(b) - getContractTimestamp(a);
+    } else {
+      return getContractTimestamp(a) - getContractTimestamp(b);
+    }
   });
 
   const getBookingTimestamp = (booking: Booking) => {
@@ -380,9 +390,20 @@ export function BusinessDashboard({
     service.isArchived && service.name.toLowerCase().includes(searchService.toLowerCase())
   );
 
-  const filteredContracts = sortedContracts.filter(contract => 
-    contract.clientName.toLowerCase().includes(searchContract.toLowerCase())
-  );
+  const filteredContracts = sortedContracts.filter(contract => {
+    // Filter by status
+    if (contractStatusFilter !== 'all' && contract.status !== contractStatusFilter) {
+      return false;
+    }
+
+    // Filter by search text
+    const searchValue = searchContract.trim().toLowerCase();
+    if (!searchValue) {
+      return true;
+    }
+
+    return contract.clientName.toLowerCase().includes(searchValue);
+  });
 
   const filteredBookings = providerBookings
     .filter((booking) => {
@@ -1520,26 +1541,51 @@ export function BusinessDashboard({
             </div>
           )}
 
-          {/* ── CONTRATOS ──────────────────────────────────────────────── */}
+          {/* ── NEGOCIACIONES ──────────────────────────────────────────────── */}
           {activeSection === 'contracts' && (
             <div className="space-y-4">
               <div>
-                <h1 className="text-2xl font-bold text-[#1B2A47] mb-1">Contratos</h1>
+                <h1 className="text-2xl font-bold text-[#1B2A47] mb-1">Negociaciones</h1>
                 <p className="text-gray-500 text-sm">
-                  {providerContracts.length} contrato{providerContracts.length !== 1 ? 's' : ''} · {pendingContracts.length} pendiente{pendingContracts.length !== 1 ? 's' : ''}
+                  {providerContracts.length} negociaci{providerContracts.length !== 1 ? 'ones' : 'ón'} · {pendingContracts.length} pendiente{pendingContracts.length !== 1 ? 's' : ''}
                 </p>
               </div>
 
               {providerContracts.length > 0 && (
-                <div className="relative w-full md:max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#D4AF37' }} />
-                  <Input
-                    type="text"
-                    placeholder="Buscar por nombre de cliente..."
-                    value={searchContract}
-                    onChange={(e) => setSearchContract(e.target.value)}
-                    className="h-10 pl-10 border-2 border-gray-200 focus:border-[#D4AF37]"
-                  />
+                <div className="flex flex-col md:flex-row md:items-center gap-3">
+                  <div className="relative w-full md:max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#D4AF37' }} />
+                    <Input
+                      type="text"
+                      placeholder="Buscar por nombre de cliente..."
+                      value={searchContract}
+                      onChange={(e) => setSearchContract(e.target.value)}
+                      className="h-10 pl-10 border-2 border-gray-200 focus:border-[#D4AF37]"
+                    />
+                  </div>
+                  <Select value={contractStatusFilter} onValueChange={(value: 'all' | 'en_negociacion' | 'pending_artist' | 'pending_client' | 'active' | 'completed' | 'cancelled') => setContractStatusFilter(value)}>
+                    <SelectTrigger className="w-full md:w-[210px]">
+                      <SelectValue placeholder="Filtrar por estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="en_negociacion">En negociación</SelectItem>
+                      <SelectItem value="pending_artist">Pendiente firma proveedor</SelectItem>
+                      <SelectItem value="pending_client">Pendiente firma cliente</SelectItem>
+                      <SelectItem value="active">Activos</SelectItem>
+                      <SelectItem value="completed">Completados</SelectItem>
+                      <SelectItem value="cancelled">Cancelados</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={contractOrder} onValueChange={(value: 'newest' | 'oldest') => setContractOrder(value)}>
+                    <SelectTrigger className="w-full md:w-[210px]">
+                      <SelectValue placeholder="Ordenar por creación" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">Creación: más recientes</SelectItem>
+                      <SelectItem value="oldest">Creación: menos recientes</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
@@ -1560,58 +1606,108 @@ export function BusinessDashboard({
                 </Card>
               ) : (
                 <div className="space-y-2">
+                  <div className="hidden md:grid grid-cols-[minmax(0,1.7fr)_130px_140px_90px_auto] gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    <span>Cliente / detalle</span>
+                    <span>Fecha de evento</span>
+                    <span>Estado</span>
+                    <span>Total</span>
+                    <span className="text-right">Opciones</span>
+                  </div>
+
                   {filteredContracts.map((contract) => {
                     const isSigned = contract.clientSignature && contract.artistSignature;
                     const contractHasBooking = hasBooking(contract.id);
                     const needsProviderSignature = contract.status === 'pending_artist' && contract.clientSignature && !contract.artistSignature;
-                    const isExpanded = expandedContractId === contract.id;
+                    const createdAtRaw = (contract as any).createdAt || contract.terms.date;
+                    const createdAtLabel = formatBookingDate(createdAtRaw, { day: 'numeric', month: 'short', year: 'numeric' });
+                    const contractDateLabel = formatBookingDate(contract.terms.date, { day: 'numeric', month: 'short', year: 'numeric' });
+                    const contractActionLabel = needsProviderSignature ? 'Firmar contrato' : 'Ver contrato';
 
                     return (
-                      <Card key={contract.id} className={needsProviderSignature ? 'border-2 border-orange-400 bg-orange-50/30' : ''}>
-                        <CardContent className="p-3">
+                      <Card key={contract.id} className={`shadow-sm border-[#1B2A47] bg-white ${needsProviderSignature ? 'ring-2 ring-orange-400' : ''}`}>
+                        <CardContent className="px-3 py-2.5">
                           {needsProviderSignature && (
                             <div className="mb-2 flex items-start gap-2 bg-orange-100 border border-orange-300 rounded-lg p-2">
                               <AlertCircle className="w-4 h-4 text-orange-700 shrink-0 mt-0.5" />
                               <p className="text-xs text-orange-900"><strong>Acción requerida:</strong> El cliente firmó. Revisa y firma el contrato.</p>
                             </div>
                           )}
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <h4 className="text-sm truncate">{contract.clientName}</h4>
-                                <Badge className={`${getStatusBadge(contract.status)} text-xs`} variant={contract.status.includes('pending') ? 'outline' : 'default'}>
-                                  {getStatusText(contract.status)}
-                                </Badge>
+                          
+                          <div className="md:hidden">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <h4 className="truncate text-sm font-medium text-[#1B2A47]" title={contract.clientName}>
+                                  {contract.clientName}
+                                </h4>
+                                <p className="mt-0.5 truncate text-xs text-gray-500">
+                                  {formatEventTypeLabel(contract.terms.serviceDescription.split('\n')[0])}
+                                  {contract.terms.location ? ` · ${contract.terms.location}` : ''}
+                                </p>
+                                <p className="mt-0.5 text-[11px] text-gray-400">Creada: {createdAtLabel}</p>
+                                <p className="mt-2 flex items-center gap-1 text-xs text-gray-600">
+                                  <Calendar className="w-3 h-3" />
+                                  {contractDateLabel}
+                                  <span className="text-gray-300">•</span>
+                                  <Clock className="w-3 h-3" />
+                                  {contract.terms.startTime || 'No disponible'}
+                                </p>
                               </div>
-                              <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(contract.terms.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
-                                <span className="text-green-600 font-medium">${contract.terms.price}</span>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 w-8 rounded-full p-0"
+                                      title="Más opciones"
+                                      aria-label="Más opciones"
+                                    >
+                                      <MoreVertical className="w-4 h-4 text-gray-700" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-56">
+                                    <DropdownMenuItem onClick={() => handleViewContract(contract)}>
+                                      <FileText className="w-4 h-4" />
+                                      {contractActionLabel}
+                                    </DropdownMenuItem>
+                                    {isSigned && !contractHasBooking && (
+                                      <DropdownMenuItem onClick={() => handleCreateBooking(contract)}>
+                                        <CalendarPlus className="w-4 h-4" />
+                                        Crear Reserva
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem onClick={() => onOpenNegotiation?.(contract.id)}>
+                                      <MessageCircle className="w-4 h-4" />
+                                      Abrir conversación
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Button size="sm" variant="ghost" onClick={() => setExpandedContractId(isExpanded ? null : contract.id)} className="h-8 w-8 p-0">
-                                <Eye className="w-4 h-4 text-gray-700" />
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => handleViewContract(contract)} className="h-8 w-8 p-0">
-                                <FileText className="w-4 h-4 text-gray-700" />
-                              </Button>
+
+                            <div className="mt-3">
+                              <Badge className={`${getStatusBadge(contract.status)} text-xs`}>
+                                <span className="flex items-center gap-1">{getStatusIcon(contract.status)}{getStatusText(contract.status)}</span>
+                              </Badge>
+                              {contractHasBooking && (
+                                <Badge variant="outline" className="ml-2 text-green-700 border-green-300 text-xs">
+                                  <CheckCircle2 className="w-3 h-3 mr-1" />Reserva creada
+                                </Badge>
+                              )}
                             </div>
                           </div>
 
-                          {isExpanded && (
-                            <div className="mt-3 pt-3 border-t space-y-3">
-                              <p className="text-sm text-gray-600">{formatEventTypeLabel(contract.terms.serviceDescription.split('\n')[0])}</p>
-                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div><p className="text-gray-400">Fecha</p><p className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(contract.terms.date).toLocaleDateString('es-ES')}</p></div>
-                                <div><p className="text-gray-400">{getMeasureTitle(contract, true)}</p><p className="flex items-center gap-1"><Clock className="w-3 h-3" />{contract.terms.startTime || 'No disponible'} · {getMeasureLabel(contract, contract.terms.duration)}</p></div>
-                                <div><p className="text-gray-400">Precio</p><p className="text-green-600">${contract.terms.price}</p></div>
-                                <div><p className="text-gray-400">Ubicación</p><p className="truncate">{contract.terms.location}</p></div>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {isSigned && !contractHasBooking && (
-                                  <Button size="sm" onClick={() => handleCreateBooking(contract)} className="flex-1">
-                                    <CalendarPlus className="w-4 h-4 mr-1" />Crear Reserva
-                                  </Button>
+                          <div className="hidden md:grid md:grid-cols-[minmax(0,1.7fr)_130px_140px_90px_auto] md:items-center md:gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="truncate text-sm font-medium text-[#1B2A47]" title={contract.clientName}>
+                                  {contract.clientName}
+                                </h4>
+                                {needsProviderSignature && (
+                                  <Badge variant="outline" className="border-yellow-300 bg-yellow-50 text-yellow-800">
+                                    Firma pendiente
+                                  </Badge>
                                 )}
                                 {contractHasBooking && (
                                   <Badge variant="outline" className="text-green-700 border-green-300">
@@ -1619,8 +1715,60 @@ export function BusinessDashboard({
                                   </Badge>
                                 )}
                               </div>
+                              <p className="mt-0.5 truncate text-xs text-gray-500">
+                                {formatEventTypeLabel(contract.terms.serviceDescription.split('\n')[0])}
+                                {contract.terms.location ? ` · ${contract.terms.location}` : ''}
+                              </p>
+                              <p className="mt-0.5 text-[11px] text-gray-400">Creada: {createdAtLabel}</p>
                             </div>
-                          )}
+
+                            <div className="text-xs text-gray-600">
+                              <p className="flex items-center gap-1 font-medium text-gray-700"><Calendar className="w-3 h-3" />{formatBookingDate(contract.terms.date, { day: 'numeric', month: 'short' })}</p>
+                              <p className="mt-0.5 flex items-center gap-1"><Clock className="w-3 h-3" />{contract.terms.startTime || 'No disponible'}</p>
+                            </div>
+
+                            <div>
+                              <Badge className={`${getStatusBadge(contract.status)} text-xs`}>
+                                <span className="flex items-center gap-1">{getStatusIcon(contract.status)}{getStatusText(contract.status)}</span>
+                              </Badge>
+                            </div>
+
+                            <div>
+                              <p className="text-sm font-semibold text-green-600">${contract.terms.price}</p>
+                            </div>
+
+                            <div className="flex items-center justify-end">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 rounded-full p-0"
+                                    title="Más opciones"
+                                    aria-label="Más opciones"
+                                  >
+                                    <MoreVertical className="w-4 h-4 text-gray-700" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56">
+                                  <DropdownMenuItem onClick={() => handleViewContract(contract)}>
+                                    <FileText className="w-4 h-4" />
+                                    {contractActionLabel}
+                                  </DropdownMenuItem>
+                                  {isSigned && !contractHasBooking && (
+                                    <DropdownMenuItem onClick={() => handleCreateBooking(contract)}>
+                                      <CalendarPlus className="w-4 h-4" />
+                                      Crear Reserva
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem onClick={() => onOpenNegotiation?.(contract.id)}>
+                                    <MessageCircle className="w-4 h-4" />
+                                    Abrir conversación
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </div>
                         </CardContent>
                       </Card>
                     );
