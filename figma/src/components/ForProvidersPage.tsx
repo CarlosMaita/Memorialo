@@ -263,6 +263,14 @@ export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm =
                         value={registerForm.email}
                         onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
                         onInvalid={handleEmailInputInvalid}
+                        placeholder="correo@ejemplo.com"
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="provider-register-password" className="mb-1 block">Contraseña</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <Input
@@ -652,6 +660,14 @@ export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm =
                         value={registerForm.email}
                         onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
                         onInvalid={handleEmailInputInvalid}
+                        placeholder="correo@ejemplo.com"
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="provider-register-password-bottom" className="mb-1 block">Contraseña</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <Input
