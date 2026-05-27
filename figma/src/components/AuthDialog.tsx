@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { User } from '../types';
 import { toast } from 'sonner@2.0.3';
 import { User as UserIcon, Mail, Lock } from 'lucide-react';
+import { handleEmailInputInvalid, isEmailAlreadyTakenError, isInvalidEmailFormatError } from '../utils/authErrors';
 
 interface AuthDialogProps {
   open: boolean;
@@ -106,8 +107,10 @@ export function AuthDialog({ open, onClose, onLogin, onSignUp, onSignIn, onSignI
       const errorMessage = mapAuthErrorMessage(error.message || 'Error al crear la cuenta');
       
       // Handle specific error messages
-      if (errorMessage.includes('ya está registrado') || errorMessage.includes('already been registered')) {
+      if (isEmailAlreadyTakenError(errorMessage)) {
         toast.error('Este correo ya tiene una cuenta. Por favor, inicia sesión en la pestaña "Iniciar Sesión".');
+      } else if (isInvalidEmailFormatError(errorMessage)) {
+        toast.error('El correo electrónico no es válido. Verifica el formato e intenta nuevamente.');
       } else {
         toast.error(errorMessage);
       }
@@ -248,6 +251,7 @@ export function AuthDialog({ open, onClose, onLogin, onSignUp, onSignIn, onSignI
                     required
                     value={registerForm.email}
                     onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+                    onInvalid={handleEmailInputInvalid}
                     placeholder="tu@email.com"
                     className="pl-10"
                   />

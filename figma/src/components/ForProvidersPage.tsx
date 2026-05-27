@@ -7,6 +7,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { SEOHead } from './SEOHead';
 import { toast } from 'sonner@2.0.3';
+import { handleEmailInputInvalid, isEmailAlreadyTakenError, isInvalidEmailFormatError } from '../utils/authErrors';
 
 interface ForProvidersPageProps {
   onClose: () => void;
@@ -54,7 +55,13 @@ export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm =
       });
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Error al crear la cuenta';
-      toast.error(errorMessage);
+      if (isEmailAlreadyTakenError(errorMessage)) {
+        toast.error('Este correo ya tiene una cuenta. Por favor, usa otro correo o inicia sesión.');
+      } else if (isInvalidEmailFormatError(errorMessage)) {
+        toast.error('El correo electrónico no es válido. Verifica el formato e intenta nuevamente.');
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setRegistering(false);
     }
@@ -255,14 +262,7 @@ export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm =
                         required
                         value={registerForm.email}
                         onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-                        placeholder="tu@email.com"
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="provider-register-password" className="mb-1 block">Contraseña</Label>
+                        onInvalid={handleEmailInputInvalid}
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <Input
@@ -651,14 +651,7 @@ export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm =
                         required
                         value={registerForm.email}
                         onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-                        placeholder="tu@email.com"
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="provider-register-password-bottom" className="mb-1 block">Contraseña</Label>
+                        onInvalid={handleEmailInputInvalid}
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <Input
