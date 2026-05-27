@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Calendar, Clock, DollarSign, FileText, Star, CheckCircle, XCircle,
   AlertCircle, MessageSquare, FolderOpen, Package, Edit2, ChevronDown,
-  ChevronUp, Eye, Archive, ArchiveRestore, CalendarDays, BookOpen, Activity, MessageCircle,
+  ChevronUp, Eye, EyeOff, Archive, ArchiveRestore, CalendarDays, BookOpen, Activity, MessageCircle,
   MoreVertical,
   Search, Download, CreditCard
 } from 'lucide-react';
@@ -71,6 +71,16 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   other: 'Otro',
 };
 
+const CONFIRMED_CONTRACT_STATUSES = new Set(['active', 'reservado', 'completed', 'pagado']);
+
+function formatEventDateLong(eventDate: string): string {
+  const d = new Date(eventDate);
+  const day = d.toLocaleDateString('es-ES', { day: 'numeric' });
+  const month = d.toLocaleDateString('es-ES', { month: 'long' });
+  const year = d.toLocaleDateString('es-ES', { year: 'numeric' });
+  return `${day} de ${month.charAt(0).toUpperCase() + month.slice(1)}, ${year}`;
+}
+
 export function ClientDashboard({
   contracts,
   user,
@@ -98,6 +108,7 @@ export function ClientDashboard({
   const [showContractView, setShowContractView] = useState(false);
   const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
   const [expandedContracts, setExpandedContracts] = useState<Set<string>>(new Set());
+  const [detailedViewEvents, setDetailedViewEvents] = useState<Set<string>>(new Set());
   const [showArchived, setShowArchived] = useState(false);
   const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
   const [activeSection, setActiveSection] = useState<SidebarSection>('bookings');
@@ -334,6 +345,12 @@ export function ClientDashboard({
     const s = new Set(expandedEvents);
     s.has(eventId) ? s.delete(eventId) : s.add(eventId);
     setExpandedEvents(s);
+  };
+
+  const toggleEventViewMode = (eventId: string) => {
+    const s = new Set(detailedViewEvents);
+    s.has(eventId) ? s.delete(eventId) : s.add(eventId);
+    setDetailedViewEvents(s);
   };
 
   const toggleContractExpanded = (contractId: string) => {
@@ -1064,10 +1081,82 @@ export function ClientDashboard({
     const eventContracts = contractsByEvent.get(event.id) || [];
     const totalSpent = eventContracts.reduce((sum, c) => sum + c.terms.price, 0);
     const isExpanded = expandedEvents.has(event.id);
+    const isDetailed = detailedViewEvents.has(event.id);
     const eventBookingsForCard = eventContracts
       .map(contract => bookingByContractId.get(contract.id))
       .filter(Boolean);
 
+    // ── Simple view (default) ─────────────────────────────────────────────
+    if (!isDetailed) {
+      const formattedDate = event.eventDate ? formatEventDateLong(event.eventDate) : null;
+
+      return (
+        <Card className="mb-4 border-[#D4AF37] rounded-xl">
+          <CardContent className="pt-4 pb-4 px-5">
+            {/* Header row */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-3 min-w-0">
+                <Calendar className="w-5 h-5 text-[#D4AF37] mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-[#1B2A47] leading-snug">{event.name}</h3>
+                  {formattedDate && (
+                    <p className="text-sm text-[#D4AF37] mt-0.5">{formattedDate}</p>
+                  )}
+                  {event.archived && (
+                    <Badge variant="outline" className="mt-1 bg-gray-100 text-gray-600 border-gray-300">
+                      <Archive className="w-3 h-3 mr-1" />Archivado
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 rounded-full p-0 shrink-0"
+                title="Ver detalles completos"
+                aria-label="Ver detalles completos"
+                onClick={() => toggleEventViewMode(event.id)}
+              >
+                <Eye className="w-4 h-4 text-gray-400" />
+              </Button>
+            </div>
+
+            {/* Services list */}
+            {eventContracts.length > 0 && (
+              <>
+                <Separator className="my-3" />
+                <div className="space-y-2">
+                  {eventContracts.map((contract) => {
+                    const confirmed = CONFIRMED_CONTRACT_STATUSES.has(contract.status);
+                    return (
+                      <div key={contract.id} className="flex items-center gap-2 text-sm">
+                        {confirmed ? (
+                          <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+                        ) : (
+                          <Clock className="w-4 h-4 text-[#D4AF37] shrink-0" />
+                        )}
+                        <span className="flex-1 text-[#1B2A47]">
+                          {contract.artistName} - ${contract.terms.price.toFixed(2)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* Total */}
+            <Separator className="my-3" />
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-[#D4AF37]">Total del Evento:</span>
+              <span className="font-semibold text-green-600">${totalSpent.toFixed(2)}</span>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // ── Detailed view ─────────────────────────────────────────────────────
     return (
       <Card className="mb-4">
         <CardHeader>
@@ -1091,6 +1180,16 @@ export function ClientDashboard({
                 {event.description && <p className="text-sm text-gray-500 line-clamp-2">{event.description}</p>}
               </div>
               <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 rounded-full p-0"
+                  title="Vista simple"
+                  aria-label="Vista simple"
+                  onClick={() => toggleEventViewMode(event.id)}
+                >
+                  <EyeOff className="w-4 h-4 text-gray-500" />
+                </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
