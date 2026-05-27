@@ -4421,6 +4421,7 @@ export default function App() {
         onGetStarted={() => navigateTo('/registro-proveedores')}
         showRegistrationForm
         onProviderSignUp={handleProviderLandingSignUp}
+        onProviderSignInWithGoogle={handleSignInWithGoogle}
       />
     );
   }
