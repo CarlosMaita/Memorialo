@@ -71,6 +71,16 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   other: 'Otro',
 };
 
+const CONFIRMED_CONTRACT_STATUSES = new Set(['active', 'reservado', 'completed', 'pagado']);
+
+function formatEventDateLong(eventDate: string): string {
+  const d = new Date(eventDate);
+  const day = d.toLocaleDateString('es-ES', { day: 'numeric' });
+  const month = d.toLocaleDateString('es-ES', { month: 'long' });
+  const year = d.toLocaleDateString('es-ES', { year: 'numeric' });
+  return `${day} de ${month.charAt(0).toUpperCase() + month.slice(1)}, ${year}`;
+}
+
 export function ClientDashboard({
   contracts,
   user,
@@ -1078,15 +1088,7 @@ export function ClientDashboard({
 
     // ── Simple view (default) ─────────────────────────────────────────────
     if (!isDetailed) {
-      const formattedDate = event.eventDate
-        ? (() => {
-            const d = new Date(event.eventDate);
-            const day = d.toLocaleDateString('es-ES', { day: 'numeric' });
-            const month = d.toLocaleDateString('es-ES', { month: 'long' });
-            const year = d.toLocaleDateString('es-ES', { year: 'numeric' });
-            return `${day} de ${month.charAt(0).toUpperCase() + month.slice(1)}, ${year}`;
-          })()
-        : null;
+      const formattedDate = event.eventDate ? formatEventDateLong(event.eventDate) : null;
 
       return (
         <Card className="mb-4 border-[#D4AF37] rounded-xl">
@@ -1125,7 +1127,7 @@ export function ClientDashboard({
                 <Separator className="my-3" />
                 <div className="space-y-2">
                   {eventContracts.map((contract) => {
-                    const confirmed = ['active', 'reservado', 'completed', 'pagado'].includes(contract.status);
+                    const confirmed = CONFIRMED_CONTRACT_STATUSES.has(contract.status);
                     return (
                       <div key={contract.id} className="flex items-center gap-2 text-sm">
                         {confirmed ? (
