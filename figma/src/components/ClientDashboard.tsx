@@ -55,6 +55,22 @@ const navItems: { id: SidebarSection; label: string; icon: React.ReactNode }[] =
   { id: 'events', label: 'Eventos', icon: <CalendarDays className="w-5 h-5" /> },
 ];
 
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  wedding: 'Boda',
+  birthday: 'Cumpleaños',
+  corporate: 'Corporativo',
+  quinceanera: 'Quinceañera',
+  concert: 'Concierto',
+  party: 'Fiesta',
+  private: 'Privado',
+  public: 'Público',
+  'baby shower': 'Baby Shower',
+  graduation: 'Graduación',
+  anniversary: 'Aniversario',
+  festival: 'Festival',
+  other: 'Otro',
+};
+
 export function ClientDashboard({
   contracts,
   user,
@@ -162,19 +178,23 @@ export function ClientDashboard({
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase();
 
-    if (normalized.includes('wedding') || normalized.includes('boda')) return 'Boda';
-    if (normalized.includes('birthday') || normalized.includes('cumple')) return 'Cumpleaños';
-    if (normalized.includes('corporate') || normalized.includes('corporativ') || normalized.includes('empresa')) return 'Corporativo';
-    if (normalized.includes('quince')) return 'Quinceañera';
-    if (normalized.includes('concert') || normalized.includes('concierto')) return 'Concierto';
-    if (normalized.includes('party') || normalized.includes('fiesta')) return 'Fiesta';
-    if (normalized.includes('private') || normalized.includes('privad')) return 'Privado';
-    if (normalized.includes('public') || normalized.includes('publico')) return 'Público';
-    if (normalized.includes('baby shower')) return 'Baby Shower';
-    if (normalized.includes('graduation') || normalized.includes('graduacion')) return 'Graduación';
-    if (normalized.includes('anniversary') || normalized.includes('aniversario')) return 'Aniversario';
-    if (normalized.includes('festival')) return 'Festival';
-    if (normalized.includes('other') || normalized.includes('otro')) return 'Otro';
+    if (EVENT_TYPE_LABELS[normalized]) {
+      return EVENT_TYPE_LABELS[normalized];
+    }
+
+    if (normalized.includes('anniversary') || normalized.includes('aniversario')) return EVENT_TYPE_LABELS.anniversary;
+    if (normalized.includes('baby shower')) return EVENT_TYPE_LABELS['baby shower'];
+    if (normalized.includes('graduation') || normalized.includes('graduacion')) return EVENT_TYPE_LABELS.graduation;
+    if (normalized.includes('festival')) return EVENT_TYPE_LABELS.festival;
+    if (normalized.includes('corporate') || normalized.includes('corporativ') || normalized.includes('empresa')) return EVENT_TYPE_LABELS.corporate;
+    if (normalized.includes('birthday') || normalized.includes('cumple')) return EVENT_TYPE_LABELS.birthday;
+    if (normalized.includes('quince')) return EVENT_TYPE_LABELS.quinceanera;
+    if (normalized.includes('concert') || normalized.includes('concierto')) return EVENT_TYPE_LABELS.concert;
+    if (normalized.includes('wedding') || normalized.includes('boda')) return EVENT_TYPE_LABELS.wedding;
+    if (normalized.includes('party') || normalized.includes('fiesta')) return EVENT_TYPE_LABELS.party;
+    if (normalized.includes('private') || normalized.includes('privad')) return EVENT_TYPE_LABELS.private;
+    if (normalized.includes('public') || normalized.includes('publico')) return EVENT_TYPE_LABELS.public;
+    if (normalized.includes('other') || normalized.includes('otro')) return EVENT_TYPE_LABELS.other;
 
     return value;
   };
