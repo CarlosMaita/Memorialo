@@ -281,6 +281,15 @@ export function ClientDashboard({
     contractsByEvent.get(eventId)!.push(contract);
   });
   const unassignedContracts = contractsByEvent.get(null) || [];
+  const unassignedContractIds = new Set(unassignedContracts.map(contract => contract.id));
+  const unassignedBookings = userBookings
+    .filter((booking) => (
+      Boolean(booking.contractId)
+      && unassignedContractIds.has(booking.contractId)
+      && !booking.eventId
+      && !booking.archived
+    ))
+    .sort((a, b) => getBookingTimestamp(b) - getBookingTimestamp(a));
 
   useEffect(() => {
     if (!focusBookingId) {
@@ -1264,7 +1273,7 @@ export function ClientDashboard({
               </div>
 
               {/* Content */}
-              {userEvents.length === 0 && unassignedContracts.length === 0 ? (
+              {userEvents.length === 0 && unassignedBookings.length === 0 ? (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-12">
                     <FolderOpen className="w-12 h-12 text-gray-400 mb-3" />
@@ -1280,17 +1289,17 @@ export function ClientDashboard({
                     </div>
                   )}
 
-                  {unassignedContracts.length > 0 && (
+                  {unassignedBookings.length > 0 && (
                     <div className="mt-6">
                       <div className="flex items-center gap-2 mb-4">
-                        <Package className="w-5 h-5 text-gray-400" />
+                        <CalendarDays className="w-5 h-5 text-gray-400" />
                         <h3 className="text-sm font-medium text-gray-600">
-                          Sin asignar a evento ({unassignedContracts.length})
+                          Sin asignar a evento ({unassignedBookings.length})
                         </h3>
                       </div>
-                      {unassignedContracts.map(contract => (
-                        <ContractCard key={contract.id} contract={contract} showEventSelector={true} />
-                      ))}
+                      <div className="space-y-2">
+                        {unassignedBookings.map((booking) => renderBookingRow(booking))}
+                      </div>
                     </div>
                   )}
                 </div>
