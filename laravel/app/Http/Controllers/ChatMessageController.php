@@ -187,13 +187,13 @@ class ChatMessageController extends Controller
 
     private function resolveNotificationCtaUrl(User $recipient, mixed $contractId): string
     {
-        $normalizedContractId = trim((string) $contractId);
+        $trimmedContractId = trim((string) $contractId);
         $isProvider = (bool) ($recipient->is_provider ?? false) || $recipient->role === 'provider';
 
-        if ($normalizedContractId !== '') {
+        if ($trimmedContractId !== '') {
             $basePath = $isProvider ? '/mi-negocio/negociacion/' : '/me/negociacion/';
 
-            return $basePath.rawurlencode($normalizedContractId);
+            return $basePath.rawurlencode($trimmedContractId);
         }
 
         return $isProvider ? '/mi-negocio/negociaciones' : '/me/reservas';
