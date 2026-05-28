@@ -5170,9 +5170,7 @@ export default function App() {
         ) : viewMode === 'business' ? (
           <>
             <SEOHead noindex={isPrivateSystemRoute} />
-            {currentUser && currentUser.isProvider && (
-              currentRoute.startsWith('/mi-negocio/negociacion') || currentRoute === '/mi-negocio/negociaciones'
-            ) ? (
+            {currentUser && currentUser.isProvider && currentRoute.startsWith('/mi-negocio/negociacion/') ? (
               <ProviderNegotiationPage
                 contracts={contracts}
                 bookings={bookings}
