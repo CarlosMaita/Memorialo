@@ -17,6 +17,8 @@ interface ForProvidersPageProps {
   onProviderSignInWithGoogle?: () => Promise<void>;
 }
 
+const PROVIDER_VIDEO_URL = 'https://www.youtube.com/embed/TO3KeVyzLPQ';
+
 export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm = false, onProviderSignUp, onProviderSignInWithGoogle }: ForProvidersPageProps) {
   const [registerForm, setRegisterForm] = useState({
     name: '',
@@ -598,7 +600,7 @@ export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm =
             <div className="relative w-full overflow-hidden rounded-xl shadow-lg" style={{ paddingTop: '56.25%' }}>
               <iframe
                 className="absolute top-0 left-0 w-full h-full"
-                src="https://www.youtube.com/embed/TO3KeVyzLPQ"
+                src={PROVIDER_VIDEO_URL}
                 title="Cómo ser proveedor en Memorialo"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 referrerPolicy="strict-origin-when-cross-origin"
