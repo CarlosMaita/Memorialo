@@ -2543,6 +2543,9 @@ export default function App() {
       } else if (normalizedPath === '/mi-negocio/negociaciones') {
         setProviderDashboardSection('contracts');
         setNegotiationContractId(null);
+      } else if (normalizedPath === '/mi-negocio/negociacion') {
+        setProviderDashboardSection('contracts');
+        setNegotiationContractId(null);
       } else if (normalizedPath.startsWith('/mi-negocio/negociacion/')) {
         setProviderDashboardSection('contracts');
         const contractId = normalizedPath.slice('/mi-negocio/negociacion/'.length) || null;
