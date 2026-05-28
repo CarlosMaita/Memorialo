@@ -2540,7 +2540,7 @@ export default function App() {
       } else if (normalizedPath === '/mi-negocio/facturacion') {
         setProviderDashboardSection('billing');
         setNegotiationContractId(null);
-      } else if (normalizedPath === '/mi-negocio/negociaciones') {
+      } else if (normalizedPath === '/mi-negocio/negociaciones' || normalizedPath === '/mi-negocio/negociacion') {
         setProviderDashboardSection('contracts');
         setNegotiationContractId(null);
       } else if (normalizedPath.startsWith('/mi-negocio/negociacion/')) {
@@ -5170,9 +5170,7 @@ export default function App() {
         ) : viewMode === 'business' ? (
           <>
             <SEOHead noindex={isPrivateSystemRoute} />
-            {currentUser && currentUser.isProvider && (
-              currentRoute.startsWith('/mi-negocio/negociacion') || currentRoute === '/mi-negocio/negociaciones'
-            ) ? (
+            {currentUser && currentUser.isProvider && currentRoute.startsWith('/mi-negocio/negociacion/') ? (
               <ProviderNegotiationPage
                 contracts={contracts}
                 bookings={bookings}
