@@ -585,6 +585,30 @@ export function ForProvidersPage({ onClose, onGetStarted, showRegistrationForm =
         </div>
       </section>
 
+      {/* Video Section */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-center mb-4" style={{ color: 'var(--navy-blue)' }}>
+              ¿Quieres conocer cómo ser proveedor en Memorialo?
+            </h2>
+            <p className="text-center text-gray-600 mb-8 text-lg">
+              Mira este video y descubre el proceso para unirte como proveedor.
+            </p>
+            <div className="relative w-full overflow-hidden rounded-xl shadow-lg" style={{ paddingTop: '56.25%' }}>
+              <iframe
+                className="absolute top-0 left-0 w-full h-full"
+                src="https://www.youtube.com/embed/TO3KeVyzLPQ"
+                title="Cómo ser proveedor en Memorialo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Categories Section */}
       <section className="py-16" style={{ backgroundColor: 'rgba(10, 31, 68, 0.03)' }}>
         <div className="container mx-auto px-4">
