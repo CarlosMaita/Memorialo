@@ -2540,10 +2540,7 @@ export default function App() {
       } else if (normalizedPath === '/mi-negocio/facturacion') {
         setProviderDashboardSection('billing');
         setNegotiationContractId(null);
-      } else if (normalizedPath === '/mi-negocio/negociaciones') {
-        setProviderDashboardSection('contracts');
-        setNegotiationContractId(null);
-      } else if (normalizedPath === '/mi-negocio/negociacion') {
+      } else if (normalizedPath === '/mi-negocio/negociaciones' || normalizedPath === '/mi-negocio/negociacion') {
         setProviderDashboardSection('contracts');
         setNegotiationContractId(null);
       } else if (normalizedPath.startsWith('/mi-negocio/negociacion/')) {
