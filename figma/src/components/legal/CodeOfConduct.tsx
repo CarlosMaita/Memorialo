@@ -20,7 +20,7 @@ export function CodeOfConduct({ onBack }: CodeOfConductProps) {
 
         <div className="bg-white rounded-lg shadow-sm p-8">
           <h1 className="mb-2" style={{ color: 'var(--navy-blue)' }}>Código de Conducta</h1>
-          <p className="text-gray-600 mb-8">Última actualización: Noviembre 2024</p>
+          <p className="text-gray-600 mb-8 italic">Última actualización: 6 de mayo de 2026</p>
 
           <div className="space-y-8">
             <section>
